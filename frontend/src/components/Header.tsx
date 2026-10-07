@@ -51,49 +51,6 @@ export default function Header() {
               className="header-logo"
             />
           </a>
-
-          <div className="header-actions">
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Buscar"
-              title="Buscar"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="action-icon"
-              >
-                <circle cx="11" cy="11" r="7.5" />
-                <line x1="21" y1="21" x2="16.5" y2="16.5" />
-              </svg>
-            </button>
-
-            <button
-              type="button"
-              className="icon-button menu-button"
-              aria-label="Menú principal"
-              title="Menú"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="action-icon"
-              >
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            </button>
-          </div>
         </div>
       </div>
 
