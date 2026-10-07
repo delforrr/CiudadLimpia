@@ -1,4 +1,5 @@
 import logoMunicipalidad from '../assets/logo-trenquelauquen.png'
+import iconoCiudadLimpia from '../assets/icono-ciudad-limpia.png'
 import './Header.css'
 
 export default function Header() {
@@ -41,7 +42,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Barra principal con logo y acciones */}
+      {/* Barra principal con logo de Trenque Lauquen y logo de la app CiudadLimpia */}
       <div className="main-nav">
         <div className="header-inner main-nav-content">
           <a href="/" className="logo-link" aria-label="Inicio">
@@ -49,8 +50,26 @@ export default function Header() {
               src={logoMunicipalidad}
               alt="Municipalidad de Trenque Lauquen - Lugar del Encuentro"
               className="header-logo"
+              onError={(e) => {
+                e.currentTarget.src = '/logo-trenquelauquen.png'
+              }}
             />
           </a>
+
+          <div className="app-branding">
+            <img
+              src={iconoCiudadLimpia}
+              alt="Ícono Ciudad Limpia"
+              className="app-logo-icon"
+              onError={(e) => {
+                e.currentTarget.src = '/icono-ciudad-limpia.png'
+              }}
+            />
+            <span className="app-logo-title">
+              <span className="brand-ciudad">Ciudad</span>
+              <span className="brand-limpia">Limpia</span>
+            </span>
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import camionRecolector from '../assets/camion-recolector.png'
 import './Login.css'
 
 export default function Login() {
@@ -15,7 +16,14 @@ export default function Login() {
     <div className="login-container">
       <div className="login-card">
         <header className="login-header">
-          <h2>Iniciar Sesión</h2>
+          <div className="login-title-row">
+            <h2>Iniciar Sesión</h2>
+            <img
+              src={camionRecolector}
+              alt="Camión recolector"
+              className="login-truck-icon"
+            />
+          </div>
           <p>Ingresa tus credenciales para acceder</p>
         </header>
 

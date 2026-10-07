@@ -62,6 +62,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
 }
 
 .logo-link {
@@ -75,6 +76,37 @@
   width: auto;
   display: block;
   object-fit: contain;
+}
+
+/* Logo de la aplicación CiudadLimpia (lado derecho) */
+.app-branding {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  user-select: none;
+}
+
+.app-logo-icon {
+  height: 46px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.app-logo-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  display: inline-flex;
+}
+
+.brand-ciudad {
+  color: #1E6000;
+}
+
+.brand-limpia {
+  color: #68A544;
 }
 
 /* Línea de borde inferior solicitada (#1E6000) */
@@ -93,6 +125,14 @@
   }
 
   .header-logo {
-    height: 40px;
+    height: 38px;
+  }
+
+  .app-logo-icon {
+    height: 34px;
+  }
+
+  .app-logo-title {
+    font-size: 1.15rem;
   }
 }
