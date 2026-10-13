@@ -1,18 +1,17 @@
 /* Main Application Layout */
 .app-layout {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  max-width: 680px;
-  margin: 0 auto;
-  background-color: #ffffff;
+  background-color: #fcfcfc;
   position: relative;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.05);
 }
 
-.main-content {
+.app-main {
   flex: 1;
-  padding-bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 80px; /* espacio para no solaparse con la barra de navegación */
 }
 
 /* Bottom Navigation Bar */
@@ -34,7 +33,7 @@
   max-width: 680px;
   height: 68px;
   background-color: #ffffff;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid #e2e8f0;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
@@ -50,7 +49,7 @@
   align-items: center;
   justify-content: center;
   padding: 6px 0;
-  color: var(--nav-inactive);
+  color: #607284;
   gap: 4px;
   transition: all 0.2s ease;
   user-select: none;
@@ -76,6 +75,6 @@
 }
 
 .nav-item.active .nav-label {
-  color: var(--nav-active);
+  color: #156538;
   font-weight: 700;
 }
