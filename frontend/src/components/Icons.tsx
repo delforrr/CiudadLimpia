@@ -1,4 +1,5 @@
 import React from 'react';
+import truckIconImg from '../assets/icono-camion-hoy.png';
 
 interface IconProps {
   size?: number;
@@ -6,41 +7,33 @@ interface IconProps {
   className?: string;
 }
 
-// Truck icon matching the "Hoy" icon from the reference image
-export const TruckIcon: React.FC<IconProps> = ({ size = 26, color = 'currentColor', className }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-    style={{ display: 'block' }}
-  >
-    {/* Truck cargo body */}
-    <path
-      d="M2 5.5C2 4.67 2.67 4 3.5 4H14.5C15.33 4 16 4.67 16 5.5V14.5C16 15.33 15.33 16 14.5 16H2V5.5Z"
-      fill={color}
+// Truck icon matching the official PNG provided by the user for "Hoy"
+export const TruckIcon: React.FC<IconProps> = ({ size = 28, color = 'currentColor', className }) => {
+  const width = Math.round(size * 1.25);
+  const height = Math.round(width * (272 / 487));
+
+  return (
+    <span
+      className={className}
+      style={{
+        display: 'inline-block',
+        width: `${width}px`,
+        height: `${height}px`,
+        backgroundColor: color,
+        WebkitMaskImage: `url(${truckIconImg})`,
+        maskImage: `url(${truckIconImg})`,
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskPosition: 'center',
+        verticalAlign: 'middle',
+        transform: 'translateY(2.5px)',
+      }}
     />
-    {/* Truck cabin */}
-    <path
-      d="M16 8H18.8C19.33 8 19.82 8.28 20.1 8.73L21.8 11.45C21.93 11.66 22 11.91 22 12.16V14.5C22 15.33 21.33 16 20.5 16H16V8Z"
-      fill={color}
-    />
-    {/* Cabin window cut */}
-    <path
-      d="M16.5 9.2H18.3C18.6 9.2 18.85 9.38 19 9.62L19.9 11.2H16.5V9.2Z"
-      fill="#ffffff"
-      opacity="0.9"
-    />
-    {/* Left wheel */}
-    <circle cx="6" cy="17" r="2.5" fill={color} />
-    <circle cx="6" cy="17" r="1.1" fill="#ffffff" />
-    {/* Right wheel */}
-    <circle cx="17.5" cy="17" r="2.5" fill={color} />
-    <circle cx="17.5" cy="17" r="1.1" fill="#ffffff" />
-  </svg>
-);
+  );
+};
 
 // Calendar icon matching the "Calendario" icon from the reference image
 export const CalendarIcon: React.FC<IconProps> = ({ size = 24, color = 'currentColor', className }) => (
@@ -99,19 +92,28 @@ export const RecycleIcon: React.FC<IconProps> = ({ size = 25, color = 'currentCo
   </svg>
 );
 
-// Better high-fidelity 3-arrow recycle icon
-export const RecyclingSymbol: React.FC<IconProps> = ({ size = 25, color = 'currentColor', className }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill={color}
-    xmlns="http://www.w3.org/2000/svg"
+import puntosLimpiosImg from '../assets/icono-puntos-limpios.png';
+
+// Icono circular de 3 flechas provisto por el usuario para Puntos Limpios
+export const PuntosLimpiosIcon: React.FC<IconProps> = ({ size = 25, color = 'currentColor', className }) => (
+  <span
     className={className}
-    style={{ display: 'block' }}
-  >
-    <path d="M11.16 2.45a1 1 0 0 1 1.68 0l3.75 5.5a1 1 0 0 1-.84 1.55H13v2.5a1 1 0 0 1-2 0V9.5H8.25a1 1 0 0 1-.84-1.55l3.75-5.5Zm-4.9 8.28a1 1 0 0 1 1.45-.84l6.2 3.1a1 1 0 0 1 .1 1.76l-2.17 1.25 1.25 2.17a1 1 0 0 1-1.73 1l-1.25-2.17-2.17 1.25a1 1 0 0 1-1.45-.84l-.23-6.68Zm11.48.01a1 1 0 0 1-.23 6.68l-2.17-1.25-1.25 2.17a1 1 0 0 1-1.73-1l1.25-2.17-2.17-1.25a1 1 0 0 1 .1-1.76l6.2-3.1a1 1 0 0 1 1.45.84l-.23-.16v.85Z" />
-  </svg>
+    style={{
+      display: 'inline-block',
+      width: size,
+      height: size,
+      backgroundColor: color,
+      WebkitMaskImage: `url(${puntosLimpiosImg})`,
+      maskImage: `url(${puntosLimpiosImg})`,
+      WebkitMaskSize: 'contain',
+      maskSize: 'contain',
+      WebkitMaskRepeat: 'no-repeat',
+      maskRepeat: 'no-repeat',
+      WebkitMaskPosition: 'center',
+      maskPosition: 'center',
+      verticalAlign: 'middle',
+    }}
+  />
 );
 
 // Profile icon matching "Mi Perfil"

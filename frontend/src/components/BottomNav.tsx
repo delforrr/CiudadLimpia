@@ -1,6 +1,6 @@
 import React from 'react';
 import type { NavTab } from '../types';
-import { TruckIcon, CalendarIcon, RecyclingSymbol, ProfileIcon } from './Icons';
+import { TruckIcon, CalendarIcon, PuntosLimpiosIcon, ProfileIcon } from './Icons';
 
 interface BottomNavProps {
   activeTab: NavTab;
@@ -18,7 +18,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) 
     {
       id: 'hoy',
       label: 'Hoy',
-      renderIcon: (color) => <TruckIcon size={25} color={color} />,
+      renderIcon: (color) => <TruckIcon size={28} color={color} />,
     },
     {
       id: 'calendario',
@@ -28,7 +28,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) 
     {
       id: 'puntos-limpios',
       label: 'Puntos Limpios',
-      renderIcon: (color) => <RecyclingSymbol size={24} color={color} />,
+      renderIcon: (color) => <PuntosLimpiosIcon size={25} color={color} />,
     },
     {
       id: 'perfil',
@@ -42,7 +42,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) 
       <div className="bottom-nav">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
-          const color = isActive ? '#156538' : '#607284';
+          const color = isActive ? '#68A245' : 'rgba(255, 255, 255, 0.65)';
 
           return (
             <button

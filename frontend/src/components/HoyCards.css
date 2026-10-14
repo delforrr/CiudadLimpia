@@ -1,0 +1,529 @@
+/* Contenedor general del apartado Hoy */
+.hoy-container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem 1rem 2rem;
+  box-sizing: border-box;
+}
+
+/* =========================================
+   1. TARJETA BLANCA (ARRIBA)
+   ========================================= */
+.tarjeta-blanca-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* Fila de saludo y dirección */
+.saludo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.saludo-titulo {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.direccion-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #3b6033;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.icono-pin {
+  color: #059669;
+  flex-shrink: 0;
+}
+
+/* Tarjeta física con fondo verde claro #d1e5cc */
+.tarjeta-blanca-card {
+  background-color: #d1e5cc;
+  border-radius: 16px;
+  border: 1.5px solid #8acb67;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.1);
+}
+
+.tarjeta-blanca-cuerpo {
+  padding: 1.15rem 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.estado-fila-principal {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.estado-textos {
+  display: flex;
+  flex-direction: column;
+}
+
+.estado-pregunta {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #3b6033;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.estado-alerta {
+  margin: 0.2rem 0;
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #1E6000;
+  letter-spacing: -0.02em;
+}
+
+.estado-descripcion {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #1a3c18;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.camion-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tarjeta-camion-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Caja de métricas integrada sin fondo blanco */
+.metricas-caja {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: transparent;
+  border-top: 1px solid rgba(118, 198, 81, 0.4);
+  padding: 0.85rem 0.25rem 0;
+  margin-top: 0.25rem;
+}
+
+.metrica-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metrica-etiqueta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: #274920;
+  font-weight: 700;
+}
+
+.metrica-valor {
+  font-size: 1.18rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  margin-top: 1px;
+}
+
+.metrica-valor.valor-tiempo {
+  color: #1E6000;
+}
+
+.metrica-detalle {
+  font-size: 0.72rem;
+  color: #3b5f30;
+  font-weight: 600;
+}
+
+.metrica-separador {
+  width: 1px;
+  height: 42px;
+  background-color: rgba(30, 96, 0, 0.2);
+  margin: 0 0.75rem;
+}
+
+/* Botón Ver Trayecto */
+.trayecto-boton-fila {
+  display: flex;
+  margin-top: 0.65rem;
+}
+
+.btn-ver-trayecto {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #1E6000;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(30, 96, 0, 0.25);
+  cursor: pointer;
+}
+
+.btn-ver-trayecto:hover {
+  background-color: #164a00;
+  transform: translateY(-1px);
+}
+
+.btn-ver-trayecto:active {
+  transform: translateY(0);
+}
+
+.btn-ver-trayecto.activo {
+  background-color: #144000;
+}
+
+/* Contenedor del Mapa del Trayecto */
+.mapa-trayecto-card {
+  margin-top: 0.65rem;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(118, 198, 81, 0.45);
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+  animation: fadeInTrayecto 0.25s ease-out;
+}
+
+@keyframes fadeInTrayecto {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mapa-header-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #f7faf6;
+  border-bottom: 1px solid #e2ede0;
+}
+
+.mapa-header-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1E6000;
+}
+
+.dot-mapa-vivo {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #16a34a;
+  animation: pulse-dot-vivo 1.8s infinite ease-in-out;
+}
+
+.mapa-header-distancia {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #3b5f30;
+}
+
+.mapa-svg-wrapper {
+  width: 100%;
+  background-color: #eaf2e8;
+  position: relative;
+}
+
+.mapa-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.mapa-pie-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  color: #3b5f30;
+  font-weight: 600;
+  background-color: #f7faf6;
+  border-top: 1px solid #e2ede0;
+}
+
+.pulse-radar {
+  animation: radar-pulse 2s infinite ease-out;
+  transform-origin: center;
+}
+
+@keyframes radar-pulse {
+  0% { r: 12; opacity: 0.6; }
+  100% { r: 24; opacity: 0; }
+}
+
+/* =========================================
+   2. TARJETA VERDE (ABAJO)
+   ========================================= */
+.tarjeta-verde-card {
+  position: relative;
+  background-color: #0f3d0f;
+  background: linear-gradient(145deg, #134d13 0%, #0d380d 100%);
+  border-radius: 16px;
+  padding: 1.25rem 1.25rem;
+  color: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(15, 61, 15, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* Marca de agua del tacho de basura */
+.marca-agua-tacho {
+  position: absolute;
+  bottom: -15px;
+  right: -10px;
+  width: 120px;
+  height: 120px;
+  color: rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.marca-agua-tacho svg {
+  width: 100%;
+  height: 100%;
+}
+
+.verde-fila-superior {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.badge-hoy-toca {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(4px);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+}
+
+.badge-hora-19 {
+  background-color: #bef264;
+  color: #14532d;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: -0.01em;
+}
+
+.verde-titulo {
+  position: relative;
+  z-index: 2;
+  margin: 0.25rem 0 0;
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.verde-descripcion {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+/* Fila de recordatorio con switch */
+.recordatorio-fila {
+  position: relative;
+  z-index: 2;
+  background-color: rgba(0, 0, 0, 0.24);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  backdrop-filter: blur(4px);
+}
+
+.recordatorio-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.campana-icono {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.recordatorio-titulo {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.recordatorio-subtitulo {
+  display: block;
+  font-size: 0.75rem;
+  color: #bef264;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+/* Switch */
+.switch-verde {
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.25);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.switch-verde.activo {
+  background-color: #bef264;
+}
+
+.switch-perilla {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #14532d;
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.switch-verde.activo .switch-perilla {
+  transform: translateX(20px);
+  background-color: #0f3d0f;
+}
+
+/* =========================================
+   3. CARRUSEL INFORMATIVO (ABAJO DEL TODO)
+   ========================================= */
+.carrusel-fotos-wrapper {
+  width: 100%;
+}
+
+.carrusel-fotos-card {
+  position: relative;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  border: 1.5px solid rgba(21, 101, 56, 0.2);
+  background-color: #134d13;
+}
+
+.carrusel-slide-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2.15 / 1;
+  overflow: hidden;
+  background-color: #134d13;
+}
+
+.carrusel-foto-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1), transform 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1.02);
+  pointer-events: none;
+}
+
+.carrusel-foto-img.visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.carrusel-indicadores {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  padding: 4px 8px;
+  border-radius: 20px;
+  z-index: 5;
+}
+
+.carrusel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  padding: 0;
+}
+
+.carrusel-dot.activo {
+  width: 22px;
+  border-radius: 10px;
+  background-color: #bef264;
+}

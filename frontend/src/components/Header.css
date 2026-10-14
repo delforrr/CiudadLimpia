@@ -82,12 +82,12 @@
 .app-branding {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.45rem;
   user-select: none;
 }
 
 .app-logo-icon {
-  height: 46px;
+  height: 54px;
   width: auto;
   object-fit: contain;
   display: block;
@@ -129,7 +129,7 @@
   }
 
   .app-logo-icon {
-    height: 34px;
+    height: 42px;
   }
 
   .app-logo-title {
