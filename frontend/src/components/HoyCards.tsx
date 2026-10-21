@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuthContext } from '../hooks/useAuthContext';
 import camionRecolector from '../assets/camion-recolector.png';
 import residuosReciclables from '../assets/residuos-reciclables.png';
 import residuosNoReciclables from '../assets/residuos-no-reciclables.png';
@@ -8,7 +8,7 @@ import truckIconImg from '../assets/icono-camion-hoy.png';
 import './HoyCards.css';
 
 export const HoyCards: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user } = useAuthContext();
   const navigate = useNavigate();
   const [recordatorioActivo, setRecordatorioActivo] = useState(true);
   const [mostrarTrayecto, setMostrarTrayecto] = useState(false);
@@ -42,13 +42,13 @@ export const HoyCards: React.FC = () => {
         <section className="tarjeta-blanca-wrapper">
           {/* Encabezado con saludo y dirección */}
           <div className="saludo-header">
-            <h2 className="saludo-titulo">Hola, {user?.nombre || 'Martín'}</h2>
+            <h2 className="saludo-titulo">Hola, {user?.name}</h2>
 
             <div className="direccion-header">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="icono-pin">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
               </svg>
-              <span>{user?.direccion || 'Av. Las Palmas 450 · Barrio Los Olivos'}</span>
+              <span>Sin dirección vinculada</span>
             </div>
           </div>
 

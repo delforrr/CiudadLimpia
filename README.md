@@ -1,75 +1,99 @@
-# React + TypeScript + Vite
+# Ciudad Limpia
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend React/Vite y API NestJS con PostgreSQL, Prisma, bcrypt y JWT.
 
-Currently, two official plugins are available:
+## Desarrollo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Usar Node.js 24.15+ (línea 24) o 26+ y npm 11.17.0.
 
-## React Compiler
+1. En `backend`, ejecutar `npm ci` y copiar `.env.example` a `.env` si no existe.
+2. Elegir `POSTGRES_PASSWORD` y usar la misma contraseña en `DATABASE_URL`. Configurar `JWT_SECRET` con el resultado de `openssl rand -hex 32`. El `.env` local ya configurado contiene credenciales aleatorias y no se versiona.
+3. Ejecutar `docker compose --env-file backend/.env up -d --wait postgres` desde la raíz para iniciar solo PostgreSQL 17 local.
+4. Ejecutar `npm run prisma:generate` y `npm run prisma:migrate`.
+5. Iniciar la API con `npm run start:dev` (puerto 3000).
+6. En `frontend`, ejecutar `npm ci` y `npm run dev`. Abrir la URL de Vite.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+PostgreSQL escucha en `127.0.0.1:5432` y conserva los datos en el volumen `postgres_data`. Si cambiás `POSTGRES_PORT`, actualizá también el puerto de `DATABASE_URL`. `docker compose --env-file backend/.env stop` detiene la base sin borrar datos; `docker compose --env-file backend/.env down` conserva el volumen. Las variables `POSTGRES_*` inicializan una base nueva: cambiar la contraseña del `.env` no cambia la contraseña de una base ya creada. Para una base existente, actualizar sus credenciales mediante PostgreSQL y luego el `.env`.
 
-## Expanding the ESLint configuration
+Vite envía `/auth` a `http://localhost:3000`. En producción, servir frontend y API bajo el mismo origen y enrutar `/auth` al backend; usar HTTPS y `NODE_ENV=production` para cookies Secure. Los scripts automáticos de dependencias están desactivados en `backend/.npmrc`; Prisma se genera con el comando explícito anterior.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+`GET /health` es público y devuelve `{ "status": "ok" }` cuando la API está levantada; no comprueba PostgreSQL.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+El frontend centraliza las cuatro rutas en `src/services/authService.ts`. `useAuth` administra la sesión y `useAuthForm` administra el formulario; los componentes presentan la interfaz con componentes MUI y estilos CSS.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## App completa con Docker
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Requiere Docker con Compose; no hace falta instalar Node en el host. Toda la configuración está en `docker-compose.yml`, en la raíz. Usar `--env-file backend/.env` para cargar las variables existentes sin duplicar credenciales.
 
+En una copia nueva del repo, copiar `backend/.env.example` a `backend/.env`, elegir una contraseña y generar `JWT_SECRET` con `openssl rand -hex 32`. Usar las mismas credenciales en ambas URLs: `DATABASE_URL` apunta a `127.0.0.1` para desarrollo fuera de Docker y `DATABASE_URL_DOCKER` apunta a `postgres:5432` para los contenedores. El `.env` local existente ya está configurado.
+
+Desde la raíz:
+
+```sh
+docker compose --env-file backend/.env up --build -d --wait
+docker compose --env-file backend/.env ps
+docker compose --env-file backend/.env logs -f backend frontend
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+La primera ejecución descarga las imágenes y dependencias; las siguientes reutilizan la caché de Docker.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- App: [http://localhost:8080](http://localhost:8080).
+- Swagger: [http://localhost:8080/api/docs](http://localhost:8080/api/docs).
+- Health: [http://localhost:8080/health](http://localhost:8080/health).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+`FRONTEND_PORT` cambia el puerto web. Nginx sirve el build de React y reenvía `/auth`, `/api` y `/health` al backend para mantener el mismo origen. El backend no publica un puerto al host; PostgreSQL conserva su acceso local en el puerto configurado y reutiliza el volumen existente.
 
+Compose espera a que PostgreSQL esté saludable e inicia el backend. Su comando ejecuta `npm run prisma:migrate` y, solo si termina correctamente, arranca la API. Luego inicia el frontend. No hay un servicio separado de migraciones. La imagen del backend incluye Prisma CLI, el esquema, las migraciones y su configuración; usa un usuario sin privilegios y dependencias de producción. Las migraciones se comprueban en cada arranque del backend. Las imágenes no contienen archivos `.env` ni credenciales de la base; se reciben al iniciar los contenedores.
+
+El backend confía en un único proxy cuando `TRUST_PROXY=1`, configurado por Compose. Nginx sobrescribe la IP reenviada para que el límite de intentos use la IP del cliente. No publicar directamente ese backend sin revisar la confianza en el proxy.
+
+La configuración local usa `NODE_ENV=development` para permitir la cookie de sesión por HTTP. Para publicar detrás de HTTPS, usar `NODE_ENV=production` en el entorno de despliegue para activar Secure. Este Compose no configura certificados TLS.
+
+`docker compose --env-file backend/.env stop` detiene todos los servicios. `docker compose --env-file backend/.env down` elimina los contenedores y mantiene la base; no usar `down -v` si se quieren conservar los datos. Para actualizar el código, repetir el comando de arranque con `--build`. Para volver al desarrollo con Vite y Nest fuera de Docker, detener `backend` y `frontend` y levantar únicamente `postgres`.
+
+## Autenticación
+
+- `POST /auth/register`: `{ email, name, lastName, password, repeatedPassword }`. Crea la cuenta e inicia sesión.
+- `POST /auth/login`: `{ email, password, rememberMe? }`.
+- `GET /auth/me`: usuario autenticado, sin hash ni token; devuelve 401 si la sesión venció.
+- `POST /auth/logout`: elimina la cookie del navegador.
+
+Los POST requieren `Content-Type: application/json`. El email se normaliza a minúsculas y se recortan sus espacios. La contraseña conserva sus espacios y símbolos: mínimo 8 caracteres y máximo 72 bytes UTF-8, por el límite de bcrypt (12 rondas).
+
+El JWT se guarda en una cookie HttpOnly y SameSite=Strict. Dura una hora; con Recordarme dura siete días y la cookie persiste. El guard también acepta `Authorization: Bearer <JWT>` para clientes API. El logout elimina la cookie; un JWT copiado previamente sigue válido hasta vencer. No se implementaron refresh tokens ni recuperación de contraseña.
+
+Registro y login permiten diez intentos por IP cada quince minutos. El contador es local al proceso: usar un limitador compartido con múltiples réplicas y configurar la IP real en el proxy antes de desplegar.
+
+## Swagger
+
+Con el backend iniciado, abrir [Swagger UI](http://localhost:3000/api/docs). El documento OpenAPI se publica en [JSON](http://localhost:3000/api/docs-json) y [YAML](http://localhost:3000/api/docs-yaml). Ajustar el puerto si se modifica `PORT`.
+
+La documentación incluye health, registro, login, sesión y logout, con ejemplos, límites de validación, códigos de error y el esquema del usuario público. Las contraseñas de los ejemplos son ficticias.
+
+Para probar la autenticación, ejecutar `POST /auth/register` o `POST /auth/login` con **Try it out** y luego `GET /auth/me`. La cookie HttpOnly se conserva automáticamente en el navegador al usar el mismo origen. No es necesario copiarla en **Authorize**. También se documenta Bearer para clientes que ya tengan un JWT. `POST /auth/logout` elimina la cookie; Swagger agrega el encabezado JSON requerido incluso cuando no hay cuerpo.
+
+La integración usa [Nest Swagger](https://docs.nestjs.com/openapi/introduction) y documenta los dos mecanismos de autenticación como alternativas.
+
+## Dependencias y verificación
+
+El backend usa Nest 12 y Prisma 7 estable. TypeScript permanece en 6.0 por los rangos soportados por Nest Swagger, typescript-eslint y ts-jest. Prisma requiere `@prisma/adapter-pg` y genera el cliente en `backend/src/generated/prisma` (ignorado por Git).
+
+El override de `@istanbuljs/load-nyc-config > js-yaml` elimina la rama vulnerable de YAML 3. El consumidor utiliza `load`, que existe en YAML 4; las pruebas incluyen lectura de configuración YAML y cobertura para comprobar esta compatibilidad.
+
+En `backend`:
+
+```sh
+npm run prisma:generate
+npm run build
+npm test -- --runInBand
+npm run test:e2e -- --runInBand
+npm run test:cov -- --runInBand
+npm run lint
+npm run audit
 ```
+
+En `frontend`: `npm test`, `npm run build` y `npm run lint`.
+
+Las pruebas HTTP sustituyen únicamente PostgreSQL por un repositorio en memoria; ejecutan Nest, validaciones, bcrypt y JWT reales. No escriben en la base configurada. Un resultado de cero vulnerabilidades de npm audit corresponde al lockfile y a los avisos conocidos al momento de ejecutarlo; debe repetirse al actualizar dependencias.
+
+Referencias de migración: [Nest 12](https://docs.nestjs.com/migration-guide), [Prisma 7](https://www.prisma.io/docs/guides/upgrade-prisma-orm/v7).

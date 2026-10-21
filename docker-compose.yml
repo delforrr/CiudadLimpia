@@ -1,0 +1,63 @@
+name: ciudadlimpia
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Definir POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Definir POSTGRES_DB en .env}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL_DOCKER:?Definir DATABASE_URL_DOCKER en .env}
+      JWT_SECRET: ${JWT_SECRET:?Definir JWT_SECRET en .env}
+      TRUST_PROXY: '1'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - '127.0.0.1:${FRONTEND_PORT:-8080}:80'
+    depends_on:
+      backend:
+        condition: service_healthy
+        restart: true
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1/']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

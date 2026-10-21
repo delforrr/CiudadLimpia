@@ -1,28 +1,19 @@
-import { useState, type FormEvent } from 'react';
+import { Alert, Button, Checkbox, FormControlLabel, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuthContext } from '../hooks/useAuthContext';
+import { useAuthForm } from '../hooks/useAuthForm';
 import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
 export default function Login() {
-  const { isAuthenticated, user, login, logout } = useAuth();
+  const { isAuthenticated, user, onAuthenticated, checking, logout, logoutError, loggingOut } = useAuthContext();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [recordarme, setRecordarme] = useState(false);
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    // Guardar en sesión
-    login({
-      email: email || 'martin@trenquelauquen.gov.ar',
-      nombre: email ? email.split('@')[0] : 'Martín',
-      direccion: 'Av. Las Palmas 450 · Barrio Los Olivos',
-      barrio: 'Barrio Los Olivos',
-    });
-    // Redirigir a Hoy donde la tarjeta ya estará activa
+  const { form, updateField, handleSubmit, error, pending, emailError, passwordError, validateEmail, validatePassword } = useAuthForm((authenticatedUser) => {
+    onAuthenticated(authenticatedUser);
     navigate('/hoy');
-  };
+  });
+
+  if (checking) return <p role="status">Comprobando sesión…</p>;
 
   // Si ya tiene sesión iniciada, mostrar su perfil
   if (isAuthenticated) {
@@ -34,14 +25,10 @@ export default function Login() {
               👤
             </div>
             <h2>Mi Perfil</h2>
-            <p>Sesión activa para <strong>{user?.nombre}</strong></p>
+            <p>Sesión activa para <strong>{user?.name}</strong></p>
           </header>
 
           <div className="perfil-detalles-box">
-            <div className="perfil-detalle-item">
-              <span className="detalle-label">Dirección vinculada:</span>
-              <span className="detalle-valor">📍 {user?.direccion}</span>
-            </div>
             <div className="perfil-detalle-item">
               <span className="detalle-label">Correo registrado:</span>
               <span className="detalle-valor">✉️ {user?.email}</span>
@@ -49,21 +36,23 @@ export default function Login() {
           </div>
 
           <div className="perfil-acciones">
-            <button
+            <Button
               type="button"
               className="login-button btn-ir-hoy"
               onClick={() => navigate('/hoy')}
             >
               Ver seguimiento del camión en Hoy →
-            </button>
+            </Button>
 
-            <button
+            {logoutError && <Alert severity="error">{logoutError}</Alert>}
+            <Button
               type="button"
               className="btn-cerrar-sesion"
               onClick={logout}
+              disabled={loggingOut}
             >
-              Cerrar Sesión
-            </button>
+              {loggingOut ? 'Cerrando sesión…' : 'Cerrar Sesión'}
+            </Button>
           </div>
         </div>
       </div>
@@ -86,14 +75,18 @@ export default function Login() {
           <p>Ingresá tus credenciales para ver el recolector en tu cuadra</p>
         </header>
 
-        <form onSubmit={handleSubmit} className="login-form">
+        <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
+          {error && <Alert severity="error">{error}</Alert>}
           <div className="form-group">
-            <label htmlFor="email">Correo electrónico</label>
-            <input
+            <TextField
+              label="Correo electrónico"
               id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={form.email}
+              onChange={(e) => updateField('email', e.target.value)}
+              onBlur={validateEmail}
+              error={Boolean(emailError)}
+              helperText={emailError}
               placeholder="martin@correo.com"
               autoComplete="email"
               required
@@ -101,12 +94,15 @@ export default function Login() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Contraseña</label>
-            <input
+            <TextField
+              label="Contraseña"
               id="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={form.password}
+              onChange={(e) => updateField('password', e.target.value)}
+              onBlur={validatePassword}
+              error={Boolean(passwordError)}
+              helperText={passwordError}
               placeholder="••••••••"
               autoComplete="current-password"
               required
@@ -114,22 +110,19 @@ export default function Login() {
           </div>
 
           <div className="form-options">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={recordarme}
-                onChange={(e) => setRecordarme(e.target.checked)}
-              />
-              Recordarme
-            </label>
+            <FormControlLabel
+              className="checkbox-label"
+              control={<Checkbox checked={form.rememberMe} onChange={(e) => updateField('rememberMe', e.target.checked)} />}
+              label="Recordarme"
+            />
             <a href="#recuperar" className="login-link">
               ¿Olvidaste tu contraseña?
             </a>
           </div>
 
-          <button type="submit" className="login-button">
-            Ingresar
-          </button>
+          <Button type="submit" className="login-button" disabled={pending}>
+            {pending ? 'Procesando…' : 'Ingresar'}
+          </Button>
         </form>
 
         <footer className="login-footer">

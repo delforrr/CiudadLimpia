@@ -1,0 +1,196 @@
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
+import type { User } from '../src/generated/prisma/client';
+import request from 'supertest';
+import type { App } from 'supertest/types';
+import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
+
+describe('Email/password authentication (HTTP)', () => {
+  let app: INestApplication<App>;
+  const users = new Map<string, User>();
+  const account = {
+    email: ' ANA@Example.com ',
+    name: 'Ana María',
+    lastName: 'Pérez',
+    password: ' pass!word á ',
+    repeatedPassword: ' pass!word á ',
+  };
+
+  beforeAll(async () => {
+    process.env.JWT_SECRET = 'test-only-secret-at-least-32-characters';
+    const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PrismaService)
+      .useValue({
+        user: {
+          create: ({ data }: { data: Omit<User, 'id'> }) => {
+            if (users.has(data.email))
+              throw Object.assign(new Error('Duplicate email'), {
+                code: 'P2002',
+              });
+            const user = { id: 'user-1', ...data };
+            users.set(user.email, user);
+            return user;
+          },
+          findUnique: ({
+            where,
+            select,
+          }: {
+            where: { email?: string; id?: string };
+            select?: object;
+          }) => {
+            const user = where.email
+              ? users.get(where.email)
+              : [...users.values()].find((u) => u.id === where.id);
+            if (!user || !select) return user ?? null;
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              lastName: user.lastName,
+            };
+          },
+        },
+      })
+      .compile();
+    app = module.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+  let now = Date.now();
+  beforeEach(() => {
+    users.clear();
+    now += 16 * 60 * 1000;
+    jest.spyOn(Date, 'now').mockReturnValue(now);
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('registers, restores a session, logs in with normalized email and logs out', async () => {
+    const agent = request.agent(app.getHttpServer());
+    const registered = await agent
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    expect(registered.body).toEqual({
+      id: 'user-1',
+      email: 'ana@example.com',
+      name: 'Ana María',
+      lastName: 'Pérez',
+    });
+    const cookie = String(registered.headers['set-cookie']);
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('SameSite=Strict');
+    expect(cookie).not.toContain('Expires=');
+    await agent.get('/auth/me').expect(200).expect(registered.body);
+    await agent
+      .post('/auth/logout')
+      .set('Content-Type', 'application/json')
+      .expect(204);
+    await agent.get('/auth/me').expect(401);
+    const login = await agent
+      .post('/auth/login')
+      .send({
+        email: account.email,
+        password: account.password,
+        rememberMe: true,
+      })
+      .expect(200);
+    expect(String(login.headers['set-cookie'])).toContain('Max-Age=604800');
+    await agent.get('/auth/me').expect(200).expect(registered.body);
+  });
+
+  it('rejects duplicate registrations, wrong passwords and unknown users', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(account)
+      .expect(409);
+    for (const email of [account.email, 'unknown@example.com']) {
+      const response = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email, password: 'incorrect!' })
+        .expect(401);
+      expect((response.body as { message: string }).message).toBe(
+        'Email o contraseña incorrectos',
+      );
+      expect(response.headers['set-cookie']).toBeUndefined();
+    }
+  });
+
+  it.each([
+    { email: 123 },
+    { email: 'invalid' },
+    { name: 123 },
+    { name: ' ' },
+    { password: 'short' },
+    { password: 'á'.repeat(37), repeatedPassword: 'á'.repeat(37) },
+    { repeatedPassword: 'different' },
+    { role: 'admin' },
+    { rememberMe: 'true' },
+  ])('rejects invalid registration: %j', async (change) => {
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ ...account, ...change })
+      .expect(400);
+    expect(users.size).toBe(0);
+  });
+
+  it('rejects missing, tampered and expired tokens and deleted users', async () => {
+    await request(app.getHttpServer()).get('/auth/me').expect(401);
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', 'session=invalid')
+      .expect(401);
+    const jwt = app.get(JwtService);
+    const expired = jwt.sign({ sub: 'user-1' }, { expiresIn: -1 });
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', `session=${expired}`)
+      .expect(401);
+    const deleted = jwt.sign({ sub: 'deleted' }, { expiresIn: 60 });
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${deleted}`)
+      .expect(401);
+  });
+
+  it('rejects cross-site forms and rate limits repeated attempts', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .type('form')
+      .send(account)
+      .expect(415);
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .set('Sec-Fetch-Site', 'cross-site')
+      .send(account)
+      .expect(403);
+    for (let i = 0; i < 10; i++) {
+      await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: 'invalid' })
+        .expect(400);
+    }
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send(account)
+      .expect(429);
+    expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
+  });
+});
