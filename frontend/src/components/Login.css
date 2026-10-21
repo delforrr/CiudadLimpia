@@ -7,16 +7,16 @@
   padding: 2.5rem 1.5rem;
 }
 
-/* Tarjeta de iniciar sesión con bordes y color #68A544 */
+/* Tarjeta con fondo verde claro #d1e5cc idéntico a la tarjeta de estado */
 .login-card {
   width: 100%;
   max-width: 380px;
-  background-color: #ffffff;
-  border: 1px solid #68A544;
-  border-radius: 12px;
+  background-color: #d1e5cc;
+  border: 1.5px solid #8acb67;
+  border-radius: 16px;
   padding: 2.25rem 2rem;
   box-sizing: border-box;
-  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.08);
+  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.1);
 }
 
 /* Encabezado */
@@ -50,7 +50,7 @@
 .login-header p {
   margin: 0;
   font-size: 0.875rem;
-  color: #666666;
+  color: #2d5526;
 }
 
 /* Formulario */
@@ -148,7 +148,7 @@
   margin-top: 1.5rem;
   text-align: center;
   font-size: 0.8125rem;
-  color: #666666;
+  color: #2d5526;
 }
 
 /* PERFIL ACTIVO (SESIÓN INICIADA) */
@@ -156,78 +156,185 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  border-color: #1E6000;
+  background-color: #d1e5cc;
+  border: 1.5px solid #8acb67;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.1);
 }
 
 .perfil-avatar-circle {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #e8f5e9;
+  background: #ffffff;
   border: 2px solid #8acb67;
-  font-size: 1.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 0.5rem;
 }
 
+.perfil-alerta-exito {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #ffffff;
+  border: 1.5px solid #8acb67;
+  color: #166534;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.625rem 0.75rem;
+  border-radius: 8px;
+  animation: fadeInPerfil 0.25s ease-out;
+}
+
+@keyframes fadeInPerfil {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .perfil-detalles-box {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  padding: 0.25rem 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .perfil-detalle-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   text-align: left;
 }
 
 .detalle-label {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: #64748b;
+  color: #2b5b24;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detalle-valor-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.detalle-valor-row svg {
+  flex-shrink: 0;
 }
 
 .detalle-valor {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1E6000;
+  word-break: break-word;
 }
 
+/* Formulario de edición de datos */
+.perfil-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  text-align: left;
+}
+
+.perfil-edit-acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 0.25rem;
+}
+
+.btn-guardar-perfil {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-cancelar-edicion {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #4b5563;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancelar-edicion:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+/* Acciones en el perfil */
 .perfil-acciones {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.btn-ir-hoy {
-  text-decoration: none;
-  text-align: center;
-}
-
-.btn-cerrar-sesion {
+/* Botón de editar datos con el color verde claro del logo de Ciudad Limpia (#68A544) */
+.btn-editar-perfil {
   width: 100%;
-  padding: 0.65rem;
+  padding: 0.68rem 1rem;
   font-size: 0.88rem;
-  font-weight: 600;
-  color: #b91c1c;
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: #68A544;
+  border: 1px solid #68A544;
   border-radius: 6px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(104, 165, 68, 0.25);
+}
+
+.btn-editar-perfil:hover {
+  background-color: #558a36;
+  border-color: #558a36;
+}
+
+/* Botón de cerrar sesión un toque más oscuro que la tarjeta */
+.btn-cerrar-sesion {
+  width: 100%;
+  padding: 0.68rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1E6000;
+  background-color: #b0d2a8;
+  border: 1.5px solid #7cb95a;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   transition: all 0.2s ease;
 }
 
 .btn-cerrar-sesion:hover {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: #9ec595;
+  border-color: #1E6000;
+  color: #1E6000;
+  box-shadow: 0 2px 6px rgba(30, 96, 0, 0.15);
 }
+
 
