@@ -20,7 +20,6 @@ export interface PuntoLimpio {
   lat: number;
   lng: number;
   materiales: string[];
-  estado?: string;
 }
 
 export type TipoFiltro = 'todos' | TipoPunto;
@@ -107,7 +106,6 @@ const PUNTOS_DATA: PuntoLimpio[] = [
     lat: -35.9840,
     lng: -62.7380,
     materiales: ['Plásticos', 'Cartón', 'Papel', 'Vidrio', 'Metales'],
-    estado: 'Instalación próxima semana',
   },
   {
     id: 'monte-hermoso-tomas-davis',
@@ -117,7 +115,6 @@ const PUNTOS_DATA: PuntoLimpio[] = [
     lat: -35.9660,
     lng: -62.7490,
     materiales: ['Plásticos', 'Cartón', 'Vidrio', 'Metales'],
-    estado: 'Instalación próxima semana',
   },
   {
     id: 'winter-baldovino',
@@ -127,7 +124,6 @@ const PUNTOS_DATA: PuntoLimpio[] = [
     lat: -35.9695,
     lng: -62.7530,
     materiales: ['Plásticos', 'Cartón', 'Vidrio', 'Metales'],
-    estado: 'Instalación próxima semana',
   },
   {
     id: 'plazoleta-almirante-brown',
@@ -353,11 +349,6 @@ export const PuntosLimpios: React.FC = () => {
               <img src="${config.icon}" alt="${config.singularLabel}" class="popup-categoria-logo logo--${punto.tipo}" />
               <span class="popup-categoria-texto cat-texto--${punto.tipo}">${config.singularLabel}</span>
             </div>
-            ${
-              punto.estado
-                ? `<span class="modern-popup-aviso">Próximamente</span>`
-                : ''
-            }
           </div>
 
           <!-- Cuerpo del popup con nombre, dirección y materiales -->
@@ -371,17 +362,6 @@ export const PuntosLimpios: React.FC = () => {
               </svg>
               <span class="modern-popup-direccion">${punto.direccion}</span>
             </div>
-
-            ${
-              punto.estado
-                ? `
-                <div class="modern-popup-estado-banner">
-                  <span class="estado-dot"></span>
-                  <span>${punto.estado}</span>
-                </div>
-              `
-                : ''
-            }
 
             <div class="modern-popup-materiales">
               <span class="materiales-titulo">Recibe:</span>
