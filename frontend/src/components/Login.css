@@ -7,16 +7,16 @@
   padding: 2.5rem 1.5rem;
 }
 
-/* Tarjeta con fondo verde claro #d1e5cc idéntico a la tarjeta de estado */
+/* Tarjeta de iniciar sesión */
 .login-card {
   width: 100%;
   max-width: 380px;
-  background-color: #d1e5cc;
-  border: 1.5px solid #8acb67;
-  border-radius: 16px;
+  background-color: #ffffff;
+  border: 1px solid #68A544;
+  border-radius: 12px;
   padding: 2.25rem 2rem;
   box-sizing: border-box;
-  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.1);
+  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.08);
 }
 
 /* Encabezado */
@@ -50,7 +50,7 @@
 .login-header p {
   margin: 0;
   font-size: 0.875rem;
-  color: #2d5526;
+  color: #666666;
 }
 
 /* Formulario */
@@ -89,6 +89,19 @@
 .form-group input:focus {
   border-color: #68A544;
   box-shadow: 0 0 0 3px rgba(104, 165, 68, 0.15);
+}
+
+.form-group input.input-error {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.field-error-text {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #dc2626;
+  margin-top: 0.25rem;
+  text-align: left;
 }
 
 /* Opciones: Recordarme y Olvidé contraseña */
@@ -148,7 +161,7 @@
   margin-top: 1.5rem;
   text-align: center;
   font-size: 0.8125rem;
-  color: #2d5526;
+  color: #666666;
 }
 
 /* PERFIL ACTIVO (SESIÓN INICIADA) */
@@ -160,6 +173,10 @@
   border: 1.5px solid #8acb67;
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(104, 165, 68, 0.1);
+}
+
+.perfil-card-activo .login-header p {
+  color: #2d5526;
 }
 
 .perfil-avatar-circle {

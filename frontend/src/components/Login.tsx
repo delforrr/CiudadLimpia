@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Alert, Button, Checkbox, FormControlLabel, TextField } from '@mui/material';
+import { Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAuthForm } from '../hooks/useAuthForm';
@@ -333,51 +333,54 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
           {error && <Alert severity="error">{error}</Alert>}
           <div className="form-group">
-            <TextField
-              label="Correo electrónico"
+            <label htmlFor="email">Correo electrónico</label>
+            <input
               id="email"
               type="email"
               value={form.email}
               onChange={(e) => updateField('email', e.target.value)}
               onBlur={validateEmail}
-              error={Boolean(emailError)}
-              helperText={emailError}
               placeholder="martin@correo.com"
               autoComplete="email"
               required
+              className={emailError ? 'input-error' : ''}
             />
+            {emailError && <span className="field-error-text">{emailError}</span>}
           </div>
 
           <div className="form-group">
-            <TextField
-              label="Contraseña"
+            <label htmlFor="password">Contraseña</label>
+            <input
               id="password"
               type="password"
               value={form.password}
               onChange={(e) => updateField('password', e.target.value)}
               onBlur={validatePassword}
-              error={Boolean(passwordError)}
-              helperText={passwordError}
               placeholder="••••••••"
               autoComplete="current-password"
               required
+              className={passwordError ? 'input-error' : ''}
             />
+            {passwordError && <span className="field-error-text">{passwordError}</span>}
           </div>
 
           <div className="form-options">
-            <FormControlLabel
-              className="checkbox-label"
-              control={<Checkbox checked={form.rememberMe} onChange={(e) => updateField('rememberMe', e.target.checked)} />}
-              label="Recordarme"
-            />
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={form.rememberMe}
+                onChange={(e) => updateField('rememberMe', e.target.checked)}
+              />
+              Recordarme
+            </label>
             <a href="#recuperar" className="login-link">
               ¿Olvidaste tu contraseña?
             </a>
           </div>
 
-          <Button type="submit" className="login-button" disabled={pending}>
+          <button type="submit" className="login-button" disabled={pending}>
             {pending ? 'Procesando…' : 'Ingresar'}
-          </Button>
+          </button>
         </form>
 
         <footer className="login-footer">
