@@ -4,25 +4,26 @@
 
 .puntos-page-container {
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1rem 1rem 2.5rem;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem 5.5rem;
   box-sizing: border-box;
 }
 
-/* BANNER DE FOTOS ROTATIVAS (ARRIBA DEL MAPA) */
+/* BANNER DE FOTOS ROTATIVAS COMPACTO */
 .puntos-banner-card {
   width: 100%;
-  height: 220px;
+  height: 120px;
   background-color: #ffffff;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1.5px solid #8acb67;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.12);
+  box-shadow: 0 3px 12px rgba(104, 165, 68, 0.1);
   position: relative;
+  flex-shrink: 0;
 }
 
 .puntos-banner-slides {
@@ -49,23 +50,24 @@
   z-index: 2;
 }
 
-/* TARJETA DEL MAPA */
+/* TARJETA DEL MAPA COMPACTA */
 .mapa-tarjeta-card {
   background-color: #ffffff;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1.5px solid #8acb67;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.12);
+  box-shadow: 0 3px 12px rgba(104, 165, 68, 0.1);
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
-/* CABECERA DE LA TARJETA */
+/* CABECERA DE LA TARJETA COMPACTA */
 .mapa-tarjeta-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 8px 12px;
   background-color: #f7faf6;
   border-bottom: 1px solid #e2ede0;
 }
@@ -73,59 +75,47 @@
 .mapa-tarjeta-titulo-grupo {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .mapa-tarjeta-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #1E6000;
   text-transform: uppercase;
 }
 
-.dot-mapa-vivo {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: #16a34a;
-  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
-  animation: pulse-dot-vivo 1.8s infinite ease-in-out;
-}
-
-@keyframes pulse-dot-vivo {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 0.7;
-  }
-}
-
 .mapa-tarjeta-titulo {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: #111827;
   letter-spacing: -0.02em;
 }
 
-.mapa-tarjeta-badge-count {
-  background-color: #e8f5e9;
-  color: #1E6000;
-  border: 1px solid #c8e6c9;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 4px 10px;
+.mapa-btn-ver-todos {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
   border-radius: 20px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
-/* CUERPO DEL MAPA */
+.mapa-btn-ver-todos:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+/* CUERPO DEL MAPA CUADRADO Y MÁS CHICO */
 .mapa-tarjeta-body {
   width: 100%;
   position: relative;
@@ -134,35 +124,125 @@
 
 .leaflet-card-canvas {
   width: 100% !important;
-  height: 430px !important;
+  height: 200px !important;
+  max-height: 210px !important;
   display: block;
 }
 
-/* LEYENDA INFERIOR DE 3 CATEGORÍAS */
+/* LEYENDA Y FILTROS INTERACTIVOS FIJOS SIN SCROLL */
 .mapa-tarjeta-leyenda {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr 1.35fr;
+  gap: 4px;
+  padding: 8px 5px;
   background-color: #f7faf6;
   border-top: 1px solid #e2ede0;
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: #2e5926;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.leyenda-item {
+.leyenda-filtro-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 3px;
+  background-color: #ffffff;
+  border: 1.5px solid #d7e4d5;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.63rem;
+  font-weight: 700;
+  color: #2e5926;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  outline: none;
+  user-select: none;
+  text-align: center;
 }
 
-.leyenda-icon-img {
-  width: 19px;
-  height: 19px;
+.leyenda-filtro-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-color: #1E6000;
+}
+
+.leyenda-filtro-btn:active {
+  transform: translateY(0);
+}
+
+.leyenda-filtro-btn.inactivo {
+  opacity: 0.42;
+  background-color: #f8faf8;
+  border-color: #e2e8f0;
+  filter: grayscale(35%);
+}
+
+.leyenda-filtro-btn.activo-punto-limpio {
+  background-color: #eaf5e6;
+  border-color: #1E6000;
+  color: #1E6000;
+  box-shadow: 0 2px 8px rgba(30, 96, 0, 0.25);
+  transform: scale(1.02);
+}
+
+.leyenda-filtro-btn.activo-botellero {
+  background-color: #e0f2fe;
+  border-color: #0284c7;
+  color: #0369a1;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+  transform: scale(1.02);
+}
+
+.leyenda-filtro-btn.activo-botellero-latero {
+  background-color: #fef2f2;
+  border-color: #dc2626;
+  color: #b91c1c;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+  transform: scale(1.02);
+}
+
+.leyenda-btn-texto {
+  font-weight: 700;
+  font-size: 0.63rem;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.leyenda-btn-badge {
+  font-size: 0.6rem;
+  opacity: 0.8;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.leyenda-pin-badge {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.leyenda-icon-white {
+  width: 9.5px;
+  height: 9.5px;
   object-fit: contain;
+  filter: brightness(0) invert(1);
+  display: block;
 }
 
 /* =========================================================
@@ -182,7 +262,7 @@
   align-items: center;
 }
 
-/* Cuerpo en forma de gota con borde blanco grueso */
+/* Cuerpo en forma de gota con borde blanco exterior y relleno de un solo color */
 .teardrop-pin-body {
   width: 32px;
   height: 32px;
@@ -202,36 +282,26 @@
   transform: rotate(-45deg) scale(1.15);
 }
 
-/* Colores de fondo por categoría */
+/* Colores de relleno sólido por categoría */
 .pin-bg-punto-limpio {
-  background: linear-gradient(135deg, #1E6000 0%, #2e7d32 100%);
+  background-color: #1E6000;
 }
 
 .pin-bg-botellero {
-  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+  background-color: #0284c7;
 }
 
 .pin-bg-botellero-latero {
-  background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+  background-color: #dc2626;
 }
 
-/* Círculo blanco interno que aloja el ícono */
-.teardrop-inner-circle {
-  width: 19px;
-  height: 19px;
-  border-radius: 50%;
-  background-color: #ffffff;
-  transform: rotate(45deg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.teardrop-icon-img {
-  width: 13px;
-  height: 13px;
+/* Ícono en blanco puro sobre el fondo sólido */
+.teardrop-icon-white {
+  width: 18px;
+  height: 18px;
   object-fit: contain;
+  transform: rotate(45deg);
+  filter: brightness(0) invert(1) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
   display: block;
 }
 
@@ -280,16 +350,16 @@
 
 /* Botón de cierre */
 .modern-leaflet-popup .leaflet-popup-close-button {
-  top: 8px !important;
-  right: 8px !important;
-  width: 24px !important;
-  height: 24px !important;
+  top: 10px !important;
+  right: 10px !important;
+  width: 22px !important;
+  height: 22px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: #ffffff !important;
-  background: rgba(0, 0, 0, 0.28) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.6) !important;
+  color: #64748b !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
   border-radius: 50% !important;
   font-size: 13px !important;
   font-weight: 700 !important;
@@ -299,8 +369,8 @@
 }
 
 .modern-leaflet-popup .leaflet-popup-close-button:hover {
-  background: rgba(0, 0, 0, 0.5) !important;
-  color: #ffffff !important;
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
   transform: scale(1.08);
 }
 
@@ -310,52 +380,73 @@
   flex-direction: column;
 }
 
-/* Cabecera con degradado según categoría */
-.modern-popup-header {
-  padding: 9px 12px;
+/* Cabecera limpia SIN bloque de color superior */
+.modern-popup-header-clean {
+  padding: 12px 14px 4px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  color: #ffffff;
+  gap: 8px;
+  background-color: #ffffff;
 }
 
-.header--punto-limpio {
-  background: linear-gradient(135deg, #1E6000, #2e7d32);
-}
-
-.header--botellero {
-  background: linear-gradient(135deg, #0284c7, #0ea5e9);
-}
-
-.header--botellero-latero {
-  background: linear-gradient(135deg, #4338ca, #6366f1);
-}
-
-.modern-popup-badge {
+.popup-categoria-item {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  gap: 5px;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
 }
 
-.popup-badge-icon {
-  width: 20px;
-  height: 20px;
+.popup-categoria-logo {
+  width: 21px;
+  height: 21px;
   object-fit: contain;
-  background: #ffffff;
-  border-radius: 5px;
-  padding: 2px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Colores auténticos de logo según la categoría */
+.logo--punto-limpio {
+  /* Muestra el logo verde de reciclaje sin alterar */
+}
+
+.logo--botellero {
+  /* Tinte azul coordinado para la botella */
+  filter: invert(36%) sepia(85%) saturate(1450%) hue-rotate(178deg) brightness(95%) contrast(98%);
+}
+
+.logo--botellero-latero {
+  /* Tinte rojo coordinado para la lata (#dc2626) */
+  filter: invert(21%) sepia(91%) saturate(5436%) hue-rotate(354deg) brightness(96%) contrast(92%);
+}
+
+.popup-categoria-texto {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.cat-texto--punto-limpio {
+  color: #1E6000;
+}
+
+.cat-texto--botellero {
+  color: #0284c7;
+}
+
+.cat-texto--botellero-latero {
+  color: #dc2626;
 }
 
 .modern-popup-aviso {
   font-size: 0.62rem;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.25);
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
   padding: 2px 7px;
   border-radius: 10px;
   letter-spacing: 0.02em;
@@ -363,7 +454,7 @@
 
 /* Cuerpo del Popup */
 .modern-popup-body {
-  padding: 12px 14px 14px;
+  padding: 4px 14px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -452,26 +543,61 @@
   border: 1px solid #e2e8f0;
 }
 
-/* Botón Cómo Llegar */
-.modern-popup-btn-ruta {
-  margin-top: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: linear-gradient(135deg, #1E6000, #2b7a00);
-  color: #ffffff !important;
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 8px 12px;
-  border-radius: 10px;
-  text-decoration: none;
-  box-shadow: 0 2px 8px rgba(30, 96, 0, 0.25);
-  transition: all 0.2s ease;
+/* =========================================================
+   TARJETA INFORMATIVA: ¿QUÉ SON LOS PUNTOS LIMPIOS?
+   Fondo con el color de "Limpia" (#68A544) del logo
+   ========================================================= */
+.puntos-descripcion-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(145deg, #68A544 0%, #589237 100%);
+  border-radius: 14px;
+  padding: 16px 16px 18px;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(104, 165, 68, 0.25);
+  box-sizing: border-box;
 }
 
-.modern-popup-btn-ruta:hover {
-  background: linear-gradient(135deg, #154500, #226400);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(30, 96, 0, 0.35);
+/* Imagen de fondo invertida que asoma desde el borde derecho inferior, sutil y difuminada */
+.puntos-descripcion-bg-img {
+  position: absolute;
+  right: -25px;
+  bottom: -15px;
+  width: 275px;
+  max-width: 72%;
+  height: auto;
+  pointer-events: none;
+  z-index: 1;
+  transform: scaleX(-1);
+  filter: blur(1.8px);
+  opacity: 0.44;
+  user-select: none;
+}
+
+.puntos-descripcion-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.puntos-descripcion-titulo {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.puntos-descripcion-parrafo {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #ffffff;
+  font-weight: 500;
+  text-align: left;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }

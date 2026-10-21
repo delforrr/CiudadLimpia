@@ -7,6 +7,7 @@ import fotoPunto3 from '../assets/punto-limpio-3.jpg';
 import iconoBotella from '../assets/icono-botella.png';
 import iconoLata from '../assets/icono-lata.png';
 import iconoPuntoVerde from '../assets/icono-punto-verde.png';
+import figuraPuntosLimpios from '../assets/figura-puntos-limpios.png';
 import './PuntosLimpios.css';
 
 export type TipoPunto = 'punto-limpio' | 'botellero' | 'botellero-latero';
@@ -22,24 +23,29 @@ export interface PuntoLimpio {
   estado?: string;
 }
 
+export type TipoFiltro = 'todos' | TipoPunto;
+
 const CATEGORIAS_INFO: Record<
   TipoPunto,
-  { label: string; icon: string; pinClass: string; headerClass: string }
+  { label: string; singularLabel: string; icon: string; pinClass: string; headerClass: string }
 > = {
   'punto-limpio': {
     label: 'Puntos Limpios',
+    singularLabel: 'Punto Limpio',
     icon: iconoPuntoVerde,
     pinClass: 'pin-punto-limpio',
     headerClass: 'header--punto-limpio',
   },
   'botellero': {
-    label: 'Botellero',
+    label: 'Botelleros',
+    singularLabel: 'Botelleros',
     icon: iconoBotella,
     pinClass: 'pin-botellero',
     headerClass: 'header--botellero',
   },
   'botellero-latero': {
-    label: 'Botellero y latero',
+    label: 'Botelleros y lateros',
+    singularLabel: 'Botelleros y Lateros',
     icon: iconoLata,
     pinClass: 'pin-botellero-latero',
     headerClass: 'header--botellero-latero',
@@ -218,8 +224,22 @@ const FOTOS_CARRUSEL = [
 
 export const PuntosLimpios: React.FC = () => {
   const [fotoActiva, setFotoActiva] = useState(0);
+  const [filtroActivo, setFiltroActivo] = useState<TipoFiltro>('todos');
+  const [mapReady, setMapReady] = useState(false);
+
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+
+  // Conteo de ubicaciones por categoría
+  const countPuntosLimpios = PUNTOS_DATA.filter((p) => p.tipo === 'punto-limpio').length;
+  const countBotelleros = PUNTOS_DATA.filter((p) => p.tipo === 'botellero').length;
+  const countBotellerosLateros = PUNTOS_DATA.filter((p) => p.tipo === 'botellero-latero').length;
+
+  const puntosAMostrar =
+    filtroActivo === 'todos'
+      ? PUNTOS_DATA
+      : PUNTOS_DATA.filter((p) => p.tipo === filtroActivo);
 
   // Rotación automática de fotos cada 3 segundos
   useEffect(() => {
@@ -230,6 +250,7 @@ export const PuntosLimpios: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Inicialización del Mapa
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container) return;
@@ -243,19 +264,60 @@ export const PuntosLimpios: React.FC = () => {
       delete (container as unknown as { _leaflet_id?: number })._leaflet_id;
     }
 
-    // Centrado en Trenque Lauquen
+    // Límites para restringir el mapa exclusivamente a Trenque Lauquen
+    const TRENQUE_LAUQUEN_BOUNDS = L.latLngBounds(
+      [-36.04, -62.82],
+      [-35.90, -62.64]
+    );
+
+    // Centrado en Trenque Lauquen con máximo de alejamiento (minZoom) y máximo de acercamiento (maxZoom)
     const map = L.map(container, {
       center: [-35.973, -62.734],
       zoom: 13,
+      minZoom: 12,
+      maxZoom: 17,
+      maxBounds: TRENQUE_LAUQUEN_BOUNDS,
+      maxBoundsViscosity: 1.0,
       zoomControl: true,
     });
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',
-      maxZoom: 19,
+      minZoom: 12,
+      maxZoom: 17,
     }).addTo(map);
 
-    // Generar pin con forma de gota, borde blanco nítido e icono circular central
+    const markersLayer = L.layerGroup().addTo(map);
+    markersLayerRef.current = markersLayer;
+    mapRef.current = map;
+    setMapReady(true);
+
+    map.invalidateSize();
+    const t1 = setTimeout(() => map.invalidateSize(), 150);
+    const t2 = setTimeout(() => map.invalidateSize(), 500);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      setMapReady(false);
+      map.remove();
+      mapRef.current = null;
+      markersLayerRef.current = null;
+      if (container) {
+        delete (container as unknown as { _leaflet_id?: number })._leaflet_id;
+      }
+    };
+  }, []);
+
+  // Actualización de marcadores y popups según el filtro activo
+  useEffect(() => {
+    const map = mapRef.current;
+    const markersLayer = markersLayerRef.current;
+    if (!map || !markersLayer || !mapReady) return;
+
+    markersLayer.clearLayers();
+
+    // Generar pin con forma de gota, borde exterior blanco, relleno de un solo color e icono blanco en el centro
     const createMarkerIcon = (tipo: TipoPunto) => {
       const config = CATEGORIAS_INFO[tipo];
 
@@ -264,9 +326,7 @@ export const PuntosLimpios: React.FC = () => {
         html: `
           <div class="teardrop-pin-container">
             <div class="teardrop-pin-body pin-bg-${tipo}">
-              <div class="teardrop-inner-circle">
-                <img src="${config.icon}" alt="${config.label}" class="teardrop-icon-img" />
-              </div>
+              <img src="${config.icon}" alt="${config.singularLabel}" class="teardrop-icon-white" />
             </div>
             <div class="teardrop-shadow"></div>
           </div>
@@ -277,22 +337,21 @@ export const PuntosLimpios: React.FC = () => {
       });
     };
 
-    // Añadir marcadores al mapa
-    PUNTOS_DATA.forEach((punto) => {
+    puntosAMostrar.forEach((punto) => {
       const config = CATEGORIAS_INFO[punto.tipo];
       const marker = L.marker([punto.lat, punto.lng], {
         icon: createMarkerIcon(punto.tipo),
         title: punto.nombre,
       });
 
-      // Popup con bordecito blanco y el ícono correspondiente
+      // Popup limpio: SIN fondo de píldora ni círculo, logo directo con texto
       const popupHtml = `
         <div class="modern-popup-card">
-          <!-- Cabecera del popup -->
-          <div class="modern-popup-header ${config.headerClass}">
-            <div class="modern-popup-badge">
-              <img src="${config.icon}" alt="${config.label}" class="popup-badge-icon" />
-              <span>${config.label}</span>
+          <!-- Cabecera limpia sin fondo ni píldora -->
+          <div class="modern-popup-header-clean">
+            <div class="popup-categoria-item">
+              <img src="${config.icon}" alt="${config.singularLabel}" class="popup-categoria-logo logo--${punto.tipo}" />
+              <span class="popup-categoria-texto cat-texto--${punto.tipo}">${config.singularLabel}</span>
             </div>
             ${
               punto.estado
@@ -301,12 +360,12 @@ export const PuntosLimpios: React.FC = () => {
             }
           </div>
 
-          <!-- Cuerpo del popup con bordecito blanco -->
+          <!-- Cuerpo del popup con nombre, dirección y materiales -->
           <div class="modern-popup-body">
             <h4 class="modern-popup-title">${punto.nombre}</h4>
 
             <div class="modern-popup-item">
-              <svg class="modern-popup-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg class="modern-popup-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
                 <circle cx="12" cy="9" r="2.5"/>
               </svg>
@@ -332,19 +391,6 @@ export const PuntosLimpios: React.FC = () => {
                   .join('')}
               </div>
             </div>
-
-            <a
-              href="https://www.google.com/maps/dir/?api=1&destination=${punto.lat},${punto.lng}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="modern-popup-btn-ruta"
-            >
-              <span>Cómo llegar</span>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"/>
-                <polyline points="12 5 19 12 12 19"/>
-              </svg>
-            </a>
           </div>
         </div>
       `;
@@ -355,25 +401,17 @@ export const PuntosLimpios: React.FC = () => {
         closeButton: true,
       });
 
-      marker.addTo(map);
+      marker.addTo(markersLayer);
     });
 
-    mapRef.current = map;
-
-    map.invalidateSize();
-    const t1 = setTimeout(() => map.invalidateSize(), 150);
-    const t2 = setTimeout(() => map.invalidateSize(), 500);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      map.remove();
-      mapRef.current = null;
-      if (container) {
-        delete (container as unknown as { _leaflet_id?: number })._leaflet_id;
-      }
-    };
-  }, []);
+    // Ajuste de cámara según el filtro
+    if (filtroActivo !== 'todos' && puntosAMostrar.length > 0) {
+      const bounds = L.latLngBounds(puntosAMostrar.map((p) => [p.lat, p.lng]));
+      map.flyToBounds(bounds, { padding: [45, 45], maxZoom: 15, duration: 0.6 });
+    } else if (filtroActivo === 'todos') {
+      map.flyTo([-35.973, -62.734], 13, { duration: 0.6 });
+    }
+  }, [mapReady, filtroActivo]);
 
   return (
     <div className="puntos-page-container">
@@ -391,45 +429,127 @@ export const PuntosLimpios: React.FC = () => {
         </div>
       </section>
 
-      {/* Tarjeta del Mapa */}
+      {/* Tarjeta del Mapa con Filtros */}
       <section className="mapa-tarjeta-card">
         <div className="mapa-tarjeta-header">
           <div className="mapa-tarjeta-titulo-grupo">
             <span className="mapa-tarjeta-tag">
-              <span className="dot-mapa-vivo"></span>
               TRENQUE LAUQUEN
             </span>
             <h3 className="mapa-tarjeta-titulo">Puntos Limpios</h3>
           </div>
-          <span className="mapa-tarjeta-badge-count">
-            {PUNTOS_DATA.length} ubicaciones
-          </span>
+          {filtroActivo !== 'todos' && (
+            <button
+              type="button"
+              className="mapa-btn-ver-todos"
+              onClick={() => setFiltroActivo('todos')}
+              title="Quitar filtro y ver todos"
+            >
+              ✕ Mostrar todos
+            </button>
+          )}
         </div>
 
         <div className="mapa-tarjeta-body">
           <div
             ref={mapContainerRef}
             className="leaflet-card-canvas"
-            style={{ width: '100%', height: '430px' }}
           />
         </div>
 
-        {/* Leyenda separada en las 3 categorías solicitadas */}
+        {/* Leyenda y Filtros interactivos: Tocar para filtrar */}
         <div className="mapa-tarjeta-leyenda">
-          <div className="leyenda-item">
-            <img src={iconoPuntoVerde} alt="Puntos Limpios" className="leyenda-icon-img" />
-            <span>Puntos Limpios</span>
-          </div>
-          <div className="leyenda-item">
-            <img src={iconoBotella} alt="Botellero" className="leyenda-icon-img" />
-            <span>Botellero</span>
-          </div>
-          <div className="leyenda-item">
-            <img src={iconoLata} alt="Botellero y latero" className="leyenda-icon-img" />
-            <span>Botellero y latero</span>
-          </div>
+          <button
+            type="button"
+            className={`leyenda-filtro-btn ${
+              filtroActivo === 'punto-limpio'
+                ? 'activo-punto-limpio'
+                : filtroActivo !== 'todos'
+                ? 'inactivo'
+                : ''
+            }`}
+            onClick={() =>
+              setFiltroActivo((prev) => (prev === 'punto-limpio' ? 'todos' : 'punto-limpio'))
+            }
+            title="Tocar para filtrar por Puntos Limpios"
+          >
+            <div className="leyenda-pin-badge pin-bg-punto-limpio">
+              <img src={iconoPuntoVerde} alt="Puntos Limpios" className="leyenda-icon-white" />
+            </div>
+            <span className="leyenda-btn-texto">
+              Puntos Limpios <span className="leyenda-btn-badge">({countPuntosLimpios})</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className={`leyenda-filtro-btn ${
+              filtroActivo === 'botellero'
+                ? 'activo-botellero'
+                : filtroActivo !== 'todos'
+                ? 'inactivo'
+                : ''
+            }`}
+            onClick={() =>
+              setFiltroActivo((prev) => (prev === 'botellero' ? 'todos' : 'botellero'))
+            }
+            title="Tocar para filtrar por Botelleros"
+          >
+            <div className="leyenda-pin-badge pin-bg-botellero">
+              <img src={iconoBotella} alt="Botelleros" className="leyenda-icon-white" />
+            </div>
+            <span className="leyenda-btn-texto">
+              Botelleros <span className="leyenda-btn-badge">({countBotelleros})</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className={`leyenda-filtro-btn ${
+              filtroActivo === 'botellero-latero'
+                ? 'activo-botellero-latero'
+                : filtroActivo !== 'todos'
+                ? 'inactivo'
+                : ''
+            }`}
+            onClick={() =>
+              setFiltroActivo((prev) => (prev === 'botellero-latero' ? 'todos' : 'botellero-latero'))
+            }
+            title="Tocar para filtrar por Botelleros y lateros"
+          >
+            <div className="leyenda-pin-badge pin-bg-botellero-latero">
+              <img src={iconoLata} alt="Botelleros y lateros" className="leyenda-icon-white" />
+            </div>
+            <span className="leyenda-btn-texto">
+              Botelleros y lateros <span className="leyenda-btn-badge">({countBotellerosLateros})</span>
+            </span>
+          </button>
         </div>
       </section>
+
+      {/* Sección informativa sobre qué son los Puntos Limpios */}
+      <article className="puntos-descripcion-card">
+        {/* Imagen de fondo difuminada e invertida que asoma desde el borde derecho */}
+        <img
+          src={figuraPuntosLimpios}
+          alt=""
+          className="puntos-descripcion-bg-img"
+          aria-hidden="true"
+        />
+
+        <div className="puntos-descripcion-content">
+          <h3 className="puntos-descripcion-titulo">¿Qué son los Puntos Limpios?</h3>
+          <p className="puntos-descripcion-parrafo">
+            Los Puntos Limpios son lugares especialmente destinados a la separación y recuperación de residuos sólidos urbanos reciclables, permitiendo su posterior aprovechamiento y contribuyendo a la reducción de residuos.
+          </p>
+          <p className="puntos-descripcion-parrafo">
+            En estos espacios los vecinos pueden depositar papel y cartón, vidrio, plástico, envases de Tetra Brik y metales, colaborando activamente con el reciclado y la economía circular.
+          </p>
+          <p className="puntos-descripcion-parrafo">
+            Los nuevos módulos cuentan con techos construidos con material recuperado de Tetra Brik, fabricados en el Polo Ambiental por el equipo de herrería de la planta, y a los que se les suma un latero.
+          </p>
+        </div>
+      </article>
     </div>
   );
 };
