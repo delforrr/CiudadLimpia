@@ -1,17 +1,76 @@
-import { useState, type FormEvent } from 'react'
-import camionRecolector from '../assets/camion-recolector.png'
-import './Login.css'
+import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import camionRecolector from '../assets/camion-recolector.png';
+import './Login.css';
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [recordarme, setRecordarme] = useState(false)
+  const { isAuthenticated, user, login, logout } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [recordarme, setRecordarme] = useState(false);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    console.log('Login:', { email, password, recordarme })
+    e.preventDefault();
+    // Guardar en sesión
+    login({
+      email: email || 'martin@trenquelauquen.gov.ar',
+      nombre: email ? email.split('@')[0] : 'Martín',
+      direccion: 'Av. Las Palmas 450 · Barrio Los Olivos',
+      barrio: 'Barrio Los Olivos',
+    });
+    // Redirigir a Hoy donde la tarjeta ya estará activa
+    navigate('/hoy');
+  };
+
+  // Si ya tiene sesión iniciada, mostrar su perfil
+  if (isAuthenticated) {
+    return (
+      <div className="login-container">
+        <div className="login-card perfil-card-activo">
+          <header className="login-header">
+            <div className="perfil-avatar-circle">
+              👤
+            </div>
+            <h2>Mi Perfil</h2>
+            <p>Sesión activa para <strong>{user?.nombre}</strong></p>
+          </header>
+
+          <div className="perfil-detalles-box">
+            <div className="perfil-detalle-item">
+              <span className="detalle-label">Dirección vinculada:</span>
+              <span className="detalle-valor">📍 {user?.direccion}</span>
+            </div>
+            <div className="perfil-detalle-item">
+              <span className="detalle-label">Correo registrado:</span>
+              <span className="detalle-valor">✉️ {user?.email}</span>
+            </div>
+          </div>
+
+          <div className="perfil-acciones">
+            <button
+              type="button"
+              className="login-button btn-ir-hoy"
+              onClick={() => navigate('/hoy')}
+            >
+              Ver seguimiento del camión en Hoy →
+            </button>
+
+            <button
+              type="button"
+              className="btn-cerrar-sesion"
+              onClick={logout}
+            >
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  // Si no inició sesión, mostrar formulario de login
   return (
     <div className="login-container">
       <div className="login-card">
@@ -24,7 +83,7 @@ export default function Login() {
               className="login-truck-icon"
             />
           </div>
-          <p>Ingresa tus credenciales para acceder</p>
+          <p>Ingresá tus credenciales para ver el recolector en tu cuadra</p>
         </header>
 
         <form onSubmit={handleSubmit} className="login-form">
@@ -35,7 +94,7 @@ export default function Login() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ejemplo@correo.com"
+              placeholder="martin@correo.com"
               autoComplete="email"
               required
             />
@@ -81,5 +140,5 @@ export default function Login() {
         </footer>
       </div>
     </div>
-  )
+  );
 }

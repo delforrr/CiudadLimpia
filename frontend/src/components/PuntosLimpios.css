@@ -1,0 +1,477 @@
+/* =========================================================
+   PUNTOS LIMPIOS - TARJETA, MARCADORES Y POPUPS CON BORDE BLANCO
+   ========================================================= */
+
+.puntos-page-container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem 1rem 2.5rem;
+  box-sizing: border-box;
+}
+
+/* BANNER DE FOTOS ROTATIVAS (ARRIBA DEL MAPA) */
+.puntos-banner-card {
+  width: 100%;
+  height: 220px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  border: 1.5px solid #8acb67;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.12);
+  position: relative;
+}
+
+.puntos-banner-slides {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #0f172a;
+}
+
+.puntos-banner-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+  pointer-events: none;
+}
+
+.puntos-banner-img.activa {
+  opacity: 1;
+  z-index: 2;
+}
+
+/* TARJETA DEL MAPA */
+.mapa-tarjeta-card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  border: 1.5px solid #8acb67;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+/* CABECERA DE LA TARJETA */
+.mapa-tarjeta-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #f7faf6;
+  border-bottom: 1px solid #e2ede0;
+}
+
+.mapa-tarjeta-titulo-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mapa-tarjeta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #1E6000;
+  text-transform: uppercase;
+}
+
+.dot-mapa-vivo {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+  animation: pulse-dot-vivo 1.8s infinite ease-in-out;
+}
+
+@keyframes pulse-dot-vivo {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+}
+
+.mapa-tarjeta-titulo {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.mapa-tarjeta-badge-count {
+  background-color: #e8f5e9;
+  color: #1E6000;
+  border: 1px solid #c8e6c9;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* CUERPO DEL MAPA */
+.mapa-tarjeta-body {
+  width: 100%;
+  position: relative;
+  background-color: #eaf2e8;
+}
+
+.leaflet-card-canvas {
+  width: 100% !important;
+  height: 430px !important;
+  display: block;
+}
+
+/* LEYENDA INFERIOR DE 3 CATEGORÍAS */
+.mapa-tarjeta-leyenda {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  background-color: #f7faf6;
+  border-top: 1px solid #e2ede0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #2e5926;
+}
+
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leyenda-icon-img {
+  width: 19px;
+  height: 19px;
+  object-fit: contain;
+}
+
+/* =========================================================
+   MARCADORES PERSONALIZADOS TIPO GOTA (CON BORDE BLANCO)
+   ========================================================= */
+.custom-teardrop-wrapper {
+  background: transparent !important;
+  border: none !important;
+}
+
+.teardrop-pin-container {
+  position: relative;
+  width: 36px;
+  height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Cuerpo en forma de gota con borde blanco grueso */
+.teardrop-pin-body {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+
+.teardrop-pin-body:hover {
+  transform: rotate(-45deg) scale(1.15);
+}
+
+/* Colores de fondo por categoría */
+.pin-bg-punto-limpio {
+  background: linear-gradient(135deg, #1E6000 0%, #2e7d32 100%);
+}
+
+.pin-bg-botellero {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+}
+
+.pin-bg-botellero-latero {
+  background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+}
+
+/* Círculo blanco interno que aloja el ícono */
+.teardrop-inner-circle {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  transform: rotate(45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.teardrop-icon-img {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Sombra en el suelo bajo la punta */
+.teardrop-shadow {
+  width: 14px;
+  height: 4px;
+  background-color: rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+  margin-top: -1px;
+  filter: blur(1px);
+}
+
+/* =========================================================
+   POPUPS CON BORDECITO BLANCO DESTACADO
+   ========================================================= */
+
+/* Caja del popup con BORDECITO BLANCO */
+.modern-leaflet-popup .leaflet-popup-content-wrapper {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 0 !important;
+  overflow: hidden;
+  /* Bordecito blanco nítido con sombra profunda */
+  border: 3px solid #ffffff !important;
+  outline: 1.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35) !important;
+}
+
+.modern-leaflet-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4;
+  width: 255px !important;
+}
+
+/* Punta/flecha inferior con bordecito blanco */
+.modern-leaflet-popup .leaflet-popup-tip-container {
+  margin-top: -1px;
+}
+
+.modern-leaflet-popup .leaflet-popup-tip {
+  background: #ffffff;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+/* Botón de cierre */
+.modern-leaflet-popup .leaflet-popup-close-button {
+  top: 8px !important;
+  right: 8px !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  background: rgba(0, 0, 0, 0.28) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.6) !important;
+  border-radius: 50% !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  padding: 0 !important;
+  transition: all 0.2s ease !important;
+  z-index: 10;
+}
+
+.modern-leaflet-popup .leaflet-popup-close-button:hover {
+  background: rgba(0, 0, 0, 0.5) !important;
+  color: #ffffff !important;
+  transform: scale(1.08);
+}
+
+/* ESTRUCTURA INTERNA DEL POPUP */
+.modern-popup-card {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cabecera con degradado según categoría */
+.modern-popup-header {
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: #ffffff;
+}
+
+.header--punto-limpio {
+  background: linear-gradient(135deg, #1E6000, #2e7d32);
+}
+
+.header--botellero {
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+}
+
+.header--botellero-latero {
+  background: linear-gradient(135deg, #4338ca, #6366f1);
+}
+
+.modern-popup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.popup-badge-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  background: #ffffff;
+  border-radius: 5px;
+  padding: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.modern-popup-aviso {
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+}
+
+/* Cuerpo del Popup */
+.modern-popup-body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: #ffffff;
+}
+
+.modern-popup-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.modern-popup-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #475569;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.modern-popup-icon {
+  color: #1E6000;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.modern-popup-direccion {
+  font-weight: 600;
+  color: #334155;
+}
+
+/* Banner de aviso para los puntos en instalación */
+.modern-popup-estado-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.estado-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #d97706;
+  flex-shrink: 0;
+}
+
+/* Pastillas de Materiales */
+.modern-popup-materiales {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.materiales-titulo {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.materiales-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mat-pill {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Botón Cómo Llegar */
+.modern-popup-btn-ruta {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #1E6000, #2b7a00);
+  color: #ffffff !important;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(30, 96, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.modern-popup-btn-ruta:hover {
+  background: linear-gradient(135deg, #154500, #226400);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(30, 96, 0, 0.35);
+}

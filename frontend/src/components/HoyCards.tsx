@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import camionRecolector from '../assets/camion-recolector.png';
 import residuosReciclables from '../assets/residuos-reciclables.png';
 import residuosNoReciclables from '../assets/residuos-no-reciclables.png';
@@ -6,6 +8,8 @@ import truckIconImg from '../assets/icono-camion-hoy.png';
 import './HoyCards.css';
 
 export const HoyCards: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
   const [recordatorioActivo, setRecordatorioActivo] = useState(true);
   const [mostrarTrayecto, setMostrarTrayecto] = useState(false);
   const [fotoActiva, setFotoActiva] = useState(0);
@@ -33,19 +37,20 @@ export const HoyCards: React.FC = () => {
 
   return (
     <div className="hoy-container">
-      {/* 1. Tarjeta Blanca (Arriba) */}
-      <section className="tarjeta-blanca-wrapper">
-        {/* Encabezado con saludo y dirección */}
-        <div className="saludo-header">
-          <h2 className="saludo-titulo">Hola, Martín</h2>
+      {/* 1. Tarjeta Blanca: se muestra ÚNICAMENTE cuando se inició sesión */}
+      {isAuthenticated ? (
+        <section className="tarjeta-blanca-wrapper">
+          {/* Encabezado con saludo y dirección */}
+          <div className="saludo-header">
+            <h2 className="saludo-titulo">Hola, {user?.nombre || 'Martín'}</h2>
 
-          <div className="direccion-header">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="icono-pin">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-            </svg>
-            <span>Av. Las Palmas 450 · Barrio Los Olivos</span>
+            <div className="direccion-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="icono-pin">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+              </svg>
+              <span>{user?.direccion || 'Av. Las Palmas 450 · Barrio Los Olivos'}</span>
+            </div>
           </div>
-        </div>
 
         {/* Tarjeta de estado de recolección */}
         <div className="tarjeta-blanca-card">
@@ -194,6 +199,30 @@ export const HoyCards: React.FC = () => {
           </div>
         </div>
       </section>
+    ) : (
+      <section className="tarjeta-login-invitacion">
+        <div className="invitacion-cuerpo">
+          <div className="invitacion-textos">
+            <span className="invitacion-pregunta">¿YA PASÓ POR TU PUERTA?</span>
+            <h3 className="invitacion-titulo">Seguimiento en vivo del recolector</h3>
+            <p className="invitacion-desc">
+              Iniciá sesión para ver si el camión ya pasó por tu cuadra y consultar el mapa en tiempo real según tu domicilio.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-ir-iniciar-sesion"
+            onClick={() => navigate('/perfil')}
+          >
+            <span>Iniciar sesión</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </button>
+        </div>
+      </section>
+    )}
 
       {/* 2. Tarjeta Verde (Abajo) */}
       <section className="tarjeta-verde-card">
@@ -263,19 +292,6 @@ export const HoyCards: React.FC = () => {
                 src={foto.src}
                 alt={foto.alt}
                 className={`carrusel-foto-img ${index === fotoActiva ? 'visible' : ''}`}
-              />
-            ))}
-          </div>
-
-          {/* Indicadores de diapositiva */}
-          <div className="carrusel-indicadores">
-            {fotosBanner.map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                className={`carrusel-dot ${index === fotoActiva ? 'activo' : ''}`}
-                onClick={() => setFotoActiva(index)}
-                aria-label={`Ver diapositiva ${index + 1}`}
               />
             ))}
           </div>

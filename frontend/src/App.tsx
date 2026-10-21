@@ -1,48 +1,34 @@
-import { useState } from 'react'
-import type { NavTab } from './types'
-import Header from './components/Header'
-import { BottomNav } from './components/BottomNav'
-import { HoyCards } from './components/HoyCards'
-import fotoCalendario from './assets/calendario-recoleccion.jpg'
-import videoPoloAmbiental from './assets/Polo-ambiental-recoleccion-de-residuos.mp4'
-import './App.css'
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Header from './components/Header';
+import { BottomNav } from './components/BottomNav';
+import { HoyPage } from './pages/HoyPage';
+import { CalendarioPage } from './pages/CalendarioPage';
+import { PuntosLimpiosPage } from './pages/PuntosLimpiosPage';
+import { PerfilPage } from './pages/PerfilPage';
+import './App.css';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<NavTab>('hoy')
-
   return (
     <div className="app-layout">
       {/* Header oficial de Trenque Lauquen */}
       <Header />
 
-      {/* Contenido principal según el apartado activo */}
+      {/* Contenido principal según la ruta */}
       <main className="app-main">
-        {activeTab === 'hoy' && <HoyCards />}
-
-        {activeTab === 'calendario' && (
-          <div className="calendario-container">
-            <img
-              src={fotoCalendario}
-              alt="Sistema de Recolección de Residuos - Trenque Lauquen"
-              className="calendario-img"
-            />
-            <video
-              src={videoPoloAmbiental}
-              className="calendario-video"
-              controls
-              playsInline
-              preload="metadata"
-            >
-              Tu navegador no soporta la reproducción de video.
-            </video>
-          </div>
-        )}
+        <Routes>
+          <Route path="/" element={<Navigate to="/puntos-limpios" replace />} />
+          <Route path="/hoy" element={<HoyPage />} />
+          <Route path="/calendario" element={<CalendarioPage />} />
+          <Route path="/puntos-limpios" element={<PuntosLimpiosPage />} />
+          <Route path="/perfil" element={<PerfilPage />} />
+          <Route path="*" element={<Navigate to="/hoy" replace />} />
+        </Routes>
       </main>
 
       {/* Barra de navegación inferior */}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav />
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

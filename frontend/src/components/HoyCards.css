@@ -526,3 +526,70 @@
   border-radius: 10px;
   background-color: #bef264;
 }
+
+/* Tarjeta de invitación para iniciar sesión si no hay sesión activa */
+.tarjeta-login-invitacion {
+  background: linear-gradient(135deg, #f0fdf4 0%, #e8f5e9 100%);
+  border: 1.5px solid #86efac;
+  border-radius: 16px;
+  padding: 1.25rem 1.15rem;
+  box-shadow: 0 4px 16px rgba(104, 165, 68, 0.08);
+}
+
+.invitacion-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.invitacion-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invitacion-pregunta {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #1E6000;
+  text-transform: uppercase;
+}
+
+.invitacion-titulo {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #064e3b;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.invitacion-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #047857;
+  line-height: 1.4;
+}
+
+.btn-ir-iniciar-sesion {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #1E6000;
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(30, 96, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-ir-iniciar-sesion:hover {
+  background-color: #154500;
+  transform: translateY(-1px);
+}
+
