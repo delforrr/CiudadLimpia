@@ -3,6 +3,11 @@
 **/node_modules
 **/build
 
+# Prisma
+/prisma.config.js
+/prisma.config.d.ts
+/prisma.config.js.map
+
 # Logs
 logs
 *.log
