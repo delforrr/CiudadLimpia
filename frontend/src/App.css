@@ -107,3 +107,18 @@
   color: #68A245;
   font-weight: 700;
 }
+
+.session-loading.MuiStack-root {
+  align-items: center;
+  padding: 2rem;
+}
+
+.session-bar.MuiStack-root {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.session-error { padding: 0 1rem; }

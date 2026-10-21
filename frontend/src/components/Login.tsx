@@ -1,62 +1,53 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { Alert, Button, Checkbox, FormControlLabel, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuthContext } from '../hooks/useAuthContext';
+import { useAuthForm } from '../hooks/useAuthForm';
 import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
 export default function Login() {
-  const { isAuthenticated, user, login, updateUser, logout } = useAuth();
+  const { isAuthenticated, user, onAuthenticated, checking, logout, logoutError, loggingOut } = useAuthContext();
   const navigate = useNavigate();
-
-  // Estados del formulario de inicio de sesión
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [recordarme, setRecordarme] = useState(false);
+  const { form, updateField, handleSubmit, error, pending, emailError, passwordError, validateEmail, validatePassword } = useAuthForm((authenticatedUser) => {
+    onAuthenticated(authenticatedUser);
+    navigate('/hoy');
+  });
 
   // Estados de edición de datos de perfil
   const [editando, setEditando] = useState(false);
   const [nombreEdit, setNombreEdit] = useState('');
+  const [apellidoEdit, setApellidoEdit] = useState('');
   const [direccionEdit, setDireccionEdit] = useState('');
   const [emailEdit, setEmailEdit] = useState('');
   const [mensajeExito, setMensajeExito] = useState(false);
 
-  // Sincronizar datos iniciales cuando el usuario está disponible
-  useEffect(() => {
-    if (user) {
-      setNombreEdit(user.nombre || '');
-      setDireccionEdit(user.direccion || '');
-      setEmailEdit(user.email || '');
-    }
-  }, [user]);
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    // Guardar en sesión
-    login({
-      email: email || 'martin@trenquelauquen.gov.ar',
-      nombre: email ? email.split('@')[0] : 'Martín',
-      direccion: 'Av. Las Palmas 450 · Barrio Los Olivos',
-      barrio: 'Barrio Los Olivos',
-    });
-    // Redirigir a Hoy donde la tarjeta ya estará activa
-    navigate('/hoy');
-  };
+  if (checking) return <p role="status">Comprobando sesión…</p>;
 
   const handleIniciarEdicion = () => {
-    setNombreEdit(user?.nombre || '');
-    setDireccionEdit(user?.direccion || '');
+    setNombreEdit(user?.name || '');
+    setApellidoEdit(user?.lastName || '');
     setEmailEdit(user?.email || '');
+    const savedDir = user ? localStorage.getItem(`ciudad_limpia_dir_${user.id}`) || 'Av. Las Palmas 450 · Barrio Los Olivos' : '';
+    setDireccionEdit(savedDir);
     setEditando(true);
     setMensajeExito(false);
   };
 
   const handleGuardarCambios = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    updateUser({
-      nombre: nombreEdit.trim() || user?.nombre || 'Martín',
-      direccion: direccionEdit.trim() || user?.direccion || 'Av. Las Palmas 450 · Barrio Los Olivos',
-      email: emailEdit.trim() || user?.email || 'martin@trenquelauquen.gov.ar',
-    });
+    if (user) {
+      const updatedUser = {
+        ...user,
+        name: nombreEdit.trim() || user.name,
+        lastName: apellidoEdit.trim() || user.lastName,
+        email: emailEdit.trim() || user.email,
+      };
+      if (direccionEdit.trim()) {
+        localStorage.setItem(`ciudad_limpia_dir_${user.id}`, direccionEdit.trim());
+      }
+      onAuthenticated(updatedUser);
+    }
     setEditando(false);
     setMensajeExito(true);
   };
@@ -64,14 +55,20 @@ export default function Login() {
   const handleCancelarEdicion = () => {
     setEditando(false);
     if (user) {
-      setNombreEdit(user.nombre || '');
-      setDireccionEdit(user.direccion || '');
+      setNombreEdit(user.name || '');
+      setApellidoEdit(user.lastName || '');
       setEmailEdit(user.email || '');
+      const savedDir = localStorage.getItem(`ciudad_limpia_dir_${user.id}`) || 'Av. Las Palmas 450 · Barrio Los Olivos';
+      setDireccionEdit(savedDir);
     }
   };
 
   // Si ya tiene sesión iniciada, mostrar su perfil o formulario de edición
   if (isAuthenticated) {
+    const direccionActual = user
+      ? localStorage.getItem(`ciudad_limpia_dir_${user.id}`) || 'Av. Las Palmas 450 · Barrio Los Olivos'
+      : 'Av. Las Palmas 450 · Barrio Los Olivos';
+
     return (
       <div className="login-container">
         <div className="login-card perfil-card-activo">
@@ -95,7 +92,7 @@ export default function Login() {
             <p>
               {editando
                 ? 'Actualizá tu información personal y domicilio'
-                : <>Sesión activa para <strong>{user?.nombre}</strong></>}
+                : <>Sesión activa para <strong>{user?.name} {user?.lastName}</strong></>}
             </p>
           </header>
 
@@ -129,6 +126,17 @@ export default function Login() {
                   onChange={(e) => setNombreEdit(e.target.value)}
                   placeholder="Tu nombre"
                   required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="perfil-apellido">Apellido</label>
+                <input
+                  id="perfil-apellido"
+                  type="text"
+                  value={apellidoEdit}
+                  onChange={(e) => setApellidoEdit(e.target.value)}
+                  placeholder="Tu apellido"
                 />
               </div>
 
@@ -203,7 +211,7 @@ export default function Login() {
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
-                    <span className="detalle-valor">{user?.nombre}</span>
+                    <span className="detalle-valor">{user?.name} {user?.lastName}</span>
                   </div>
                 </div>
 
@@ -224,7 +232,7 @@ export default function Login() {
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                       <circle cx="12" cy="10" r="3" />
                     </svg>
-                    <span className="detalle-valor">{user?.direccion}</span>
+                    <span className="detalle-valor">{direccionActual}</span>
                   </div>
                 </div>
 
@@ -273,10 +281,13 @@ export default function Login() {
                   <span>Editar mis datos</span>
                 </button>
 
+                {logoutError && <Alert severity="error">{logoutError}</Alert>}
+
                 <button
                   type="button"
                   className="btn-cerrar-sesion"
                   onClick={logout}
+                  disabled={loggingOut}
                 >
                   <svg
                     width="15"
@@ -293,7 +304,7 @@ export default function Login() {
                     <polyline points="16 17 21 12 16 7" />
                     <line x1="21" y1="12" x2="9" y2="12" />
                   </svg>
-                  <span>Cerrar Sesión</span>
+                  <span>{loggingOut ? 'Cerrando sesión…' : 'Cerrar Sesión'}</span>
                 </button>
               </div>
             </>
@@ -319,14 +330,18 @@ export default function Login() {
           <p>Ingresá tus credenciales para ver el recolector en tu cuadra</p>
         </header>
 
-        <form onSubmit={handleSubmit} className="login-form">
+        <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
+          {error && <Alert severity="error">{error}</Alert>}
           <div className="form-group">
-            <label htmlFor="email">Correo electrónico</label>
-            <input
+            <TextField
+              label="Correo electrónico"
               id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={form.email}
+              onChange={(e) => updateField('email', e.target.value)}
+              onBlur={validateEmail}
+              error={Boolean(emailError)}
+              helperText={emailError}
               placeholder="martin@correo.com"
               autoComplete="email"
               required
@@ -334,12 +349,15 @@ export default function Login() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Contraseña</label>
-            <input
+            <TextField
+              label="Contraseña"
               id="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={form.password}
+              onChange={(e) => updateField('password', e.target.value)}
+              onBlur={validatePassword}
+              error={Boolean(passwordError)}
+              helperText={passwordError}
               placeholder="••••••••"
               autoComplete="current-password"
               required
@@ -347,22 +365,19 @@ export default function Login() {
           </div>
 
           <div className="form-options">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={recordarme}
-                onChange={(e) => setRecordarme(e.target.checked)}
-              />
-              Recordarme
-            </label>
+            <FormControlLabel
+              className="checkbox-label"
+              control={<Checkbox checked={form.rememberMe} onChange={(e) => updateField('rememberMe', e.target.checked)} />}
+              label="Recordarme"
+            />
             <a href="#recuperar" className="login-link">
               ¿Olvidaste tu contraseña?
             </a>
           </div>
 
-          <button type="submit" className="login-button">
-            Ingresar
-          </button>
+          <Button type="submit" className="login-button" disabled={pending}>
+            {pending ? 'Procesando…' : 'Ingresar'}
+          </Button>
         </form>
 
         <footer className="login-footer">
