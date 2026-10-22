@@ -8,8 +8,8 @@ test('uses each auth route with the expected credentials and body', async () => 
   const user = {
     id: '1',
     email: 'ana@example.com',
-    name: 'Ana',
-    lastName: 'Pérez',
+    role: 'USER',
+    cliente: { id: 'c1', name: 'Ana', lastName: 'Pérez', domicilios: [] },
   }
   const requests: { url: string; options: RequestInit }[] = []
   mock.method(
@@ -29,8 +29,8 @@ test('uses each auth route with the expected credentials and body', async () => 
   }
   const register = {
     email: user.email,
-    name: user.name,
-    lastName: user.lastName,
+    name: user.cliente.name,
+    lastName: user.cliente.lastName,
     password: login.password,
     repeatedPassword: login.password,
   }

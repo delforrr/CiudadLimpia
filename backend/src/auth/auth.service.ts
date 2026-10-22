@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -9,13 +10,9 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { SigninRequestDto } from './dto/signin-request.dto';
+import { UserResponseDto } from './dto/user-response.dto';
+import { publicUserSelect } from '../user/user.select';
 
-export const publicUserSelect = {
-  id: true,
-  email: true,
-  name: true,
-  lastName: true,
-} as const;
 export const sessionSeconds = (remember: boolean) =>
   remember ? 7 * 24 * 3600 : 3600;
 
@@ -34,18 +31,12 @@ export class AuthService {
       const user = await this.prisma.user.create({
         data: {
           email: dto.email,
-          name: dto.name,
-          lastName: dto.lastName,
+          cliente: { create: { name: dto.name, lastName: dto.lastName } },
           passwordHash: await bcrypt.hash(dto.password, 12),
         },
         select: publicUserSelect,
       });
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        lastName: user.lastName,
-      };
+      return user;
     } catch (error: unknown) {
       if (
         typeof error === 'object' &&
@@ -62,6 +53,7 @@ export class AuthService {
   async login(dto: LoginRequestDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      select: { ...publicUserSelect, passwordHash: true },
     });
     // Compare even for unknown emails to avoid a fast account-enumeration path.
     const hash =
@@ -73,8 +65,8 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
-      lastName: user.lastName,
+      role: user.role,
+      cliente: user.cliente,
     };
   }
 
@@ -92,5 +84,16 @@ export class AuthService {
     });
     if (!user) throw new UnauthorizedException('Sesión inválida');
     return user;
+  }
+
+  async getAllUsers(requesterId: string): Promise<UserResponseDto[]> {
+    const requester = await this.prisma.user.findUnique({
+      where: { id: requesterId },
+      select: { role: true },
+    });
+    if (!requester) throw new UnauthorizedException('Sesión inválida');
+    if (requester.role !== 'ADMIN')
+      throw new ForbiddenException('Se requiere rol ADMIN');
+    return this.prisma.user.findMany({ select: publicUserSelect });
   }
 }

@@ -73,7 +73,7 @@
   color: #222222;
 }
 
-.form-group input {
+.form-group > input {
   width: 100%;
   padding: 0.625rem 0.75rem;
   font-size: 0.875rem;
@@ -86,12 +86,12 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.form-group input:focus {
+.form-group > input:focus {
   border-color: #68A544;
   box-shadow: 0 0 0 3px rgba(104, 165, 68, 0.15);
 }
 
-.form-group input.input-error {
+.form-group > input.input-error {
   border-color: #dc2626;
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
 }

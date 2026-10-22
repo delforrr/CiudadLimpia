@@ -1,7 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
-import type { User } from '../src/generated/prisma/client';
+import type { Prisma } from '../src/generated/prisma/client';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
@@ -9,6 +9,9 @@ import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Email/password authentication (HTTP)', () => {
   let app: INestApplication<App>;
+  type User = Prisma.UserGetPayload<{
+    include: { cliente: { include: { domicilios: true } } };
+  }>;
   const users = new Map<string, User>();
   const account = {
     email: ' ANA@Example.com ',
@@ -24,31 +27,81 @@ describe('Email/password authentication (HTTP)', () => {
       .overrideProvider(PrismaService)
       .useValue({
         user: {
-          create: ({ data }: { data: Omit<User, 'id'> }) => {
+          create: ({
+            data,
+          }: {
+            data: {
+              email: string;
+              passwordHash: string;
+              cliente: { create: { name: string; lastName: string } };
+            };
+          }) => {
             if (users.has(data.email))
               throw Object.assign(new Error('Duplicate email'), {
                 code: 'P2002',
               });
-            const user = { id: 'user-1', ...data };
+            const user: User = {
+              id: 'user-1',
+              role: 'USER',
+              email: data.email,
+              passwordHash: data.passwordHash,
+              cliente: {
+                id: 'cliente-1',
+                userId: 'user-1',
+                ...data.cliente.create,
+                domicilios: [],
+              },
+            };
             users.set(user.email, user);
-            return user;
+            return {
+              id: user.id,
+              email: user.email,
+              role: user.role,
+              cliente: {
+                id: user.cliente!.id,
+                name: user.cliente!.name,
+                lastName: user.cliente!.lastName,
+                domicilios: [],
+              },
+            };
           },
+          findMany: () =>
+            [...users.values()].map((user) => ({
+              id: user.id,
+              email: user.email,
+              role: user.role,
+              cliente: {
+                id: user.cliente!.id,
+                name: user.cliente!.name,
+                lastName: user.cliente!.lastName,
+                domicilios: [],
+              },
+            })),
           findUnique: ({
             where,
             select,
           }: {
             where: { email?: string; id?: string };
-            select?: object;
+            select?: { role?: boolean; id?: boolean; passwordHash?: boolean };
           }) => {
             const user = where.email
               ? users.get(where.email)
               : [...users.values()].find((u) => u.id === where.id);
             if (!user || !select) return user ?? null;
+            if (select.role && !select.id) return { role: user.role };
             return {
               id: user.id,
               email: user.email,
-              name: user.name,
-              lastName: user.lastName,
+              role: user.role,
+              cliente: {
+                id: user.cliente!.id,
+                name: user.cliente!.name,
+                lastName: user.cliente!.lastName,
+                domicilios: [],
+              },
+              ...(select.passwordHash
+                ? { passwordHash: user.passwordHash }
+                : {}),
             };
           },
         },
@@ -87,8 +140,13 @@ describe('Email/password authentication (HTTP)', () => {
     expect(registered.body).toEqual({
       id: 'user-1',
       email: 'ana@example.com',
-      name: 'Ana María',
-      lastName: 'Pérez',
+      role: 'USER',
+      cliente: {
+        id: 'cliente-1',
+        name: 'Ana María',
+        lastName: 'Pérez',
+        domicilios: [],
+      },
     });
     const cookie = String(registered.headers['set-cookie']);
     expect(cookie).toContain('HttpOnly');
@@ -110,6 +168,34 @@ describe('Email/password authentication (HTTP)', () => {
       .expect(200);
     expect(String(login.headers['set-cookie'])).toContain('Max-Age=604800');
     await agent.get('/auth/me').expect(200).expect(registered.body);
+  });
+
+  it('restricts the user list to existing admins and never exposes hashes', async () => {
+    const agent = request.agent(app.getHttpServer());
+    await agent.get('/auth/all').expect(401);
+    const registered = await agent
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    await agent.get('/auth/all').expect(403);
+    const admin = users.get('ana@example.com')!;
+    expect(admin.role).toBe('USER');
+    admin.role = 'ADMIN';
+    await agent
+      .get('/auth/all')
+      .expect(200)
+      .expect([{ ...(registered.body as object), role: 'ADMIN' }]);
+    const jwt = app.get(JwtService);
+    const token = jwt.sign({ sub: 'user-1' }, { expiresIn: 60 });
+    await request(app.getHttpServer())
+      .get('/auth/all')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect([{ ...(registered.body as object), role: 'ADMIN' }]);
+    admin.role = 'USER';
+    await agent.get('/auth/all').expect(403);
+    users.clear();
+    await agent.get('/auth/all').expect(401);
   });
 
   it('rejects duplicate registrations, wrong passwords and unknown users', async () => {
@@ -142,6 +228,7 @@ describe('Email/password authentication (HTTP)', () => {
     { password: 'á'.repeat(37), repeatedPassword: 'á'.repeat(37) },
     { repeatedPassword: 'different' },
     { role: 'admin' },
+    { role: 'ADMIN' },
     { rememberMe: 'true' },
   ])('rejects invalid registration: %j', async (change) => {
     await request(app.getHttpServer())

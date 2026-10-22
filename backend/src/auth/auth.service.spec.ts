@@ -12,11 +12,18 @@ describe('AuthService', () => {
   const user = {
     id: 'user-1',
     email: 'ana@example.com',
-    name: 'Ana',
-    lastName: 'Pérez',
+    role: 'USER' as const,
+    cliente: {
+      id: 'cliente-1',
+      name: 'Ana',
+      lastName: 'Pérez',
+      domicilios: [],
+    },
   };
   const dto = {
-    ...user,
+    email: user.email,
+    name: 'Ana',
+    lastName: 'Pérez',
     password: ' contraseña! ',
     repeatedPassword: ' contraseña! ',
   };
@@ -32,12 +39,7 @@ describe('AuthService', () => {
   });
 
   it('registers with bcrypt without exposing the hash', async () => {
-    db.user.create.mockImplementation(
-      ({ data }: { data: { passwordHash: string } }) => ({
-        ...user,
-        passwordHash: data.passwordHash,
-      }),
-    );
+    db.user.create.mockImplementation(() => user);
     const result = await service.register(dto);
     const hash = (
       db.user.create.mock.calls as [{ data: { passwordHash: string } }][]

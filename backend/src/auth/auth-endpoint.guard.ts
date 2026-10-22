@@ -20,7 +20,8 @@ export class AuthEndpointGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
     response.setHeader('Cache-Control', 'no-store');
-    if (request.method !== 'POST') return true;
+    if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method))
+      return true;
     if (request.headers['sec-fetch-site'] === 'cross-site')
       throw new ForbiddenException('Solicitud de otro sitio rechazada');
     // JSON cannot be submitted by a cross-origin HTML form; CORS stays disabled.
@@ -29,7 +30,7 @@ export class AuthEndpointGuard implements CanActivate {
       'application/json'
     )
       throw new UnsupportedMediaTypeException('Se requiere application/json');
-    if (request.path.endsWith('/logout')) return true;
+    if (!['/auth/register', '/auth/login'].includes(request.path)) return true;
 
     const now = Date.now();
     for (const [key, entry] of this.attempts) {

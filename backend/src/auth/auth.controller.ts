@@ -116,6 +116,25 @@ export class AuthController {
     return user;
   }
 
+  @Get('all')
+  @ApiCookieAuth('session')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Consultar todos los usuarios registrados',
+    description:
+      'Requiere rol ADMIN. Acepta la cookie session del navegador o un JWT existente mediante Authorization: Bearer.',
+  })
+  @ApiOkResponse({ type: UserResponseDto, isArray: true })
+  @ApiResponse({
+    status: 401,
+    description: 'Usuario no autorizado',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
+  @UseGuards(AuthGuard)
+  all(@Req() request: AuthRequest): Promise<UserResponseDto[]> {
+    return this.auth.getAllUsers(request.userId);
+  }
+
   @Get('me')
   @ApiCookieAuth('session')
   @ApiBearerAuth()

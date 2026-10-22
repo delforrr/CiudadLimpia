@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react';
-import { Alert } from '@mui/material';
+import { Alert, Button, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAuthForm } from '../hooks/useAuthForm';
+import { useProfileForm } from '../hooks/useProfileForm';
 import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
@@ -14,60 +14,18 @@ export default function Login() {
     navigate('/hoy');
   });
 
-  // Estados de edición de datos de perfil
-  const [editando, setEditando] = useState(false);
-  const [nombreEdit, setNombreEdit] = useState('');
-  const [apellidoEdit, setApellidoEdit] = useState('');
-  const [direccionEdit, setDireccionEdit] = useState('');
-  const [emailEdit, setEmailEdit] = useState('');
-  const [mensajeExito, setMensajeExito] = useState(false);
+  const {
+    editando, form: profile, updateField: updateProfileField, mensajeExito,
+    error: profileError, pending: savingProfile,
+    iniciarEdicion: handleIniciarEdicion, guardar: handleGuardarCambios,
+    cancelar: handleCancelarEdicion,
+  } = useProfileForm(user, onAuthenticated);
 
   if (checking) return <p role="status">Comprobando sesión…</p>;
 
-  const handleIniciarEdicion = () => {
-    setNombreEdit(user?.name || '');
-    setApellidoEdit(user?.lastName || '');
-    setEmailEdit(user?.email || '');
-    const savedDir = user ? localStorage.getItem(`ciudad_limpia_dir_${user.id}`) || 'Av. Las Palmas 450 · Barrio Los Olivos' : '';
-    setDireccionEdit(savedDir);
-    setEditando(true);
-    setMensajeExito(false);
-  };
-
-  const handleGuardarCambios = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (user) {
-      const updatedUser = {
-        ...user,
-        name: nombreEdit.trim() || user.name,
-        lastName: apellidoEdit.trim() || user.lastName,
-        email: emailEdit.trim() || user.email,
-      };
-      if (direccionEdit.trim()) {
-        localStorage.setItem(`ciudad_limpia_dir_${user.id}`, direccionEdit.trim());
-      }
-      onAuthenticated(updatedUser);
-    }
-    setEditando(false);
-    setMensajeExito(true);
-  };
-
-  const handleCancelarEdicion = () => {
-    setEditando(false);
-    if (user) {
-      setNombreEdit(user.name || '');
-      setApellidoEdit(user.lastName || '');
-      setEmailEdit(user.email || '');
-      const savedDir = localStorage.getItem(`ciudad_limpia_dir_${user.id}`) || 'Av. Las Palmas 450 · Barrio Los Olivos';
-      setDireccionEdit(savedDir);
-    }
-  };
-
   // Si ya tiene sesión iniciada, mostrar su perfil o formulario de edición
   if (isAuthenticated) {
-    const direccionActual = user
-      ? localStorage.getItem(`ciudad_limpia_dir_${user.id}`) || 'Av. Las Palmas 450 · Barrio Los Olivos'
-      : 'Av. Las Palmas 450 · Barrio Los Olivos';
+    const direccionActual = user?.cliente?.domicilios.map(({ direccion }) => direccion).join(' · ') || 'Sin domicilio registrado';
 
     return (
       <div className="login-container">
@@ -92,7 +50,7 @@ export default function Login() {
             <p>
               {editando
                 ? 'Actualizá tu información personal y domicilio'
-                : <>Sesión activa para <strong>{user?.name} {user?.lastName}</strong></>}
+                : <>Sesión activa para <strong>{user?.cliente ? `${user.cliente.name} ${user.cliente.lastName}` : user?.email}</strong></>}
             </p>
           </header>
 
@@ -116,56 +74,63 @@ export default function Login() {
           )}
 
           {editando ? (
-            <form onSubmit={handleGuardarCambios} className="perfil-edit-form">
+            <form onSubmit={handleGuardarCambios} className="perfil-edit-form" aria-busy={savingProfile}>
+              {profileError && <Alert severity="error">{profileError}</Alert>}
               <div className="form-group">
-                <label htmlFor="perfil-nombre">Nombre</label>
-                <input
+                <TextField
+                  fullWidth
+                  label="Nombre"
                   id="perfil-nombre"
                   type="text"
-                  value={nombreEdit}
-                  onChange={(e) => setNombreEdit(e.target.value)}
+                  value={profile.name}
+                  onChange={(e) => updateProfileField('name', e.target.value)}
                   placeholder="Tu nombre"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="perfil-apellido">Apellido</label>
-                <input
+                <TextField
+                  fullWidth
+                  label="Apellido"
                   id="perfil-apellido"
                   type="text"
-                  value={apellidoEdit}
-                  onChange={(e) => setApellidoEdit(e.target.value)}
+                  value={profile.lastName}
+                  onChange={(e) => updateProfileField('lastName', e.target.value)}
                   placeholder="Tu apellido"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="perfil-direccion">Dirección vinculada</label>
-                <input
-                  id="perfil-direccion"
-                  type="text"
-                  value={direccionEdit}
-                  onChange={(e) => setDireccionEdit(e.target.value)}
-                  placeholder="Calle y número · Barrio"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="perfil-email">Correo electrónico</label>
-                <input
+                <TextField
+                  fullWidth
+                  label="Domicilios"
+                  id="perfil-direccion"
+                  multiline
+                  minRows={2}
+                  helperText="Una dirección por línea. Podés dejarlo vacío si no tenés domicilios."
+                  value={profile.direccion}
+                  onChange={(e) => updateProfileField('direccion', e.target.value)}
+                  placeholder="Calle y número · Barrio"
+                />
+              </div>
+
+              <div className="form-group">
+                <TextField
+                  fullWidth
+                  label="Correo electrónico"
                   id="perfil-email"
                   type="email"
-                  value={emailEdit}
-                  onChange={(e) => setEmailEdit(e.target.value)}
+                  value={profile.email}
+                  onChange={(e) => updateProfileField('email', e.target.value)}
                   placeholder="correo@trenquelauquen.gov.ar"
                   required
                 />
               </div>
 
               <div className="perfil-edit-acciones">
-                <button type="submit" className="login-button btn-guardar-perfil">
+                <Button type="submit" className="login-button btn-guardar-perfil" disabled={savingProfile}>
                   <svg
                     width="16"
                     height="16"
@@ -179,16 +144,17 @@ export default function Login() {
                   >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  <span>Guardar cambios</span>
-                </button>
+                  <span>{savingProfile ? 'Guardando…' : 'Guardar cambios'}</span>
+                </Button>
 
-                <button
+                <Button
                   type="button"
                   className="btn-cancelar-edicion"
                   onClick={handleCancelarEdicion}
+                  disabled={savingProfile}
                 >
                   Cancelar
-                </button>
+                </Button>
               </div>
             </form>
           ) : (
@@ -211,7 +177,7 @@ export default function Login() {
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
-                    <span className="detalle-valor">{user?.name} {user?.lastName}</span>
+                    <span className="detalle-valor">{user?.cliente ? `${user.cliente.name} ${user.cliente.lastName}` : 'Sin cliente asociado'}</span>
                   </div>
                 </div>
 
@@ -259,7 +225,7 @@ export default function Login() {
               </div>
 
               <div className="perfil-acciones">
-                <button
+                <Button
                   type="button"
                   className="btn-editar-perfil"
                   onClick={handleIniciarEdicion}
@@ -279,11 +245,11 @@ export default function Login() {
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
                   <span>Editar mis datos</span>
-                </button>
+                </Button>
 
                 {logoutError && <Alert severity="error">{logoutError}</Alert>}
 
-                <button
+                <Button
                   type="button"
                   className="btn-cerrar-sesion"
                   onClick={logout}
@@ -305,7 +271,7 @@ export default function Login() {
                     <line x1="21" y1="12" x2="9" y2="12" />
                   </svg>
                   <span>{loggingOut ? 'Cerrando sesión…' : 'Cerrar Sesión'}</span>
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -378,9 +344,9 @@ export default function Login() {
             </a>
           </div>
 
-          <button type="submit" className="login-button" disabled={pending}>
+          <Button type="submit" className="login-button" disabled={pending}>
             {pending ? 'Procesando…' : 'Ingresar'}
-          </button>
+          </Button>
         </form>
 
         <footer className="login-footer">

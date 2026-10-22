@@ -33,6 +33,6 @@ import { AuthEndpointGuard } from './auth-endpoint.guard';
   ],
   controllers: [AuthController],
   providers: [PrismaService, AuthService, AuthGuard, AuthEndpointGuard],
-  exports: [AuthGuard],
+  exports: [AuthGuard, AuthEndpointGuard, PrismaService, JwtModule],
 })
 export class AuthModule {}
