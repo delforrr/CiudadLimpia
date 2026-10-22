@@ -95,7 +95,7 @@ Con el backend iniciado, abrir [Swagger UI](http://localhost:3000/api/docs). El 
 
 La documentación incluye health, registro, login, sesión y logout, con ejemplos, límites de validación, códigos de error y el esquema del usuario público. Las contraseñas de los ejemplos son ficticias.
 
-Para probar la autenticación, ejecutar `POST /auth/register` o `POST /auth/login` con **Try it out** y luego `GET /auth/me`. La cookie HttpOnly se conserva automáticamente en el navegador al usar el mismo origen. No es necesario copiarla en **Authorize**. También se documenta Bearer para clientes que ya tengan un JWT. `POST /auth/logout` elimina la cookie; Swagger agrega el encabezado JSON requerido incluso cuando no hay cuerpo.
+Para probar la autenticación, ejecutar `POST /auth/register` o `POST /auth/login` con **Try it out** y luego `GET /auth/me`. La cookie HttpOnly se conserva automáticamente en el navegador al usar el mismo origen. No es necesario copiarla en **Authorize**. También se documenta Bearer para clientes que ya tengan un JWT. `POST /auth/logout` elimina la cookie; Swagger agrega el encabezado JSON requerido en POST, PUT, PATCH y DELETE, incluso cuando no hay cuerpo.
 
 La integración usa [Nest Swagger](https://docs.nestjs.com/openapi/introduction) y documenta los dos mecanismos de autenticación como alternativas.
 
