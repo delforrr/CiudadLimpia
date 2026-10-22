@@ -21,3 +21,24 @@ model User {
   lastName     String
   passwordHash String
 }
+
+enum TipoPuntoLimpio {
+  PUNTO_LIMPIO
+  BOTELLERO
+  BOTELLERO_LATERO
+}
+model PuntoLimpio {
+  id        String @id @default(uuid())
+  nombre    String
+  tipo      TipoPuntoLimpio
+  direccion String
+  lat       Float
+  long      Float
+  residuos  Residuo[]
+}
+
+model Residuo {
+  id            String @id @default(uuid())
+  nombre        String @unique
+  puntosLimpios PuntoLimpio[]
+}
