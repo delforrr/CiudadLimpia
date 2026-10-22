@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { z } from 'zod'
-import { authSchema, emailSchema, passwordSchema } from '../src/schemas/authSchema.ts'
+import {
+  authSchema,
+  emailSchema,
+  lastNameSchema,
+  nameSchema,
+  passwordSchema,
+  registerSchema,
+} from '../src/schemas/authSchema.ts'
 
 test('rejects missing and malformed email addresses', () => {
   for (const email of ['', '   ', 'texto', 'ana@', '@correo.com', 'ana@correo', 'ana@@correo.com', 'ana perez@correo.com']) {
@@ -55,3 +62,53 @@ test('reports email and password errors together for submission', () => {
     assert.ok(errors.password?.length)
   }
 })
+
+test('validates name and lastName with length and trimming constraints', () => {
+  for (const empty of ['', '   ']) {
+    assert.equal(nameSchema.safeParse(empty).success, false)
+    assert.equal(lastNameSchema.safeParse(empty).success, false)
+  }
+  assert.equal(nameSchema.safeParse('a'.repeat(101)).success, false)
+  assert.equal(lastNameSchema.safeParse('b'.repeat(101)).success, false)
+  assert.equal(nameSchema.parse('  Ana María  '), 'Ana María')
+  assert.equal(lastNameSchema.parse('  Pérez  '), 'Pérez')
+})
+
+test('validates registration schema and rejects mismatching passwords', () => {
+  const validData = {
+    name: 'Ana',
+    lastName: 'Pérez',
+    email: 'ana@example.com',
+    password: 'password123',
+    repeatedPassword: 'password123',
+  }
+  assert.equal(registerSchema.safeParse(validData).success, true)
+
+  const mismatch = registerSchema.safeParse({
+    ...validData,
+    repeatedPassword: 'different-password',
+  })
+  assert.equal(mismatch.success, false)
+  if (!mismatch.success) {
+    const errors = z.flattenError(mismatch.error).fieldErrors
+    assert.equal(errors.repeatedPassword?.[0], 'Las contraseñas no coinciden')
+  }
+
+  const missingAll = registerSchema.safeParse({
+    name: '',
+    lastName: '',
+    email: 'invalido',
+    password: '123',
+    repeatedPassword: '',
+  })
+  assert.equal(missingAll.success, false)
+  if (!missingAll.success) {
+    const errors = z.flattenError(missingAll.error).fieldErrors
+    assert.ok(errors.name?.length)
+    assert.ok(errors.lastName?.length)
+    assert.ok(errors.email?.length)
+    assert.ok(errors.password?.length)
+    assert.ok(errors.repeatedPassword?.length)
+  }
+})
+
