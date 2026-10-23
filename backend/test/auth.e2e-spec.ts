@@ -310,4 +310,22 @@ describe('Email/password authentication (HTTP)', () => {
       .expect(429);
     expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
   });
+
+  it.each(['/auth/login/', '/AUTH/LOGIN', '/auth/register/', '/AUTH/REGISTER'])(
+    'shares the attempt limit with the accepted route variant %s',
+    async (path) => {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await request(app.getHttpServer())
+          .post('/auth/login')
+          .send({ email: 'invalid' })
+          .expect(400);
+      }
+      const response = await request(app.getHttpServer())
+        .post(path)
+        .send({ email: 'invalid' })
+        .expect(429);
+      expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
+      expect(users.size).toBe(0);
+    },
+  );
 });

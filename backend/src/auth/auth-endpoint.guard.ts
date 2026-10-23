@@ -30,7 +30,8 @@ export class AuthEndpointGuard implements CanActivate {
       'application/json'
     )
       throw new UnsupportedMediaTypeException('Se requiere application/json');
-    if (!['/auth/register', '/auth/login'].includes(request.path)) return true;
+    const route = request.route as { path: string };
+    if (!['/auth/register', '/auth/login'].includes(route.path)) return true;
 
     const now = Date.now();
     for (const [key, entry] of this.attempts) {
