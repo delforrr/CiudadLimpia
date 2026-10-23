@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { authSchema } from '../schemas/authSchema'
 import { registerSchema } from '../schemas/registerSchema'
 
-export function useAuthForm(onAuthenticated: (user: User) => void) {
+export function useAuthForm(onAuthenticated: (user: User) => void, register = false) {
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -14,19 +14,19 @@ export function useAuthForm(onAuthenticated: (user: User) => void) {
     direccion: '',
     rememberMe: false,
   })
-  const [register, setRegister] = useState(false)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
-  const [emailTouched, setEmailTouched] = useState(false)
-  const [passwordTouched, setPasswordTouched] = useState(false)
+  const [touched, setTouched] = useState<Partial<Record<keyof typeof form, boolean>>>({})
   const [submitted, setSubmitted] = useState(false)
   const registration = register ? registerSchema.safeParse(form) : null
   const validation = registration ?? authSchema.safeParse(form)
   const fieldErrors: Partial<Record<keyof typeof form, string[]>> = validation.success ? {} : z.flattenError(validation.error).fieldErrors
-  const emailError = emailTouched ? fieldErrors.email?.[0] ?? '' : ''
-  const passwordError = passwordTouched ? fieldErrors.password?.[0] ?? '' : ''
-  const validateEmail = () => setEmailTouched(true)
-  const validatePassword = () => setPasswordTouched(true)
+  const visibleErrors = Object.fromEntries(
+    Object.entries(fieldErrors).filter(([field]) => submitted || touched[field as keyof typeof form]),
+  )
+  const validateField = (field: keyof typeof form) => {
+    setTouched((previous) => ({ ...previous, [field]: true }))
+  }
 
   const updateField = <K extends keyof typeof form>(
     field: K,
@@ -35,21 +35,10 @@ export function useAuthForm(onAuthenticated: (user: User) => void) {
     setForm((previous) => ({ ...previous, [field]: value }))
   }
 
-  const toggleMode = () => {
-    setRegister(!register)
-    setError('')
-    setEmailTouched(false)
-    setPasswordTouched(false)
-    setSubmitted(false)
-    setForm((previous) => ({ ...previous, password: '', repeatedPassword: '' }))
-  }
-
   const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (pending) return
     setError('')
-    setEmailTouched(true)
-    setPasswordTouched(true)
     setSubmitted(true)
     if (!validation.success) return
     setPending(true)
@@ -68,7 +57,7 @@ export function useAuthForm(onAuthenticated: (user: User) => void) {
       onAuthenticated(user)
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : 'No se pudo iniciar sesión',
+        error instanceof Error ? error.message : register ? 'No se pudo crear la cuenta' : 'No se pudo iniciar sesión',
       )
     } finally {
       setPending(false)
@@ -80,13 +69,9 @@ export function useAuthForm(onAuthenticated: (user: User) => void) {
     register,
     error,
     pending,
-    emailError,
-    passwordError,
-    fieldErrors: submitted ? fieldErrors : {},
-    validateEmail,
-    validatePassword,
+    fieldErrors: visibleErrors,
+    validateField,
     updateField,
-    toggleMode,
     handleSubmit,
   }
 }

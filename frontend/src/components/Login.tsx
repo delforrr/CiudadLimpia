@@ -6,13 +6,13 @@ import { useProfileForm } from '../hooks/useProfileForm';
 import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
-export default function Login() {
+export default function Login({ initialRegister = false }: { initialRegister?: boolean }) {
   const { isAuthenticated, user, onAuthenticated, checking, logout, logoutError, loggingOut } = useAuthContext();
   const navigate = useNavigate();
-  const { form, register, toggleMode, updateField, handleSubmit, error, pending, emailError, passwordError, fieldErrors, validateEmail, validatePassword } = useAuthForm((authenticatedUser) => {
+  const { form, register, updateField, handleSubmit, error, pending, fieldErrors, validateField } = useAuthForm((authenticatedUser) => {
     onAuthenticated(authenticatedUser);
-    navigate('/hoy');
-  });
+    navigate('/hoy', { replace: true });
+  }, initialRegister);
 
   const {
     editando, form: profile, updateField: updateProfileField, mensajeExito,
@@ -327,6 +327,7 @@ export default function Login() {
                 label="Nombre" autoComplete="given-name" required fullWidth
                 value={form.name} disabled={pending}
                 onChange={(e) => updateField('name', e.target.value)}
+                onBlur={() => validateField('name')}
                 error={Boolean(fieldErrors.name)} helperText={fieldErrors.name?.[0]}
                 slotProps={{ htmlInput: { maxLength: 100 } }}
               />
@@ -334,6 +335,7 @@ export default function Login() {
                 label="Apellido" autoComplete="family-name" required fullWidth
                 value={form.lastName} disabled={pending}
                 onChange={(e) => updateField('lastName', e.target.value)}
+                onBlur={() => validateField('lastName')}
                 error={Boolean(fieldErrors.lastName)} helperText={fieldErrors.lastName?.[0]}
                 slotProps={{ htmlInput: { maxLength: 100 } }}
               />
@@ -341,6 +343,7 @@ export default function Login() {
                 label="Domicilios" required fullWidth multiline minRows={2}
                 placeholder="San Martín 123" value={form.direccion} disabled={pending}
                 onChange={(e) => updateField('direccion', e.target.value)}
+                onBlur={() => validateField('direccion')}
                 error={Boolean(fieldErrors.direccion)}
                 helperText={fieldErrors.direccion?.[0] ?? 'Una dirección por línea. Entre 1 y 20; hasta 200 caracteres cada una.'}
               />
@@ -349,23 +352,24 @@ export default function Login() {
           <TextField
             id="email" label="Correo electrónico" type="email" autoComplete="email"
             required fullWidth value={form.email} disabled={pending}
-            onChange={(e) => updateField('email', e.target.value)} onBlur={validateEmail}
-            error={Boolean(emailError)} helperText={emailError}
+            onChange={(e) => updateField('email', e.target.value)} onBlur={() => validateField('email')}
+            error={Boolean(fieldErrors.email)} helperText={fieldErrors.email?.[0]}
             slotProps={{ htmlInput: { maxLength: 254 } }}
           />
           <TextField
             id="password" label="Contraseña" type="password"
             autoComplete={register ? 'new-password' : 'current-password'}
             required fullWidth value={form.password} disabled={pending}
-            onChange={(e) => updateField('password', e.target.value)} onBlur={validatePassword}
-            error={Boolean(passwordError)}
-            helperText={passwordError || (register ? 'Al menos 8 caracteres; hasta 72 bytes.' : '')}
+            onChange={(e) => updateField('password', e.target.value)} onBlur={() => validateField('password')}
+            error={Boolean(fieldErrors.password)}
+            helperText={fieldErrors.password?.[0] || (register ? 'Al menos 8 caracteres; hasta 72 bytes.' : '')}
           />
           {register ? (
             <TextField
               label="Repetir contraseña" type="password" autoComplete="new-password"
               required fullWidth value={form.repeatedPassword} disabled={pending}
               onChange={(e) => updateField('repeatedPassword', e.target.value)}
+              onBlur={() => validateField('repeatedPassword')}
               error={Boolean(fieldErrors.repeatedPassword)} helperText={fieldErrors.repeatedPassword?.[0]}
             />
           ) : (
@@ -382,7 +386,7 @@ export default function Login() {
 
         <footer className="login-footer">
           <span>{register ? '¿Ya tenés cuenta? ' : '¿No tenés cuenta? '}</span>
-          <Button type="button" onClick={toggleMode} disabled={pending}>
+          <Button type="button" onClick={() => navigate(register ? '/perfil' : '/registro')} disabled={pending}>
             {register ? 'Iniciar sesión' : 'Registrate'}
           </Button>
         </footer>

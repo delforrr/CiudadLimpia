@@ -23,6 +23,7 @@ function App() {
             <Route path="/calendario" element={<CalendarioPage />} />
             <Route path="/puntos-limpios" element={<PuntosLimpiosPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
+            <Route path="/registro" element={<PerfilPage initialRegister />} />
             <Route path="*" element={<Navigate to="/hoy" replace />} />
           </Routes>
         </ProfileGate>

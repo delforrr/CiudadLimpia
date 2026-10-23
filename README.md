@@ -93,7 +93,7 @@ Esta obligación se valida en la API. Las cuentas antiguas sin domicilios pueden
 
 Los identificadores de `/users/:id` son UUID. Las escrituras requieren `Content-Type: application/json`, incluso DELETE sin cuerpo. Los errores son 400 (validación), 401 (sesión ausente o usuario eliminado), 403 (sin permisos), 404 (cuenta inexistente) y 409 (email duplicado). `/auth/all` permanece disponible para ADMIN. Los hashes nunca se incluyen en las respuestas. Cambiar la contraseña no revoca JWT emitidos: siguen válidos hasta vencer.
 
-El registro y el perfil usan controles MUI y validación por campo. Los domicilios se ingresan uno por línea; se validan nombres, email y los límites de las direcciones antes de guardar. La lógica vive en `useAuthForm` y `useProfileForm`. No se agregan pantallas de administración ni endpoints independientes para clientes o domicilios.
+El formulario de registro está en `/registro`, y el inicio de sesión en `/perfil`. Usan controles MUI y Zod para validar cada campo al salir de él y al enviar; el perfil también valida con Zod antes de guardar. Los domicilios se ingresan uno por línea; se validan nombres, email y los límites de las direcciones antes de guardar. La lógica vive en `useAuthForm` y `useProfileForm`. No se agregan pantallas de administración ni endpoints independientes para clientes o domicilios.
 
 ## Swagger
 
