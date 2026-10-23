@@ -24,6 +24,7 @@ describe('AuthService', () => {
     email: user.email,
     name: 'Ana',
     lastName: 'Pérez',
+    domicilios: [{ direccion: 'San Martín 123' }],
     password: ' contraseña! ',
     repeatedPassword: ' contraseña! ',
   };

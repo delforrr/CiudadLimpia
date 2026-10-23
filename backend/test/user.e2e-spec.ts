@@ -19,7 +19,12 @@ describe('User CRUD (HTTP)', () => {
     id: userId,
     email: 'ana@example.com',
     role: 'USER',
-    cliente: null,
+    cliente: {
+      id: 'cliente-1',
+      name: 'Ana',
+      lastName: 'Pérez',
+      domicilios: [{ id: 'domicilio-1', direccion: 'San Martín 123' }],
+    },
   };
   const db = {
     user: {
@@ -69,6 +74,46 @@ describe('User CRUD (HTTP)', () => {
     await app.close();
   });
 
+  it.each([
+    undefined,
+    null,
+    [],
+    'invalid',
+    {},
+    { name: 'Ana', lastName: 'Pérez' },
+    { name: 'Ana', lastName: 'Pérez', domicilios: [] },
+  ])(
+    'requires a cliente with at least one address on creation: %j',
+    async (cliente) => {
+      await request(app.getHttpServer())
+        .post('/users?role=USER')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ email: 'new@example.com', password: 'password!2026', cliente })
+        .expect(400);
+      expect(db.user.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['', '?role=invalid', '?role=USER&role=ADMIN'])(
+    'requires a single valid role query parameter: %s',
+    async (query) => {
+      await request(app.getHttpServer())
+        .post(`/users${query}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          email: 'new@example.com',
+          password: 'password!2026',
+          cliente: {
+            name: 'Ana',
+            lastName: 'Pérez',
+            domicilios: [{ direccion: 'San Martín 123' }],
+          },
+        })
+        .expect(400);
+      expect(db.user.create).not.toHaveBeenCalled();
+    },
+  );
+
   it('creates an account with an atomic nested cliente, hashes passwords and handles duplicate emails', async () => {
     const dto = {
       email: ' ANA@example.com ',
@@ -80,7 +125,7 @@ describe('User CRUD (HTTP)', () => {
       },
     };
     await request(app.getHttpServer())
-      .post('/users')
+      .post('/users?role=USER')
       .set('Authorization', `Bearer ${adminToken}`)
       .send(dto)
       .expect(201)
@@ -93,6 +138,7 @@ describe('User CRUD (HTTP)', () => {
     expect(db.user.create).toHaveBeenCalledWith({
       data: {
         email: 'ana@example.com',
+        role: 'USER',
         passwordHash: hash,
         cliente: {
           create: {
@@ -109,11 +155,40 @@ describe('User CRUD (HTTP)', () => {
     ).toBe(true);
     db.user.create.mockRejectedValue({ code: 'P2002' });
     await request(app.getHttpServer())
-      .post('/users')
+      .post('/users?role=USER')
       .set('Authorization', `Bearer ${adminToken}`)
       .send(dto)
       .expect(409);
   });
+
+  it.each(['USER', 'ADMIN'])(
+    'creates the role requested in the query: %s',
+    async (role) => {
+      const body = {
+        email: 'new@example.com',
+        password: 'password!2026',
+        cliente: {
+          name: 'Ana',
+          lastName: 'Pérez',
+          domicilios: [{ direccion: 'San Martín 123' }],
+        },
+      };
+      await request(app.getHttpServer())
+        .post(`/users?role=${role}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(body)
+        .expect(201);
+      const calls = db.user.create.mock.calls as [{ data: { role: string } }][];
+      expect(calls[0][0].data.role).toBe(role);
+      db.user.create.mockClear();
+      await request(app.getHttpServer())
+        .post(`/users?role=${role}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ...body, role: 'ADMIN' })
+        .expect(400);
+      expect(db.user.create).not.toHaveBeenCalled();
+    },
+  );
 
   it('requires admin for listing, creating, deleting and changing roles', async () => {
     await request(app.getHttpServer()).get('/users').expect(401);
@@ -127,9 +202,17 @@ describe('User CRUD (HTTP)', () => {
       .expect(200)
       .expect([user]);
     await request(app.getHttpServer())
-      .post('/users')
+      .post('/users?role=USER')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ email: 'other@example.com', password: 'password!2026' })
+      .send({
+        email: 'other@example.com',
+        password: 'password!2026',
+        cliente: {
+          name: 'Ana',
+          lastName: 'Pérez',
+          domicilios: [{ direccion: 'San Martín 123' }],
+        },
+      })
       .expect(403);
     await request(app.getHttpServer())
       .delete(`/users/${userId}`)
@@ -193,10 +276,7 @@ describe('User CRUD (HTTP)', () => {
       where: { id: userId },
       data: {
         cliente: {
-          upsert: {
-            create: { ...cliente, domicilios: { create: [] } },
-            update: cliente,
-          },
+          update: cliente,
         },
       },
       select: publicUserSelect,
@@ -204,17 +284,25 @@ describe('User CRUD (HTTP)', () => {
     await request(app.getHttpServer())
       .patch(endpoint)
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ cliente: { ...cliente, domicilios: [] } })
+      .send({
+        cliente: { ...cliente, domicilios: [{ direccion: 'Belgrano 456' }] },
+      })
       .expect(200);
     expect(db.user.update).toHaveBeenLastCalledWith(
       expect.objectContaining({
         data: {
           cliente: {
             upsert: {
-              create: { ...cliente, domicilios: { create: [] } },
+              create: {
+                ...cliente,
+                domicilios: { create: [{ direccion: 'Belgrano 456' }] },
+              },
               update: {
                 ...cliente,
-                domicilios: { deleteMany: {}, create: [] },
+                domicilios: {
+                  deleteMany: {},
+                  create: [{ direccion: 'Belgrano 456' }],
+                },
               },
             },
           },
@@ -235,6 +323,39 @@ describe('User CRUD (HTTP)', () => {
       .expect(404);
   });
 
+  it.each([null, { name: 'Ana', lastName: 'Pérez', domicilios: [] }])(
+    'requires an address before updating an incomplete account: %j',
+    async (cliente) => {
+      db.user.findUnique.mockResolvedValue({ ...user, cliente });
+      for (const body of [
+        { email: 'new@example.com' },
+        { cliente: { name: 'Ana', lastName: 'Pérez' } },
+      ]) {
+        const response = await request(app.getHttpServer())
+          .patch(`/users/${userId}`)
+          .set('Authorization', `Bearer ${userToken}`)
+          .send(body)
+          .expect(400);
+        expect((response.body as { message: string }).message).toBe(
+          'Completá al menos un domicilio para guardar tus datos',
+        );
+      }
+      expect(db.user.update).not.toHaveBeenCalled();
+      await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          cliente: {
+            name: 'Ana',
+            lastName: 'Pérez',
+            domicilios: [{ direccion: 'San Martín 123' }],
+          },
+        })
+        .expect(200);
+      expect(db.user.update).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it.each([
     { email: null },
     { password: 'short' },
@@ -243,6 +364,8 @@ describe('User CRUD (HTTP)', () => {
     { role: 'invalid' },
     { role: null },
     { cliente: null },
+    { cliente: [] },
+    { cliente: { name: 'Ana', lastName: 'Pérez', domicilios: [] } },
     { cliente: {} },
     { cliente: { name: ' ', lastName: 'Pérez' } },
     {

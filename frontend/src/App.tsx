@@ -5,6 +5,7 @@ import { HoyPage } from './pages/HoyPage';
 import { CalendarioPage } from './pages/CalendarioPage';
 import { PuntosLimpiosPage } from './pages/PuntosLimpiosPage';
 import { PerfilPage } from './pages/PerfilPage';
+import ProfileGate from './components/ProfileGate';
 import './App.css';
 
 function App() {
@@ -15,14 +16,16 @@ function App() {
 
       {/* Contenido principal según la ruta */}
       <main className="app-main">
-        <Routes>
-          <Route path="/" element={<Navigate to="/puntos-limpios" replace />} />
-          <Route path="/hoy" element={<HoyPage />} />
-          <Route path="/calendario" element={<CalendarioPage />} />
-          <Route path="/puntos-limpios" element={<PuntosLimpiosPage />} />
-          <Route path="/perfil" element={<PerfilPage />} />
-          <Route path="*" element={<Navigate to="/hoy" replace />} />
-        </Routes>
+        <ProfileGate>
+          <Routes>
+            <Route path="/" element={<Navigate to="/puntos-limpios" replace />} />
+            <Route path="/hoy" element={<HoyPage />} />
+            <Route path="/calendario" element={<CalendarioPage />} />
+            <Route path="/puntos-limpios" element={<PuntosLimpiosPage />} />
+            <Route path="/perfil" element={<PerfilPage />} />
+            <Route path="*" element={<Navigate to="/hoy" replace />} />
+          </Routes>
+        </ProfileGate>
       </main>
 
       {/* Barra de navegación inferior */}

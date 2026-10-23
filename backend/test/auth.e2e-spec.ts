@@ -17,6 +17,7 @@ describe('Email/password authentication (HTTP)', () => {
     email: ' ANA@Example.com ',
     name: 'Ana María',
     lastName: 'Pérez',
+    domicilios: [{ direccion: ' San Martín 123 ' }],
     password: ' pass!word á ',
     repeatedPassword: ' pass!word á ',
   };
@@ -33,7 +34,13 @@ describe('Email/password authentication (HTTP)', () => {
             data: {
               email: string;
               passwordHash: string;
-              cliente: { create: { name: string; lastName: string } };
+              cliente: {
+                create: {
+                  name: string;
+                  lastName: string;
+                  domicilios: { create: { direccion: string }[] };
+                };
+              };
             };
           }) => {
             if (users.has(data.email))
@@ -49,7 +56,11 @@ describe('Email/password authentication (HTTP)', () => {
                 id: 'cliente-1',
                 userId: 'user-1',
                 ...data.cliente.create,
-                domicilios: [],
+                domicilios: data.cliente.create.domicilios.create.map((d) => ({
+                  id: 'domicilio-1',
+                  clienteId: 'cliente-1',
+                  ...d,
+                })),
               },
             };
             users.set(user.email, user);
@@ -61,7 +72,9 @@ describe('Email/password authentication (HTTP)', () => {
                 id: user.cliente!.id,
                 name: user.cliente!.name,
                 lastName: user.cliente!.lastName,
-                domicilios: [],
+                domicilios: user.cliente!.domicilios.map(
+                  ({ id, direccion }) => ({ id, direccion }),
+                ),
               },
             };
           },
@@ -74,7 +87,9 @@ describe('Email/password authentication (HTTP)', () => {
                 id: user.cliente!.id,
                 name: user.cliente!.name,
                 lastName: user.cliente!.lastName,
-                domicilios: [],
+                domicilios: user.cliente!.domicilios.map(
+                  ({ id, direccion }) => ({ id, direccion }),
+                ),
               },
             })),
           findUnique: ({
@@ -97,7 +112,9 @@ describe('Email/password authentication (HTTP)', () => {
                 id: user.cliente!.id,
                 name: user.cliente!.name,
                 lastName: user.cliente!.lastName,
-                domicilios: [],
+                domicilios: user.cliente!.domicilios.map(
+                  ({ id, direccion }) => ({ id, direccion }),
+                ),
               },
               ...(select.passwordHash
                 ? { passwordHash: user.passwordHash }
@@ -145,7 +162,7 @@ describe('Email/password authentication (HTTP)', () => {
         id: 'cliente-1',
         name: 'Ana María',
         lastName: 'Pérez',
-        domicilios: [],
+        domicilios: [{ id: 'domicilio-1', direccion: 'San Martín 123' }],
       },
     });
     const cookie = String(registered.headers['set-cookie']);
@@ -222,6 +239,19 @@ describe('Email/password authentication (HTTP)', () => {
   it.each([
     { email: 123 },
     { email: 'invalid' },
+    { domicilios: undefined },
+    { domicilios: null },
+    { domicilios: [] },
+    { domicilios: [[]] },
+    { domicilios: [null] },
+    { domicilios: ['invalid'] },
+    { domicilios: [{ direccion: ' ' }] },
+    { domicilios: [{ direccion: 'x'.repeat(201) }] },
+    {
+      domicilios: Array.from({ length: 21 }, () => ({
+        direccion: 'San Martín 123',
+      })),
+    },
     { name: 123 },
     { name: ' ' },
     { password: 'short' },

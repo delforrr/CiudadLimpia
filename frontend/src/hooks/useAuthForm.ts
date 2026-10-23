@@ -2,6 +2,7 @@ import { useState, type SubmitEvent } from 'react'
 import { authService, type User } from '../services/authService'
 import { z } from 'zod'
 import { authSchema } from '../schemas/authSchema'
+import { registerSchema } from '../schemas/registerSchema'
 
 export function useAuthForm(onAuthenticated: (user: User) => void) {
   const [form, setForm] = useState({
@@ -10,6 +11,7 @@ export function useAuthForm(onAuthenticated: (user: User) => void) {
     name: '',
     lastName: '',
     repeatedPassword: '',
+    direccion: '',
     rememberMe: false,
   })
   const [register, setRegister] = useState(false)
@@ -17,8 +19,10 @@ export function useAuthForm(onAuthenticated: (user: User) => void) {
   const [pending, setPending] = useState(false)
   const [emailTouched, setEmailTouched] = useState(false)
   const [passwordTouched, setPasswordTouched] = useState(false)
-  const validation = authSchema.safeParse(form)
-  const fieldErrors = validation.success ? {} : z.flattenError(validation.error).fieldErrors
+  const [submitted, setSubmitted] = useState(false)
+  const registration = register ? registerSchema.safeParse(form) : null
+  const validation = registration ?? authSchema.safeParse(form)
+  const fieldErrors: Partial<Record<keyof typeof form, string[]>> = validation.success ? {} : z.flattenError(validation.error).fieldErrors
   const emailError = emailTouched ? fieldErrors.email?.[0] ?? '' : ''
   const passwordError = passwordTouched ? fieldErrors.password?.[0] ?? '' : ''
   const validateEmail = () => setEmailTouched(true)
@@ -36,6 +40,7 @@ export function useAuthForm(onAuthenticated: (user: User) => void) {
     setError('')
     setEmailTouched(false)
     setPasswordTouched(false)
+    setSubmitted(false)
     setForm((previous) => ({ ...previous, password: '', repeatedPassword: '' }))
   }
 
@@ -45,22 +50,19 @@ export function useAuthForm(onAuthenticated: (user: User) => void) {
     setError('')
     setEmailTouched(true)
     setPasswordTouched(true)
+    setSubmitted(true)
     if (!validation.success) return
-    if (register && form.password !== form.repeatedPassword) {
-      setError('Las contraseñas no coinciden')
-      return
-    }
     setPending(true)
     try {
       const { email, password, rememberMe } = validation.data
-      const { name, lastName, repeatedPassword } = form
-      const user = register
+      const user = registration?.success
         ? await authService.register({
             email,
             password,
-            name,
-            lastName,
-            repeatedPassword,
+            name: registration.data.name,
+            lastName: registration.data.lastName,
+            repeatedPassword: registration.data.repeatedPassword,
+            domicilios: registration.data.direccion,
           })
         : await authService.login({ email, password, rememberMe })
       onAuthenticated(user)
@@ -80,6 +82,7 @@ export function useAuthForm(onAuthenticated: (user: User) => void) {
     pending,
     emailError,
     passwordError,
+    fieldErrors: submitted ? fieldErrors : {},
     validateEmail,
     validatePassword,
     updateField,

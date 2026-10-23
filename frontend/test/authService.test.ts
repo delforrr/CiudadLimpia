@@ -33,6 +33,7 @@ test('uses each auth route with the expected credentials and body', async () => 
     lastName: user.cliente.lastName,
     password: login.password,
     repeatedPassword: login.password,
+    domicilios: [{ direccion: 'San Martín 123' }],
   }
   assert.deepEqual(await authService.register(register), user)
   assert.deepEqual(await authService.login(login), user)

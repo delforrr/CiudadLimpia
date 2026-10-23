@@ -22,6 +22,7 @@ export type RegisterCredentials = {
   name: string
   lastName: string
   repeatedPassword: string
+  domicilios: { direccion: string }[]
 }
 
 export const authService = {

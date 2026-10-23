@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import type { User } from '../services/authService'
 import { userService } from '../services/userService'
+import { z } from 'zod'
+import { profileSchema } from '../schemas/profileSchema'
 
 export function useProfileForm(
   user: User | null,
@@ -16,6 +18,7 @@ export function useProfileForm(
   const [mensajeExito, setMensajeExito] = useState(false)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string[]>>>({})
 
   const updateField = (field: keyof typeof form, value: string) => {
     setForm((previous) => ({ ...previous, [field]: value }))
@@ -34,24 +37,25 @@ export function useProfileForm(
     setEditando(true)
     setMensajeExito(false)
     setError('')
+    setFieldErrors({})
   }
 
   const guardar = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!user || pending) return
     setError('')
+    const validation = profileSchema.safeParse(form)
+    setFieldErrors(validation.success ? {} : z.flattenError(validation.error).fieldErrors)
+    if (!validation.success) return
+    const { email, name, lastName, direccion: domicilios } = validation.data
     setPending(true)
     try {
       const updated = await userService.updateProfile(user.id, {
-        email: form.email,
+        email,
         cliente: {
-          name: form.name,
-          lastName: form.lastName,
-          domicilios: form.direccion
-            .split('\n')
-            .map((direccion) => direccion.trim())
-            .filter(Boolean)
-            .map((direccion) => ({ direccion })),
+          name,
+          lastName,
+          domicilios,
         },
       })
       onUpdated(updated)
@@ -75,6 +79,7 @@ export function useProfileForm(
     mensajeExito,
     error,
     pending,
+    fieldErrors,
     iniciarEdicion,
     guardar,
     cancelar: () => setEditando(false),

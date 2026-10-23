@@ -53,7 +53,7 @@ La configuración local usa `NODE_ENV=development` para permitir la cookie de se
 
 ## Autenticación
 
-- `POST /auth/register`: `{ email, name, lastName, password, repeatedPassword }`. Crea la cuenta e inicia sesión.
+- `POST /auth/register`: `{ email, name, lastName, domicilios: [{ direccion }], password, repeatedPassword }`. Crea la cuenta e inicia sesión.
 - `POST /auth/login`: `{ email, password, rememberMe? }`.
 - `GET /auth/all`: listado de usuarios, exclusivo para cuentas con rol `ADMIN`; devuelve 403 para `USER`.
 - `GET /auth/me`: usuario autenticado, sin hash ni token; devuelve 401 si la sesión venció.
@@ -73,21 +73,25 @@ Registro y login permiten diez intentos por IP cada quince minutos. El contador 
 
 La migración `20261023000000_separate_cliente` copia los nombres y apellidos existentes a `Cliente` antes de quitarlos de `User`, en una transacción. Conserva IDs de cuentas, emails, hashes y roles; no inventa domicilios. Los domicilios que la pantalla antigua guardaba en localStorage no están en PostgreSQL y deben ingresarse nuevamente.
 
-Las respuestas de autenticación y usuarios ahora tienen `{ id, email, role, cliente }`; `cliente` puede ser `null` o `{ id, name, lastName, domicilios: [{ id, direccion }] }`. Los consumidores anteriores deben leer los nombres dentro de `cliente`. La entrada de `POST /auth/register` conserva su formato anterior.
+Las respuestas de autenticación y usuarios ahora tienen `{ id, email, role, cliente }`; `cliente` puede ser `null` o `{ id, name, lastName, domicilios: [{ id, direccion }] }`. Los consumidores anteriores deben leer los nombres dentro de `cliente`. El registro requiere ahora `domicilios: [{ direccion }]`, con al menos una dirección.
 
 | Endpoint | Permiso | Comportamiento |
 | --- | --- | --- |
-| `POST /users` | ADMIN | Crea cuenta; cliente opcional |
+| `POST /users?role=USER` | ADMIN | Crea cuenta con cliente y al menos un domicilio; también acepta `role=ADMIN` |
 | `GET /users` | ADMIN | Lista cuentas con su cliente y domicilios |
 | `GET /users/:id` | Titular o ADMIN | Consulta una cuenta |
 | `PATCH /users/:id` | Titular o ADMIN | Actualiza cuenta y cliente juntos |
 | `DELETE /users/:id` | ADMIN | Elimina cuenta, cliente y domicilios |
 
-`POST /users` recibe `email`, `password`, `role?` y `cliente?`. `PATCH` acepta esos campos de forma opcional; solo ADMIN puede enviar `role`. Al enviar `cliente`, se requieren `name` y `lastName`; omitir `domicilios` conserva la lista y enviar el array la reemplaza de forma atómica (se generan nuevos IDs). Un array vacío elimina los domicilios. Se permiten hasta 20 direcciones de hasta 200 caracteres. No hay asignación de un domicilio principal.
+`POST /users?role=USER` recibe `email`, `password` y `cliente: { name, lastName, domicilios: [{ direccion }] }`. El query param `role` es obligatorio (`USER` o `ADMIN`), y no se acepta en el cuerpo del POST. El registro público siempre crea `USER` y no acepta roles.
+
+`PATCH` acepta `email`, `password`, `role` y `cliente` de forma opcional; solo ADMIN puede enviar `role`. Al enviar `cliente`, se requieren `name` y `lastName`; omitir `domicilios` conserva la lista de un cliente existente y enviar el array la reemplaza de forma atómica (se generan nuevos IDs). Tanto el alta como el reemplazo requieren entre 1 y 20 direcciones de hasta 200 caracteres, sin espacios vacíos. No se puede vaciar la lista. Para asociar un cliente a una cuenta antigua, enviar también sus domicilios.
+
+Esta obligación se valida en la API. Las cuentas antiguas sin domicilios pueden iniciar sesión y consultar su perfil, pero la interfaz las redirige a `/perfil` hasta que completen una dirección. La API rechaza con 400 cualquier actualización de una cuenta sin domicilios que no incluya los datos necesarios para completarlos; no se inventan direcciones ni se modifica el esquema de PostgreSQL. No hay asignación de un domicilio principal.
 
 Los identificadores de `/users/:id` son UUID. Las escrituras requieren `Content-Type: application/json`, incluso DELETE sin cuerpo. Los errores son 400 (validación), 401 (sesión ausente o usuario eliminado), 403 (sin permisos), 404 (cuenta inexistente) y 409 (email duplicado). `/auth/all` permanece disponible para ADMIN. Los hashes nunca se incluyen en las respuestas. Cambiar la contraseña no revoca JWT emitidos: siguen válidos hasta vencer.
 
-El perfil guarda los cambios en la API y permite editar domicilios, uno por línea, con controles MUI. La lógica vive en `useProfileForm`. No se agregan pantallas de administración ni endpoints independientes para clientes o domicilios.
+El registro y el perfil usan controles MUI y validación por campo. Los domicilios se ingresan uno por línea; se validan nombres, email y los límites de las direcciones antes de guardar. La lógica vive en `useAuthForm` y `useProfileForm`. No se agregan pantallas de administración ni endpoints independientes para clientes o domicilios.
 
 ## Swagger
 

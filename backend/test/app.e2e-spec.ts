@@ -69,6 +69,19 @@ describe('AppController (e2e)', () => {
       'patch',
     ]);
     expect(document.paths['/users'].post?.responses).toHaveProperty('201');
+    expect(document.paths['/users'].post?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'role', in: 'query', required: true }),
+      ]),
+    );
+    expect(document.components?.schemas?.CreateUserDto).toHaveProperty(
+      'required',
+      expect.arrayContaining(['cliente']),
+    );
+    expect(document.components?.schemas?.SigninRequestDto).toHaveProperty(
+      'required',
+      expect.arrayContaining(['domicilios']),
+    );
     expect(document.paths['/users/{id}'].delete?.responses).toHaveProperty(
       '204',
     );

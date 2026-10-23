@@ -1,4 +1,4 @@
-import { Alert, Button, TextField } from '@mui/material';
+import { Alert, Button, Checkbox, FormControlLabel, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAuthForm } from '../hooks/useAuthForm';
@@ -9,14 +9,14 @@ import './Login.css';
 export default function Login() {
   const { isAuthenticated, user, onAuthenticated, checking, logout, logoutError, loggingOut } = useAuthContext();
   const navigate = useNavigate();
-  const { form, updateField, handleSubmit, error, pending, emailError, passwordError, validateEmail, validatePassword } = useAuthForm((authenticatedUser) => {
+  const { form, register, toggleMode, updateField, handleSubmit, error, pending, emailError, passwordError, fieldErrors, validateEmail, validatePassword } = useAuthForm((authenticatedUser) => {
     onAuthenticated(authenticatedUser);
     navigate('/hoy');
   });
 
   const {
     editando, form: profile, updateField: updateProfileField, mensajeExito,
-    error: profileError, pending: savingProfile,
+    error: profileError, pending: savingProfile, fieldErrors: profileFieldErrors,
     iniciarEdicion: handleIniciarEdicion, guardar: handleGuardarCambios,
     cancelar: handleCancelarEdicion,
   } = useProfileForm(user, onAuthenticated);
@@ -25,6 +25,7 @@ export default function Login() {
 
   // Si ya tiene sesión iniciada, mostrar su perfil o formulario de edición
   if (isAuthenticated) {
+    const needsAddress = !user?.cliente?.domicilios.length;
     const direccionActual = user?.cliente?.domicilios.map(({ direccion }) => direccion).join(' · ') || 'Sin domicilio registrado';
 
     return (
@@ -54,6 +55,10 @@ export default function Login() {
             </p>
           </header>
 
+          {needsAddress && (
+            <Alert severity="warning">Completá al menos un domicilio para continuar usando la aplicación.</Alert>
+          )}
+
           {mensajeExito && !editando && (
             <div className="perfil-alerta-exito" role="status">
               <svg
@@ -74,13 +79,18 @@ export default function Login() {
           )}
 
           {editando ? (
-            <form onSubmit={handleGuardarCambios} className="perfil-edit-form" aria-busy={savingProfile}>
+            <form onSubmit={handleGuardarCambios} className="perfil-edit-form" aria-busy={savingProfile} noValidate>
               {profileError && <Alert severity="error">{profileError}</Alert>}
               <div className="form-group">
                 <TextField
                   fullWidth
                   label="Nombre"
+                  autoComplete="given-name"
+                  slotProps={{ htmlInput: { maxLength: 100 } }}
                   id="perfil-nombre"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.name)}
+                  helperText={profileFieldErrors.name?.[0]}
                   type="text"
                   value={profile.name}
                   onChange={(e) => updateProfileField('name', e.target.value)}
@@ -93,7 +103,12 @@ export default function Login() {
                 <TextField
                   fullWidth
                   label="Apellido"
+                  autoComplete="family-name"
+                  slotProps={{ htmlInput: { maxLength: 100 } }}
                   id="perfil-apellido"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.lastName)}
+                  helperText={profileFieldErrors.lastName?.[0]}
                   type="text"
                   value={profile.lastName}
                   onChange={(e) => updateProfileField('lastName', e.target.value)}
@@ -107,9 +122,12 @@ export default function Login() {
                   fullWidth
                   label="Domicilios"
                   id="perfil-direccion"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.direccion)}
                   multiline
                   minRows={2}
-                  helperText="Una dirección por línea. Podés dejarlo vacío si no tenés domicilios."
+                  required
+                  helperText={profileFieldErrors.direccion?.[0] ?? "Una dirección por línea. Al menos una y hasta 20; máximo 200 caracteres por dirección."}
                   value={profile.direccion}
                   onChange={(e) => updateProfileField('direccion', e.target.value)}
                   placeholder="Calle y número · Barrio"
@@ -120,7 +138,12 @@ export default function Login() {
                 <TextField
                   fullWidth
                   label="Correo electrónico"
+                  autoComplete="email"
+                  slotProps={{ htmlInput: { maxLength: 254 } }}
                   id="perfil-email"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.email)}
+                  helperText={profileFieldErrors.email?.[0]}
                   type="email"
                   value={profile.email}
                   onChange={(e) => updateProfileField('email', e.target.value)}
@@ -244,7 +267,7 @@ export default function Login() {
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
-                  <span>Editar mis datos</span>
+                  <span>{needsAddress ? 'Completar mis datos' : 'Editar mis datos'}</span>
                 </Button>
 
                 {logoutError && <Alert severity="error">{logoutError}</Alert>}
@@ -286,74 +309,82 @@ export default function Login() {
       <div className="login-card">
         <header className="login-header">
           <div className="login-title-row">
-            <h2>Iniciar Sesión</h2>
+            <h2>{register ? 'Crear cuenta' : 'Iniciar Sesión'}</h2>
             <img
               src={camionRecolector}
               alt="Camión recolector"
               className="login-truck-icon"
             />
           </div>
-          <p>Ingresá tus credenciales para ver el recolector en tu cuadra</p>
+          <p>{register ? 'Completá tus datos y al menos un domicilio' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
         </header>
 
         <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
           {error && <Alert severity="error">{error}</Alert>}
-          <div className="form-group">
-            <label htmlFor="email">Correo electrónico</label>
-            <input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => updateField('email', e.target.value)}
-              onBlur={validateEmail}
-              placeholder="martin@correo.com"
-              autoComplete="email"
-              required
-              className={emailError ? 'input-error' : ''}
-            />
-            {emailError && <span className="field-error-text">{emailError}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Contraseña</label>
-            <input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={(e) => updateField('password', e.target.value)}
-              onBlur={validatePassword}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-              className={passwordError ? 'input-error' : ''}
-            />
-            {passwordError && <span className="field-error-text">{passwordError}</span>}
-          </div>
-
-          <div className="form-options">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={form.rememberMe}
-                onChange={(e) => updateField('rememberMe', e.target.checked)}
+          {register && (
+            <>
+              <TextField
+                label="Nombre" autoComplete="given-name" required fullWidth
+                value={form.name} disabled={pending}
+                onChange={(e) => updateField('name', e.target.value)}
+                error={Boolean(fieldErrors.name)} helperText={fieldErrors.name?.[0]}
+                slotProps={{ htmlInput: { maxLength: 100 } }}
               />
-              Recordarme
-            </label>
-            <a href="#recuperar" className="login-link">
-              ¿Olvidaste tu contraseña?
-            </a>
-          </div>
+              <TextField
+                label="Apellido" autoComplete="family-name" required fullWidth
+                value={form.lastName} disabled={pending}
+                onChange={(e) => updateField('lastName', e.target.value)}
+                error={Boolean(fieldErrors.lastName)} helperText={fieldErrors.lastName?.[0]}
+                slotProps={{ htmlInput: { maxLength: 100 } }}
+              />
+              <TextField
+                label="Domicilios" required fullWidth multiline minRows={2}
+                placeholder="San Martín 123" value={form.direccion} disabled={pending}
+                onChange={(e) => updateField('direccion', e.target.value)}
+                error={Boolean(fieldErrors.direccion)}
+                helperText={fieldErrors.direccion?.[0] ?? 'Una dirección por línea. Entre 1 y 20; hasta 200 caracteres cada una.'}
+              />
+            </>
+          )}
+          <TextField
+            id="email" label="Correo electrónico" type="email" autoComplete="email"
+            required fullWidth value={form.email} disabled={pending}
+            onChange={(e) => updateField('email', e.target.value)} onBlur={validateEmail}
+            error={Boolean(emailError)} helperText={emailError}
+            slotProps={{ htmlInput: { maxLength: 254 } }}
+          />
+          <TextField
+            id="password" label="Contraseña" type="password"
+            autoComplete={register ? 'new-password' : 'current-password'}
+            required fullWidth value={form.password} disabled={pending}
+            onChange={(e) => updateField('password', e.target.value)} onBlur={validatePassword}
+            error={Boolean(passwordError)}
+            helperText={passwordError || (register ? 'Al menos 8 caracteres; hasta 72 bytes.' : '')}
+          />
+          {register ? (
+            <TextField
+              label="Repetir contraseña" type="password" autoComplete="new-password"
+              required fullWidth value={form.repeatedPassword} disabled={pending}
+              onChange={(e) => updateField('repeatedPassword', e.target.value)}
+              error={Boolean(fieldErrors.repeatedPassword)} helperText={fieldErrors.repeatedPassword?.[0]}
+            />
+          ) : (
+            <FormControlLabel label="Recordarme" control={
+              <Checkbox checked={form.rememberMe} disabled={pending}
+                onChange={(e) => updateField('rememberMe', e.target.checked)} />
+            } />
+          )}
 
           <Button type="submit" className="login-button" disabled={pending}>
-            {pending ? 'Procesando…' : 'Ingresar'}
+            {pending ? 'Procesando…' : register ? 'Crear cuenta' : 'Ingresar'}
           </Button>
         </form>
 
         <footer className="login-footer">
-          <span>¿No tienes una cuenta? </span>
-          <a href="#registro" className="login-link">
-            Regístrate
-          </a>
+          <span>{register ? '¿Ya tenés cuenta? ' : '¿No tenés cuenta? '}</span>
+          <Button type="button" onClick={toggleMode} disabled={pending}>
+            {register ? 'Iniciar sesión' : 'Registrate'}
+          </Button>
         </footer>
       </div>
     </div>

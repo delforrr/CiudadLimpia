@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -10,6 +11,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { publicUserSelect } from './user.select';
+import { Role } from '../generated/prisma/enums';
+import type { Prisma } from '../generated/prisma/client';
 
 @Injectable()
 export class UserService {
@@ -29,26 +32,22 @@ export class UserService {
       throw new ForbiddenException('No tenés permiso para esta operación');
   }
 
-  async create(requesterId: string, dto: CreateUserDto) {
+  async create(requesterId: string, dto: CreateUserDto, role: Role) {
     await this.authorize(requesterId, undefined, true);
     const { password, cliente, ...account } = dto;
-    const domicilios = cliente?.domicilios;
     try {
       return await this.prisma.user.create({
         data: {
           ...account,
+          role,
           passwordHash: await bcrypt.hash(password, 12),
-          ...(cliente
-            ? {
-                cliente: {
-                  create: {
-                    name: cliente.name,
-                    lastName: cliente.lastName,
-                    domicilios: { create: domicilios ?? [] },
-                  },
-                },
-              }
-            : {}),
+          cliente: {
+            create: {
+              name: cliente.name,
+              lastName: cliente.lastName,
+              domicilios: { create: cliente.domicilios },
+            },
+          },
         },
         select: publicUserSelect,
       });
@@ -79,35 +78,46 @@ export class UserService {
     await this.authorize(requesterId, id, dto.role !== undefined);
     const { password, cliente, ...account } = dto;
     const domicilios = cliente?.domicilios;
+    if (domicilios === undefined) {
+      const current = await this.prisma.user.findUnique({
+        where: { id },
+        select: {
+          cliente: {
+            select: { domicilios: { take: 1, select: { id: true } } },
+          },
+        },
+      });
+      if (!current) throw new NotFoundException('Usuario no encontrado');
+      if (!current.cliente?.domicilios.length) {
+        throw new BadRequestException(
+          'Completá al menos un domicilio para guardar tus datos',
+        );
+      }
+    }
     try {
+      const data: Prisma.UserUpdateInput = { ...account };
+      if (password !== undefined) {
+        data.passwordHash = await bcrypt.hash(password, 12);
+      }
+      if (cliente) {
+        const profile = { name: cliente.name, lastName: cliente.lastName };
+        if (domicilios === undefined) {
+          data.cliente = { update: profile };
+        } else {
+          data.cliente = {
+            upsert: {
+              create: { ...profile, domicilios: { create: domicilios } },
+              update: {
+                ...profile,
+                domicilios: { deleteMany: {}, create: domicilios },
+              },
+            },
+          };
+        }
+      }
       return await this.prisma.user.update({
         where: { id },
-        data: {
-          ...account,
-          ...(password !== undefined
-            ? { passwordHash: await bcrypt.hash(password, 12) }
-            : {}),
-          ...(cliente
-            ? {
-                cliente: {
-                  upsert: {
-                    create: {
-                      name: cliente.name,
-                      lastName: cliente.lastName,
-                      domicilios: { create: domicilios ?? [] },
-                    },
-                    update: {
-                      name: cliente.name,
-                      lastName: cliente.lastName,
-                      ...(domicilios !== undefined
-                        ? { domicilios: { deleteMany: {}, create: domicilios } }
-                        : {}),
-                    },
-                  },
-                },
-              }
-            : {}),
-        },
+        data,
         select: publicUserSelect,
       });
     } catch (error: unknown) {
