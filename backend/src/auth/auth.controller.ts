@@ -132,7 +132,7 @@ export class AuthController {
   @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
   @UseGuards(AuthGuard)
   all(@Req() request: AuthRequest): Promise<UserResponseDto[]> {
-    return this.auth.getAllUsers(request.userId);
+    return this.auth.getAllUsers(request.user.id);
   }
 
   @Get('me')
@@ -150,7 +150,7 @@ export class AuthController {
   })
   @UseGuards(AuthGuard)
   me(@Req() request: AuthRequest): Promise<UserResponseDto> {
-    return this.auth.getUser(request.userId);
+    return this.auth.getUser(request.user.id);
   }
 
   @Post('logout')

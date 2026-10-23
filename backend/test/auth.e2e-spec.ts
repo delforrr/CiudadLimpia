@@ -6,6 +6,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { AuthService } from '../src/auth/auth.service';
 
 describe('Email/password authentication (HTTP)', () => {
   let app: INestApplication<App>;
@@ -285,6 +286,71 @@ describe('Email/password authentication (HTTP)', () => {
       .get('/auth/me')
       .set('Authorization', `Bearer ${deleted}`)
       .expect(401);
+  });
+
+  it('accepts the Bearer scheme without depending on its case', async () => {
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    const token = app.get(JwtService).sign({ sub: 'user-1' });
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `bearer ${token}`)
+      .expect(200)
+      .expect(registered.body);
+  });
+
+  it('gives Bearer credentials priority over the session cookie', async () => {
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    const cookie = String(registered.headers['set-cookie']).split(';')[0];
+    const token = app.get(JwtService).sign({ sub: 'user-1' });
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', 'other=value; session=invalid')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect(registered.body);
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', cookie)
+      .set('Authorization', 'Bearer invalid')
+      .expect(401);
+  });
+
+  it.each([{}, { sub: '' }, { sub: 123 }, { sub: null }])(
+    'rejects a signed token without a valid subject: %j',
+    async (payload) => {
+      const getUser = jest.spyOn(app.get(AuthService), 'getUser');
+      const token = app.get(JwtService).sign(payload);
+      await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(401);
+      expect(getUser).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects tokens signed with another secret or algorithm', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    const tokens = [
+      new JwtService({ secret: 'another-test-only-secret' }).sign({
+        sub: 'user-1',
+      }),
+      app.get(JwtService).sign({ sub: 'user-1' }, { algorithm: 'HS384' }),
+    ];
+    for (const token of tokens) {
+      await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(401);
+    }
   });
 
   it('rejects cross-site forms and rate limits repeated attempts', async () => {

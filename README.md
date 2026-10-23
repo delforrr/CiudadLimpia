@@ -65,6 +65,8 @@ Los POST requieren `Content-Type: application/json`. El email se normaliza a min
 
 El JWT se guarda en una cookie HttpOnly y SameSite=Strict. Dura una hora; con Recordarme dura siete días y la cookie persiste. El guard también acepta `Authorization: Bearer <JWT>` para clientes API. El logout elimina la cookie; un JWT copiado previamente sigue válido hasta vencer. No se implementaron refresh tokens ni recuperación de contraseña.
 
+La verificación usa `passport-jwt` mediante `JwtStrategy` y el guard de `@nestjs/passport`. Solo acepta HS256 y comprueba la firma, el vencimiento y un `sub` no vacío. Si se envían ambos mecanismos, Bearer tiene prioridad sobre la cookie. El usuario identificado queda en `request.user`; los servicios consultan la cuenta y su rol actual en PostgreSQL antes de autorizar la operación.
+
 Registro y login permiten diez intentos por IP cada quince minutos. El contador es local al proceso: usar un limitador compartido con múltiples réplicas y configurar la IP real en el proxy antes de desplegar.
 
 ## Cuentas, clientes y domicilios

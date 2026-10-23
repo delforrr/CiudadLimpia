@@ -67,14 +67,14 @@ export class UserController {
     @Body() dto: CreateUserDto,
     @Query('role', new ParseEnumPipe(Role)) role: Role,
   ) {
-    return this.users.create(request.userId, dto, role);
+    return this.users.create(request.user.id, dto, role);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar usuarios (ADMIN)' })
   @ApiOkResponse({ type: UserResponseDto, isArray: true })
   findAll(@Req() request: AuthRequest) {
-    return this.users.findAll(request.userId);
+    return this.users.findAll(request.user.id);
   }
 
   @Get(':id')
@@ -83,7 +83,7 @@ export class UserController {
   @ApiBadRequestResponse({ description: 'Identificador inválido.' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.' })
   findOne(@Req() request: AuthRequest, @Param('id', ParseUUIDPipe) id: string) {
-    return this.users.findOne(request.userId, id);
+    return this.users.findOne(request.user.id, id);
   }
 
   @Patch(':id')
@@ -105,7 +105,7 @@ export class UserController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
   ) {
-    return this.users.update(request.userId, id, dto);
+    return this.users.update(request.user.id, id, dto);
   }
 
   @Delete(':id')
@@ -126,6 +126,6 @@ export class UserController {
     @Req() request: AuthRequest,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    await this.users.remove(request.userId, id);
+    await this.users.remove(request.user.id, id);
   }
 }
