@@ -8,8 +8,7 @@ export default defineConfig({
     host: true,
     port: 5173,
     proxy: {
-      "/auth": "http://localhost:3000",
-      "/users": "http://localhost:3000",
+      "^/(auth|users)([/?]|$)": "http://localhost:3000",
     },
   },
 });
