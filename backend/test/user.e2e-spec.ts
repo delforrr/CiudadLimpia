@@ -323,6 +323,28 @@ describe('User CRUD (HTTP)', () => {
       .expect(404);
   });
 
+  it('hashes an updated password without changing the profile or exposing the hash', async () => {
+    const password = ' nueva contraseña!2026 ';
+    await request(app.getHttpServer())
+      .patch(`/users/${userId}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ password })
+      .expect(200)
+      .expect(user);
+    const calls = db.user.update.mock.calls as [
+      { data: { passwordHash: string } },
+    ][];
+    const hash = calls[0][0].data.passwordHash;
+    expect(bcrypt.getRounds(hash)).toBe(12);
+    expect(await bcrypt.compare(password, hash)).toBe(true);
+    expect(await bcrypt.compare(password.trim(), hash)).toBe(false);
+    expect(db.user.update).toHaveBeenCalledWith({
+      where: { id: userId },
+      data: { passwordHash: hash },
+      select: publicUserSelect,
+    });
+  });
+
   it.each([null, { name: 'Ana', lastName: 'Pérez', domicilios: [] }])(
     'requires an address before updating an incomplete account: %j',
     async (cliente) => {
