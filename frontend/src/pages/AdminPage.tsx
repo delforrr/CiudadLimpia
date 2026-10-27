@@ -7,7 +7,30 @@ import iconoCiudadLimpia from '../assets/icono-ciudad-limpia.png';
 import { useAuthContext } from '../hooks/useAuthContext';
 import './AdminPage.css';
 
-type AdminTab = 'dashboard' | 'puntos' | 'recoleccion' | 'usuarios';
+type AdminTab = 'dashboard' | 'puntos' | 'recoleccion' | 'choferes' | 'usuarios';
+
+const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
+  dashboard: {
+    titulo: 'Panel de Control',
+    descripcion: 'Municipalidad de Trenque Lauquen',
+  },
+  puntos: {
+    titulo: 'Puntos Limpios',
+    descripcion: 'Gestión y estado de estaciones de reciclaje',
+  },
+  recoleccion: {
+    titulo: 'Recolección',
+    descripcion: 'Cronograma y recorridos de camiones',
+  },
+  choferes: {
+    titulo: 'Choferes',
+    descripcion: 'Personal de recolección y asignación de unidades',
+  },
+  usuarios: {
+    titulo: 'Usuarios',
+    descripcion: 'Padrón de vecinos registrados en la plataforma',
+  },
+};
 
 export function AdminPage() {
   const { user } = useAuthContext();
@@ -17,6 +40,7 @@ export function AdminPage() {
     ? `${user.cliente.name} ${user.cliente.lastName}`
     : (user?.email ?? 'Administrador');
   const adminInitials = user?.cliente?.name ? user.cliente.name.charAt(0).toUpperCase() : 'A';
+  const seccionActual = SECCIONES[activeTab];
 
   return (
     <div className="admin-wrapper">
@@ -73,6 +97,17 @@ export function AdminPage() {
 
             <button
               type="button"
+              className={`admin-nav-item ${activeTab === 'choferes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('choferes')}
+            >
+              <span className="admin-nav-icon">
+                <span className="admin-nav-chofer-icon" aria-hidden="true" />
+              </span>
+              <span>Choferes</span>
+            </button>
+
+            <button
+              type="button"
               className={`admin-nav-item ${activeTab === 'usuarios' ? 'active' : ''}`}
               onClick={() => setActiveTab('usuarios')}
             >
@@ -98,8 +133,8 @@ export function AdminPage() {
       <main className="admin-main-content">
         <header className="admin-topbar">
           <div className="admin-topbar-title">
-            <h2>Panel de Control</h2>
-            <p>Municipalidad de Trenque Lauquen</p>
+            <h2>{seccionActual.titulo}</h2>
+            <p>{seccionActual.descripcion}</p>
           </div>
         </header>
 
@@ -115,7 +150,7 @@ export function AdminPage() {
                   e.currentTarget.src = '/icono-ciudad-limpia.png';
                 }}
               />
-              <h3>Panel de Administración</h3>
+              <h3>{seccionActual.titulo}</h3>
               <p>Esqueleto base listo para incorporar los módulos de gestión y control.</p>
             </div>
           </section>

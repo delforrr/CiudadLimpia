@@ -127,6 +127,15 @@
   color: inherit;
 }
 
+.admin-nav-chofer-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask: url('../assets/icono-chofer.png') no-repeat center / contain;
+  mask: url('../assets/icono-chofer.png') no-repeat center / contain;
+}
+
 /* Footer del Sidebar */
 .admin-sidebar-footer {
   padding: 1rem 1.25rem;
