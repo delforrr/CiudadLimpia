@@ -1,4 +1,18 @@
-export type User = { id: string; email: string; name: string; lastName: string }
+import { httpRequest } from './http.ts'
+
+export type Domicilio = { direccion: string; etiqueta?: string | null }
+
+export type User = {
+  id: string
+  email: string
+  role: 'USER' | 'ADMIN'
+  cliente: {
+    id: string
+    name: string
+    lastName: string
+    domicilios: (Domicilio & { id: string })[]
+  } | null
+}
 export type LoginCredentials = {
   email: string
   password: string
@@ -10,50 +24,20 @@ export type RegisterCredentials = {
   name: string
   lastName: string
   repeatedPassword: string
-}
-
-async function authRequest<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  let response: Response
-  try {
-    response = await fetch(`/auth/${path}`, {
-      ...options,
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', ...options.headers },
-    })
-  } catch {
-    throw new Error('No se pudo conectar con el servidor. Intentá nuevamente.')
-  }
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as {
-      message?: string | string[]
-    } | null
-    throw new Error(
-      body?.message
-        ? Array.isArray(body.message)
-          ? body.message.join('. ')
-          : body.message
-        : 'No se pudo completar la solicitud',
-    )
-  }
-  return response.status === 204
-    ? (undefined as T)
-    : (response.json() as Promise<T>)
+  domicilios: Domicilio[]
 }
 
 export const authService = {
   register: (credentials: RegisterCredentials) =>
-    authRequest<User>('register', {
+    httpRequest<User>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(credentials),
     }),
   login: (credentials: LoginCredentials) =>
-    authRequest<User>('login', {
+    httpRequest<User>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     }),
-  me: () => authRequest<User>('me'),
-  logout: () => authRequest<void>('logout', { method: 'POST' }),
+  me: () => httpRequest<User>('/auth/me'),
+  logout: () => httpRequest<void>('/auth/logout', { method: 'POST' }),
 }

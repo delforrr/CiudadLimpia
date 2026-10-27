@@ -62,7 +62,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab: propActiveTab, 
             propActiveTab !== undefined
               ? propActiveTab === tab.id
               : location.pathname === tab.path ||
-                (tab.path === '/hoy' && location.pathname === '/');
+                (tab.path === '/hoy' && location.pathname === '/') ||
+                (tab.path === '/perfil' && location.pathname === '/registro');
 
           const color = isActive ? '#68A245' : 'rgba(255, 255, 255, 0.65)';
 

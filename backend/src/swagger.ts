@@ -23,8 +23,8 @@ export function setupSwagger(app: INestApplication) {
         method: string;
         headers: Record<string, string>;
       }) => {
-        // Logout has no body, but the auth guard still requires this header.
-        if (request.method === 'POST')
+        // Bodyless mutations also require JSON headers in the endpoint guard.
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method))
           request.headers['Content-Type'] = 'application/json';
         return request;
       },

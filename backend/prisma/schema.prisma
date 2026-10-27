@@ -14,12 +14,36 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 model User {
   id           String @id @default(uuid())
   email        String @unique
-  name         String
-  lastName     String
+  role         Role   @default(USER)
   passwordHash String
+  cliente      Cliente?
+}
+
+model Cliente {
+  id         String      @id @default(uuid())
+  userId     String      @unique
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  lastName   String
+  domicilios Domicilio[]
+}
+
+model Domicilio {
+  id        String  @id @default(uuid())
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  direccion String
+  etiqueta  String? @db.VarChar(100)
+
+  @@index([clienteId])
 }
 
 enum TipoPuntoLimpio {

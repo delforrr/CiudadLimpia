@@ -12,11 +12,19 @@ describe('AuthService', () => {
   const user = {
     id: 'user-1',
     email: 'ana@example.com',
-    name: 'Ana',
-    lastName: 'Pérez',
+    role: 'USER' as const,
+    cliente: {
+      id: 'cliente-1',
+      name: 'Ana',
+      lastName: 'Pérez',
+      domicilios: [],
+    },
   };
   const dto = {
-    ...user,
+    email: user.email,
+    name: 'Ana',
+    lastName: 'Pérez',
+    domicilios: [{ direccion: 'San Martín 123' }],
     password: ' contraseña! ',
     repeatedPassword: ' contraseña! ',
   };
@@ -32,12 +40,7 @@ describe('AuthService', () => {
   });
 
   it('registers with bcrypt without exposing the hash', async () => {
-    db.user.create.mockImplementation(
-      ({ data }: { data: { passwordHash: string } }) => ({
-        ...user,
-        passwordHash: data.passwordHash,
-      }),
-    );
+    db.user.create.mockImplementation(() => user);
     const result = await service.register(dto);
     const hash = (
       db.user.create.mock.calls as [{ data: { passwordHash: string } }][]
@@ -59,21 +62,27 @@ describe('AuthService', () => {
     await expect(service.register(dto)).rejects.toThrow(ConflictException);
   });
 
-  it('accepts the correct password and issues an expiring JWT', async () => {
-    db.user.findUnique.mockResolvedValue({
-      ...user,
-      passwordHash: await bcrypt.hash(dto.password, 4),
-    });
-    expect(await service.login(dto)).toEqual(user);
-    const token = await service.createToken(user.id, false);
-    const payload = new JwtService({ secret: 'test-secret-only' }).verify<{
-      sub: string;
-      exp: number;
-      iat: number;
-    }>(token);
-    expect(payload.sub).toBe(user.id);
-    expect(payload.exp - payload.iat).toBe(3600);
-  });
+  it.each([
+    [false, 3600],
+    [true, 604800],
+  ])(
+    'accepts the password and expires the JWT with rememberMe=%s',
+    async (remember, duration) => {
+      db.user.findUnique.mockResolvedValue({
+        ...user,
+        passwordHash: await bcrypt.hash(dto.password, 4),
+      });
+      expect(await service.login(dto)).toEqual(user);
+      const token = await service.createToken(user.id, remember);
+      const payload = new JwtService({ secret: 'test-secret-only' }).verify<{
+        sub: string;
+        exp: number;
+        iat: number;
+      }>(token);
+      expect(payload.sub).toBe(user.id);
+      expect(payload.exp - payload.iat).toBe(duration);
+    },
+  );
 
   it('uses the same error for unknown emails and incorrect passwords', async () => {
     db.user.findUnique.mockResolvedValue(null);
