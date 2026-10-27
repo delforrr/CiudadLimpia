@@ -1,5 +1,21 @@
 import { z } from 'zod'
 
+export const nameSchema = z.string()
+  .trim()
+  .min(1, 'Ingresá tu nombre')
+  .max(100, 'El nombre no puede superar 100 caracteres')
+  .refine((val) => !val || /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(val), {
+    message: 'El nombre solo puede contener letras y espacios',
+  })
+
+export const lastNameSchema = z.string()
+  .trim()
+  .min(1, 'Ingresá tu apellido')
+  .max(100, 'El apellido no puede superar 100 caracteres')
+  .refine((val) => !val || /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(val), {
+    message: 'El apellido solo puede contener letras y espacios',
+  })
+
 export const emailSchema = z.string()
   .trim()
   .toLowerCase()
@@ -13,8 +29,22 @@ export const passwordSchema = z.string()
     message: 'La contraseña no puede superar 72 bytes',
   })
 
-export const authSchema = z.object({
+export const loginSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   rememberMe: z.boolean(),
 })
+
+export const authSchema = loginSchema
+
+export const registerSchema = z.object({
+  name: nameSchema,
+  lastName: lastNameSchema,
+  email: emailSchema,
+  password: passwordSchema,
+  repeatedPassword: z.string().min(1, 'Repetí tu contraseña'),
+}).refine((data) => data.password === data.repeatedPassword, {
+  message: 'Las contraseñas no coinciden',
+  path: ['repeatedPassword'],
+})
+

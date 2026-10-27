@@ -15,6 +15,10 @@
   padding-bottom: 84px; /* Espacio para que la barra inferior no tape el video */
 }
 
+.app-main:has(.login-container) {
+  padding-bottom: 70px;
+}
+
 /* Pantalla de Calendario */
 .calendario-container {
   width: 100%;

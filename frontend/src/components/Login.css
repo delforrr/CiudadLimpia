@@ -4,7 +4,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2.5rem 1.5rem;
+  padding: 1rem 1rem;
+  box-sizing: border-box;
 }
 
 /* Tarjeta de iniciar sesión */
@@ -14,15 +15,25 @@
   background-color: #ffffff;
   border: 1px solid #68A544;
   border-radius: 12px;
-  padding: 2.25rem 2rem;
+  padding: 1.5rem 1.75rem;
   box-sizing: border-box;
   box-shadow: 0 4px 16px rgba(104, 165, 68, 0.08);
 }
 
+/* Versión balanceada para registro (cómoda y sin scroll) */
+.login-card.register-card {
+  max-width: 390px;
+  padding: 1.25rem 1.65rem;
+}
+
 /* Encabezado */
 .login-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.15rem;
   text-align: center;
+}
+
+.login-card.register-card .login-header {
+  margin-bottom: 0.75rem;
 }
 
 .login-title-row {
@@ -30,34 +41,61 @@
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.login-card.register-card .login-title-row {
+  margin-bottom: 0.2rem;
 }
 
 .login-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.45rem;
   font-weight: 600;
   color: #1E6000;
 }
 
+.login-card.register-card .login-header h2 {
+  font-size: 1.35rem;
+}
+
 .login-truck-icon {
-  height: 32px;
+  height: 30px;
   width: auto;
   object-fit: contain;
   display: block;
 }
 
+.login-card.register-card .login-truck-icon {
+  height: 28px;
+}
+
 .login-header p {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: #666666;
+}
+
+.login-card.register-card .login-header p {
+  font-size: 0.82rem;
 }
 
 /* Formulario */
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.1rem;
+}
+
+.login-card.register-card .login-form {
+  gap: 0.75rem;
+}
+
+.login-card.register-card .MuiFormHelperText-root {
+  margin-top: 2px;
+  margin-bottom: 0;
+  font-size: 0.74rem;
+  line-height: 1.15;
 }
 
 .form-group {
@@ -73,95 +111,81 @@
   color: #222222;
 }
 
-.form-group input {
-  width: 100%;
-  padding: 0.625rem 0.75rem;
-  font-size: 0.875rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  box-sizing: border-box;
-  background-color: #ffffff;
-  color: #111111;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.form-group input:focus {
-  border-color: #68A544;
-  box-shadow: 0 0 0 3px rgba(104, 165, 68, 0.15);
-}
-
-.form-group input.input-error {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
-}
-
-.field-error-text {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: #dc2626;
-  margin-top: 0.25rem;
-  text-align: left;
-}
-
-/* Opciones: Recordarme y Olvidé contraseña */
-.form-options {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.8125rem;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: #444444;
-  cursor: pointer;
-  user-select: none;
-}
-
-.checkbox-label input[type="checkbox"] {
-  accent-color: #68A544;
-  cursor: pointer;
-}
-
-/* Botón de acción con color institucional #68A544 */
+/* Botón de acción con fondo verde claro (#68A544) */
+.login-button.MuiButton-root,
 .login-button {
   width: 100%;
   padding: 0.6875rem;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #ffffff;
-  background-color: #68A544;
+  text-transform: none;
+  color: #ffffff !important;
+  background-color: #68A544 !important;
   border: 1px solid #68A544;
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+.login-card.register-card .login-button.MuiButton-root,
+.login-card.register-card .login-button {
+  padding: 0.625rem;
+  font-size: 0.9rem;
+}
+
+.login-button.MuiButton-root:hover,
 .login-button:hover {
-  background-color: #1E6000;
-  border-color: #1E6000;
+  background-color: #558a36 !important;
+  border-color: #558a36;
 }
 
-/* Enlaces y pie */
-.login-link {
-  color: #1E6000;
-  text-decoration: underline;
-  font-size: 0.8125rem;
-  transition: color 0.15s ease;
+.login-button.Mui-disabled,
+.login-button:disabled {
+  background-color: #a3cc8e !important;
+  border-color: #a3cc8e;
+  color: #ffffff !important;
+  cursor: not-allowed;
 }
 
-.login-link:hover {
-  color: #68A544;
-}
-
+/* Pie */
 .login-footer {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   text-align: center;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: #666666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.login-card.register-card .login-footer {
+  margin-top: 0.75rem;
+  font-size: 0.825rem;
+}
+
+/* Botón alternador (ej. Registrate) en verde oscuro solo a las letras */
+.login-toggle-button.MuiButton-root,
+.login-toggle-button {
+  color: #1E6000 !important;
+  background-color: transparent !important;
+  background: transparent !important;
+  border: none;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: none;
+  padding: 0 0.25rem;
+  min-width: unset;
+  cursor: pointer;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.login-toggle-button.MuiButton-root:hover,
+.login-toggle-button:hover {
+  background-color: transparent !important;
+  color: #144200 !important;
+  text-decoration: underline;
 }
 
 /* PERFIL ACTIVO (SESIÓN INICIADA) */

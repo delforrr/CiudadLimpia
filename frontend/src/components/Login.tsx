@@ -1,73 +1,45 @@
-import { useState, type FormEvent } from 'react';
-import { Alert } from '@mui/material';
+import { useState } from 'react';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  IconButton,
+  InputAdornment,
+  TextField,
+} from '@mui/material';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAuthForm } from '../hooks/useAuthForm';
+import { useProfileForm } from '../hooks/useProfileForm';
+import DomiciliosCard from './DomiciliosCard';
 import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
-export default function Login() {
+export default function Login({ initialRegister = false }: { initialRegister?: boolean }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRepeatedPassword, setShowRepeatedPassword] = useState(false);
   const { isAuthenticated, user, onAuthenticated, checking, logout, logoutError, loggingOut } = useAuthContext();
   const navigate = useNavigate();
-  const { form, updateField, handleSubmit, error, pending, emailError, passwordError, validateEmail, validatePassword } = useAuthForm((authenticatedUser) => {
+  const { form, register, updateField, handleSubmit, error, pending, fieldErrors, validateField } = useAuthForm((authenticatedUser) => {
     onAuthenticated(authenticatedUser);
-    navigate('/hoy');
-  });
+    navigate('/hoy', { replace: true });
+  }, initialRegister);
 
-  // Estados de edición de datos de perfil
-  const [editando, setEditando] = useState(false);
-  const [nombreEdit, setNombreEdit] = useState('');
-  const [apellidoEdit, setApellidoEdit] = useState('');
-  const [direccionEdit, setDireccionEdit] = useState('');
-  const [emailEdit, setEmailEdit] = useState('');
-  const [mensajeExito, setMensajeExito] = useState(false);
+  const {
+    editando, form: profile, updateField: updateProfileField, mensajeExito,
+    error: profileError, pending: savingProfile, fieldErrors: profileFieldErrors,
+    iniciarEdicion: handleIniciarEdicion, guardar: handleGuardarCambios,
+    cancelar: handleCancelarEdicion,
+  } = useProfileForm(user, onAuthenticated);
 
   if (checking) return <p role="status">Comprobando sesión…</p>;
 
-  const handleIniciarEdicion = () => {
-    setNombreEdit(user?.name || '');
-    setApellidoEdit(user?.lastName || '');
-    setEmailEdit(user?.email || '');
-    const savedDir = user ? localStorage.getItem(`ciudad_limpia_dir_${user.id}`) || 'Av. Las Palmas 450 · Barrio Los Olivos' : '';
-    setDireccionEdit(savedDir);
-    setEditando(true);
-    setMensajeExito(false);
-  };
-
-  const handleGuardarCambios = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (user) {
-      const updatedUser = {
-        ...user,
-        name: nombreEdit.trim() || user.name,
-        lastName: apellidoEdit.trim() || user.lastName,
-        email: emailEdit.trim() || user.email,
-      };
-      if (direccionEdit.trim()) {
-        localStorage.setItem(`ciudad_limpia_dir_${user.id}`, direccionEdit.trim());
-      }
-      onAuthenticated(updatedUser);
-    }
-    setEditando(false);
-    setMensajeExito(true);
-  };
-
-  const handleCancelarEdicion = () => {
-    setEditando(false);
-    if (user) {
-      setNombreEdit(user.name || '');
-      setApellidoEdit(user.lastName || '');
-      setEmailEdit(user.email || '');
-      const savedDir = localStorage.getItem(`ciudad_limpia_dir_${user.id}`) || 'Av. Las Palmas 450 · Barrio Los Olivos';
-      setDireccionEdit(savedDir);
-    }
-  };
-
   // Si ya tiene sesión iniciada, mostrar su perfil o formulario de edición
   if (isAuthenticated) {
-    const direccionActual = user
-      ? localStorage.getItem(`ciudad_limpia_dir_${user.id}`) || 'Av. Las Palmas 450 · Barrio Los Olivos'
-      : 'Av. Las Palmas 450 · Barrio Los Olivos';
+    const needsAddress = !user?.cliente?.domicilios.length;
 
     return (
       <div className="login-container">
@@ -92,9 +64,13 @@ export default function Login() {
             <p>
               {editando
                 ? 'Actualizá tu información personal y domicilio'
-                : <>Sesión activa para <strong>{user?.name} {user?.lastName}</strong></>}
+                : <>Sesión activa para <strong>{user?.cliente ? `${user.cliente.name} ${user.cliente.lastName}` : user?.email}</strong></>}
             </p>
           </header>
+
+          {needsAddress && (
+            <Alert severity="warning">Completá al menos un domicilio para continuar usando la aplicación.</Alert>
+          )}
 
           {mensajeExito && !editando && (
             <div className="perfil-alerta-exito" role="status">
@@ -116,56 +92,68 @@ export default function Login() {
           )}
 
           {editando ? (
-            <form onSubmit={handleGuardarCambios} className="perfil-edit-form">
+            <form onSubmit={handleGuardarCambios} className="perfil-edit-form" aria-busy={savingProfile} noValidate>
+              {profileError && <Alert severity="error">{profileError}</Alert>}
               <div className="form-group">
-                <label htmlFor="perfil-nombre">Nombre</label>
-                <input
+                <TextField
+                  fullWidth
+                  label="Nombre"
+                  autoComplete="given-name"
+                  slotProps={{ htmlInput: { maxLength: 100 } }}
                   id="perfil-nombre"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.name)}
+                  helperText={profileFieldErrors.name?.[0]}
                   type="text"
-                  value={nombreEdit}
-                  onChange={(e) => setNombreEdit(e.target.value)}
+                  value={profile.name}
+                  onChange={(e) => updateProfileField('name', e.target.value)}
                   placeholder="Tu nombre"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="perfil-apellido">Apellido</label>
-                <input
+                <TextField
+                  fullWidth
+                  label="Apellido"
+                  autoComplete="family-name"
+                  slotProps={{ htmlInput: { maxLength: 100 } }}
                   id="perfil-apellido"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.lastName)}
+                  helperText={profileFieldErrors.lastName?.[0]}
                   type="text"
-                  value={apellidoEdit}
-                  onChange={(e) => setApellidoEdit(e.target.value)}
+                  value={profile.lastName}
+                  onChange={(e) => updateProfileField('lastName', e.target.value)}
                   placeholder="Tu apellido"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="perfil-direccion">Dirección vinculada</label>
-                <input
-                  id="perfil-direccion"
-                  type="text"
-                  value={direccionEdit}
-                  onChange={(e) => setDireccionEdit(e.target.value)}
-                  placeholder="Calle y número · Barrio"
                   required
                 />
               </div>
 
+              <DomiciliosCard domicilios={profile.domicilios}
+                onChange={(domicilios) => updateProfileField('domicilios', domicilios)}
+                disabled={savingProfile} errors={profileFieldErrors.domicilios} />
+
               <div className="form-group">
-                <label htmlFor="perfil-email">Correo electrónico</label>
-                <input
+                <TextField
+                  fullWidth
+                  label="Correo electrónico"
+                  autoComplete="email"
+                  slotProps={{ htmlInput: { maxLength: 254 } }}
                   id="perfil-email"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.email)}
+                  helperText={profileFieldErrors.email?.[0]}
                   type="email"
-                  value={emailEdit}
-                  onChange={(e) => setEmailEdit(e.target.value)}
+                  value={profile.email}
+                  onChange={(e) => updateProfileField('email', e.target.value)}
                   placeholder="correo@trenquelauquen.gov.ar"
                   required
                 />
               </div>
 
               <div className="perfil-edit-acciones">
-                <button type="submit" className="login-button btn-guardar-perfil">
+                <Button type="submit" className="login-button btn-guardar-perfil" disabled={savingProfile}>
                   <svg
                     width="16"
                     height="16"
@@ -179,16 +167,17 @@ export default function Login() {
                   >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  <span>Guardar cambios</span>
-                </button>
+                  <span>{savingProfile ? 'Guardando…' : 'Guardar cambios'}</span>
+                </Button>
 
-                <button
+                <Button
                   type="button"
                   className="btn-cancelar-edicion"
                   onClick={handleCancelarEdicion}
+                  disabled={savingProfile}
                 >
                   Cancelar
-                </button>
+                </Button>
               </div>
             </form>
           ) : (
@@ -211,30 +200,24 @@ export default function Login() {
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
-                    <span className="detalle-valor">{user?.name} {user?.lastName}</span>
+                    <span className="detalle-valor">{user?.cliente ? `${user.cliente.name} ${user.cliente.lastName}` : 'Sin cliente asociado'}</span>
                   </div>
                 </div>
 
-                <div className="perfil-detalle-item">
-                  <span className="detalle-label">Dirección vinculada</span>
-                  <div className="detalle-valor-row">
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#1E6000"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
-                    <span className="detalle-valor">{direccionActual}</span>
+                <section className="perfil-domicilios-box" aria-label="Mis domicilios">
+                  <div className="perfil-domicilios-header">
+                    <h3>Mis domicilios</h3>
+                    <Button type="button" disabled={(user?.cliente?.domicilios.length ?? 0) >= 20}
+                      onClick={() => handleIniciarEdicion(true)}>Agregar domicilio</Button>
                   </div>
-                </div>
+                  {user?.cliente?.domicilios.map((domicilio) => (
+                    <div className="domicilio-item" key={domicilio.id}>
+                      <span className="detalle-valor">{domicilio.direccion}</span>
+                      {domicilio.etiqueta && <span>{domicilio.etiqueta}</span>}
+                    </div>
+                  ))}
+                  {needsAddress && <p>No tenés domicilios registrados.</p>}
+                </section>
 
                 <div className="perfil-detalle-item">
                   <span className="detalle-label">Correo registrado</span>
@@ -259,10 +242,10 @@ export default function Login() {
               </div>
 
               <div className="perfil-acciones">
-                <button
+                <Button
                   type="button"
                   className="btn-editar-perfil"
-                  onClick={handleIniciarEdicion}
+                  onClick={() => handleIniciarEdicion()}
                 >
                   <svg
                     width="15"
@@ -278,12 +261,12 @@ export default function Login() {
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
-                  <span>Editar mis datos</span>
-                </button>
+                  <span>{needsAddress ? 'Completar mis datos' : 'Editar mis datos'}</span>
+                </Button>
 
                 {logoutError && <Alert severity="error">{logoutError}</Alert>}
 
-                <button
+                <Button
                   type="button"
                   className="btn-cerrar-sesion"
                   onClick={logout}
@@ -305,7 +288,7 @@ export default function Login() {
                     <line x1="21" y1="12" x2="9" y2="12" />
                   </svg>
                   <span>{loggingOut ? 'Cerrando sesión…' : 'Cerrar Sesión'}</span>
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -317,77 +300,138 @@ export default function Login() {
   // Si no inició sesión, mostrar formulario de login
   return (
     <div className="login-container">
-      <div className="login-card">
+      <div className={`login-card ${register ? 'register-card' : ''}`}>
         <header className="login-header">
           <div className="login-title-row">
-            <h2>Iniciar Sesión</h2>
+            <h2>{register ? 'Crear cuenta' : 'Iniciar Sesión'}</h2>
             <img
               src={camionRecolector}
               alt="Camión recolector"
               className="login-truck-icon"
             />
           </div>
-          <p>Ingresá tus credenciales para ver el recolector en tu cuadra</p>
+          <p>{register ? 'Completá tus datos para crear tu cuenta' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
         </header>
 
         <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
           {error && <Alert severity="error">{error}</Alert>}
-          <div className="form-group">
-            <label htmlFor="email">Correo electrónico</label>
-            <input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => updateField('email', e.target.value)}
-              onBlur={validateEmail}
-              placeholder="martin@correo.com"
-              autoComplete="email"
-              required
-              className={emailError ? 'input-error' : ''}
-            />
-            {emailError && <span className="field-error-text">{emailError}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Contraseña</label>
-            <input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={(e) => updateField('password', e.target.value)}
-              onBlur={validatePassword}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-              className={passwordError ? 'input-error' : ''}
-            />
-            {passwordError && <span className="field-error-text">{passwordError}</span>}
-          </div>
-
-          <div className="form-options">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={form.rememberMe}
-                onChange={(e) => updateField('rememberMe', e.target.checked)}
+          {register && (
+            <>
+              <TextField
+                id="name" name="name" type="text"
+                label="Nombre" autoComplete="given-name" required fullWidth size="small"
+                value={form.name} disabled={pending}
+                onChange={(e) => updateField('name', e.target.value)}
+                onBlur={() => validateField('name')}
+                error={Boolean(fieldErrors.name)} helperText={fieldErrors.name?.[0]}
+                slotProps={{ htmlInput: { maxLength: 100 } }}
               />
-              Recordarme
-            </label>
-            <a href="#recuperar" className="login-link">
-              ¿Olvidaste tu contraseña?
-            </a>
-          </div>
+              <TextField
+                id="lastName" name="lastName" type="text"
+                label="Apellido" autoComplete="family-name" required fullWidth size="small"
+                value={form.lastName} disabled={pending}
+                onChange={(e) => updateField('lastName', e.target.value)}
+                onBlur={() => validateField('lastName')}
+                error={Boolean(fieldErrors.lastName)} helperText={fieldErrors.lastName?.[0]}
+                slotProps={{ htmlInput: { maxLength: 100 } }}
+              />
+            </>
+          )}
+          <TextField
+            id="email" label="Correo electrónico" type="email" autoComplete="email"
+            required fullWidth size={register ? 'small' : undefined} value={form.email} disabled={pending}
+            onChange={(e) => updateField('email', e.target.value)} onBlur={() => validateField('email')}
+            error={Boolean(fieldErrors.email)} helperText={fieldErrors.email?.[0]}
+            slotProps={{ htmlInput: { maxLength: 254 } }}
+          />
+          <TextField
+            id="password"
+            label="Contraseña"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete={register ? 'new-password' : 'current-password'}
+            required
+            fullWidth
+            size={register ? 'small' : undefined}
+            value={form.password}
+            disabled={pending}
+            onChange={(e) => updateField('password', e.target.value)}
+            onBlur={() => validateField('password')}
+            error={Boolean(fieldErrors.password)}
+            helperText={fieldErrors.password?.[0]}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                      disabled={pending}
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          {register ? (
+            <TextField
+              id="repeatedPassword"
+              name="repeatedPassword"
+              label="Repetir contraseña"
+              type={showRepeatedPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              required
+              fullWidth
+              size="small"
+              value={form.repeatedPassword}
+              disabled={pending}
+              onChange={(e) => updateField('repeatedPassword', e.target.value)}
+              onBlur={() => validateField('repeatedPassword')}
+              error={Boolean(fieldErrors.repeatedPassword)}
+              helperText={fieldErrors.repeatedPassword?.[0]}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label={showRepeatedPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                        onClick={() => setShowRepeatedPassword((prev) => !prev)}
+                        edge="end"
+                        disabled={pending}
+                        size="small"
+                      >
+                        {showRepeatedPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          ) : (
+            <FormControlLabel label="Recordarme" control={
+              <Checkbox checked={form.rememberMe} disabled={pending}
+                onChange={(e) => updateField('rememberMe', e.target.checked)} />
+            } />
+          )}
 
-          <button type="submit" className="login-button" disabled={pending}>
-            {pending ? 'Procesando…' : 'Ingresar'}
-          </button>
+          <Button type="submit" className="login-button" disabled={pending}>
+            {pending ? 'Procesando…' : register ? 'Crear cuenta' : 'Ingresar'}
+          </Button>
         </form>
 
         <footer className="login-footer">
-          <span>¿No tienes una cuenta? </span>
-          <a href="#registro" className="login-link">
-            Regístrate
-          </a>
+          <span>{register ? '¿Ya tenés cuenta? ' : '¿No tenés cuenta? '}</span>
+          <Button
+            type="button"
+            className="login-toggle-button"
+            onClick={() => navigate(register ? '/perfil' : '/registro')}
+            disabled={pending}
+          >
+            {register ? 'Iniciar sesión' : 'Registrate'}
+          </Button>
         </footer>
       </div>
     </div>

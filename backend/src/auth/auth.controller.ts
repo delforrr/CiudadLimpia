@@ -27,12 +27,12 @@ import { SigninRequestDto } from './dto/signin-request.dto';
 import { AuthEndpointGuard } from './auth-endpoint.guard';
 import { UserResponseDto } from './dto/user-response.dto';
 
-const cookieOptions: CookieOptions = {
+const getCookieOptions = (): CookieOptions => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict',
   path: '/',
-};
+});
 
 @ApiTags('auth')
 @Controller('auth')
@@ -116,6 +116,25 @@ export class AuthController {
     return user;
   }
 
+  @Get('all')
+  @ApiCookieAuth('session')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Consultar todos los usuarios registrados',
+    description:
+      'Requiere rol ADMIN. Acepta la cookie session del navegador o un JWT existente mediante Authorization: Bearer.',
+  })
+  @ApiOkResponse({ type: UserResponseDto, isArray: true })
+  @ApiResponse({
+    status: 401,
+    description: 'Usuario no autorizado',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
+  @UseGuards(AuthGuard)
+  all(@Req() request: AuthRequest): Promise<UserResponseDto[]> {
+    return this.auth.getAllUsers(request.user.id);
+  }
+
   @Get('me')
   @ApiCookieAuth('session')
   @ApiBearerAuth()
@@ -131,7 +150,7 @@ export class AuthController {
   })
   @UseGuards(AuthGuard)
   me(@Req() request: AuthRequest): Promise<UserResponseDto> {
-    return this.auth.getUser(request.userId);
+    return this.auth.getUser(request.user.id);
   }
 
   @Post('logout')
@@ -154,12 +173,12 @@ export class AuthController {
     description: 'Se requiere Content-Type: application/json.',
   })
   logout(@Res({ passthrough: true }) response: Response) {
-    response.clearCookie('session', cookieOptions);
+    response.clearCookie('session', getCookieOptions());
   }
 
   private async setSession(response: Response, id: string, remember: boolean) {
     response.cookie('session', await this.auth.createToken(id, remember), {
-      ...cookieOptions,
+      ...getCookieOptions(),
       ...(remember ? { maxAge: sessionSeconds(true) * 1000 } : {}),
     });
   }

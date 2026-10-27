@@ -41,11 +41,14 @@ describe('AppController (e2e)', () => {
       .expect(200);
     const document = response.body as OpenAPIObject;
     expect(Object.keys(document.paths).sort()).toEqual([
+      '/auth/all',
       '/auth/login',
       '/auth/logout',
       '/auth/me',
       '/auth/register',
       '/health',
+      '/users',
+      '/users/{id}',
     ]);
     expect(document.components?.securitySchemes?.session).toMatchObject({
       type: 'apiKey',
@@ -55,7 +58,50 @@ describe('AppController (e2e)', () => {
     expect(document.paths['/auth/me'].get?.security).toEqual(
       expect.arrayContaining([{ session: [] }, { bearer: [] }]),
     );
+    expect(document.paths['/auth/all'].get?.responses).toHaveProperty('403');
+    expect(document.paths['/auth/all'].get?.security).toEqual(
+      expect.arrayContaining([{ session: [] }, { bearer: [] }]),
+    );
     expect(document.paths['/health'].get?.security).toBeUndefined();
+    expect(Object.keys(document.paths['/users/{id}']).sort()).toEqual([
+      'delete',
+      'get',
+      'patch',
+    ]);
+    expect(document.paths['/users'].post?.responses).toHaveProperty('201');
+    expect(document.paths['/users'].post?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'role', in: 'query', required: true }),
+      ]),
+    );
+    expect(document.components?.schemas?.CreateUserDto).toHaveProperty(
+      'required',
+      expect.arrayContaining(['cliente']),
+    );
+    expect(document.components?.schemas?.SigninRequestDto).toHaveProperty(
+      'required',
+      expect.arrayContaining(['domicilios']),
+    );
+    for (const name of ['DomicilioDto', 'DomicilioResponseDto']) {
+      expect(document.components?.schemas?.[name]).toHaveProperty(
+        'properties.etiqueta',
+        expect.objectContaining({
+          type: 'string',
+          nullable: true,
+          maxLength: 100,
+        }),
+      );
+    }
+    expect(document.components?.schemas?.DomicilioDto).toHaveProperty(
+      'required',
+      ['direccion'],
+    );
+    expect(document.paths['/users/{id}'].delete?.responses).toHaveProperty(
+      '204',
+    );
+    expect(document.paths['/users/{id}'].patch?.responses).toHaveProperty(
+      '415',
+    );
     expect(document.paths['/auth/register'].post?.responses).toHaveProperty(
       '409',
     );
@@ -64,7 +110,7 @@ describe('AppController (e2e)', () => {
       '204',
     );
     expect(document.components?.schemas?.UserResponseDto).toMatchObject({
-      required: ['id', 'email', 'name', 'lastName'],
+      required: ['id', 'email', 'role', 'cliente'],
     });
     const schema = JSON.stringify(
       document.components?.schemas?.UserResponseDto,
