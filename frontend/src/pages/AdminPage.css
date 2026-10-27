@@ -1,6 +1,7 @@
 /* =========================================================
    PANEL DE ADMINISTRADOR - CIUDAD LIMPIA (Desktop First)
-   Paleta: #1E6000 (verde institucional), #68A544 (verde claro)
+   Color principal del panel: #1E6000 (verde oscuro institucional)
+   Secundario: #68A544 / #8AC466 (verde claro)
    ========================================================= */
 
 .admin-wrapper {
@@ -14,22 +15,23 @@
   overflow: hidden;
 }
 
-/* ===================== SIDEBAR ===================== */
+/* ===================== SIDEBAR VERDE OSCURO ===================== */
 .admin-sidebar {
   width: 260px;
   min-width: 260px;
-  background-color: #ffffff;
-  border-right: 1px solid #e2e8f0;
+  background-color: #1E6000;
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.02);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
   z-index: 10;
+  color: #ffffff;
 }
 
 .admin-sidebar-header {
   padding: 1.4rem 1.25rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .admin-brand {
@@ -40,38 +42,39 @@
 }
 
 .admin-brand-img {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
 .admin-brand-text h1 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.2;
 }
 
 .admin-brand-text .brand-ciudad {
-  color: #1E6000;
+  color: #ffffff;
 }
 
 .admin-brand-text .brand-limpia {
-  color: #68A544;
+  color: #8AC466;
 }
 
 .admin-badge {
   display: inline-block;
-  background-color: #f0f7ed;
-  color: #1E6000;
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
   font-size: 0.65rem;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 9999px;
-  border: 1px solid #d1e5cc;
+  border: 1px solid rgba(255, 255, 255, 0.25);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-top: 0.2rem;
+  margin-top: 0.25rem;
 }
 
 /* Navegación del Sidebar */
@@ -79,7 +82,7 @@
   padding: 1.25rem 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
   flex: 1;
   overflow-y: auto;
 }
@@ -89,11 +92,11 @@
   align-items: center;
   gap: 0.75rem;
   width: 100%;
-  padding: 0.7rem 0.9rem;
+  padding: 0.7rem 0.95rem;
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.82);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -102,15 +105,15 @@
 }
 
 .admin-nav-item:hover {
-  background-color: #f1f5f9;
-  color: #1E6000;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 .admin-nav-item.active {
-  background-color: #f0f7ed;
-  color: #1E6000;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
   font-weight: 700;
-  border-left: 3px solid #68A544;
+  border-left: 3px solid #8AC466;
 }
 
 .admin-nav-icon {
@@ -123,8 +126,8 @@
 /* Footer del Sidebar */
 .admin-sidebar-footer {
   padding: 1rem 1.25rem;
-  border-top: 1px solid #f1f5f9;
-  background-color: #fafbfc;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(0, 0, 0, 0.15);
 }
 
 .admin-user-card {
@@ -145,6 +148,7 @@
   justify-content: center;
   font-weight: 700;
   font-size: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .admin-user-info {
@@ -156,7 +160,7 @@
 .admin-user-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #1e293b;
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -164,7 +168,7 @@
 
 .admin-user-role {
   font-size: 0.72rem;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
 }
 
@@ -176,9 +180,9 @@
   gap: 0.45rem;
   padding: 0.5rem;
   border-radius: 6px;
-  border: 1px solid #cbd5e1;
-  background-color: #ffffff;
-  color: #334155;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -186,9 +190,8 @@
 }
 
 .admin-back-btn:hover {
-  background-color: #f8fafc;
-  color: #1E6000;
-  border-color: #68A544;
+  background-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 /* ===================== ÁREA PRINCIPAL ===================== */
@@ -203,7 +206,7 @@
 /* Topbar */
 .admin-topbar {
   background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 2px solid #1E6000;
   padding: 1rem 2rem;
   display: flex;
   align-items: center;
@@ -234,20 +237,20 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background-color: #ecfdf5;
-  color: #065f46;
+  background-color: #f0f7ed;
+  color: #1E6000;
   padding: 0.35rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
-  border: 1px solid #a7f3d0;
+  border: 1px solid #d1e5cc;
 }
 
 .status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background-color: #10b981;
+  background-color: #68A544;
 }
 
 /* Contenedor del contenido interno */
@@ -287,7 +290,7 @@
   height: 64px;
   object-fit: contain;
   margin-bottom: 1.25rem;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .admin-empty-content h3 {
