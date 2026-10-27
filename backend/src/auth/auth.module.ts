@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
 import { AuthEndpointGuard } from './auth-endpoint.guard';
 import { JwtStrategy } from './jwt.strategy';
+import { RolesGuard } from './roles.guard';
 
 @Module({
   imports: [
@@ -39,9 +40,10 @@ import { JwtStrategy } from './jwt.strategy';
     PrismaService,
     AuthService,
     AuthGuard,
+    RolesGuard,
     AuthEndpointGuard,
     JwtStrategy,
   ],
-  exports: [AuthGuard, AuthEndpointGuard, PrismaService, JwtModule],
+  exports: [AuthGuard, RolesGuard, AuthEndpointGuard, PrismaService, JwtModule],
 })
 export class AuthModule {}

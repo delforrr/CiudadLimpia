@@ -241,6 +241,11 @@ describe('User CRUD (HTTP)', () => {
       .expect(200)
       .expect(user);
     await request(app.getHttpServer())
+      .get(`/users/${userId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200)
+      .expect(user);
+    await request(app.getHttpServer())
       .get(`/users/${adminId}`)
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
@@ -263,6 +268,61 @@ describe('User CRUD (HTTP)', () => {
       .set('Authorization', `Bearer ${deleted}`)
       .expect(401);
   });
+
+  it('uses the current database role instead of a role claimed in the JWT', async () => {
+    const token = await app.get(JwtService).signAsync({
+      sub: userId,
+      role: 'ADMIN',
+    });
+    await request(app.getHttpServer())
+      .get('/users')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+    db.user.findUnique.mockResolvedValue({ id: userId, role: 'ADMIN' });
+    await request(app.getHttpServer())
+      .get('/users')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(db.user.findUnique).toHaveBeenLastCalledWith({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+    db.user.findUnique.mockResolvedValue(user);
+    await request(app.getHttpServer())
+      .get('/users')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+    db.user.findUnique.mockResolvedValue(null);
+    await request(app.getHttpServer())
+      .get(`/users/${userId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+    expect(db.user.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['USER', 'ADMIN', null, 'invalid'])(
+    'rejects any role field from a non-admin before updating: %j',
+    async (role) => {
+      await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ role })
+        .expect(403);
+      expect(db.user.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([null, 'invalid'])(
+    'validates the role field for admins: %j',
+    async (role) => {
+      await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ role })
+        .expect(400);
+      expect(db.user.update).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([undefined, null, '', ' Casa '])(
     'saves and returns an optional address label: %j',
@@ -455,8 +515,6 @@ describe('User CRUD (HTTP)', () => {
     { password: 'short' },
     { password: 'á'.repeat(37) },
     { passwordHash: 'untrusted' },
-    { role: 'invalid' },
-    { role: null },
     { cliente: null },
     { cliente: [] },
     { cliente: { name: 'Ana', lastName: 'Pérez', domicilios: [] } },

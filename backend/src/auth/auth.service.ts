@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -92,14 +91,7 @@ export class AuthService {
     return user;
   }
 
-  async getAllUsers(requesterId: string): Promise<UserResponseDto[]> {
-    const requester = await this.prisma.user.findUnique({
-      where: { id: requesterId },
-      select: { role: true },
-    });
-    if (!requester) throw new UnauthorizedException('Sesión inválida');
-    if (requester.role !== 'ADMIN')
-      throw new ForbiddenException('Se requiere rol ADMIN');
+  async getAllUsers(): Promise<UserResponseDto[]> {
     return this.prisma.user.findMany({ select: publicUserSelect });
   }
 }

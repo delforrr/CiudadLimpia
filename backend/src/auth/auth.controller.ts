@@ -26,6 +26,9 @@ import { LoginRequestDto } from './dto/login-request.dto';
 import { SigninRequestDto } from './dto/signin-request.dto';
 import { AuthEndpointGuard } from './auth-endpoint.guard';
 import { UserResponseDto } from './dto/user-response.dto';
+import { Roles } from './roles.decorator';
+import { RolesGuard } from './roles.guard';
+import { Role } from '../generated/prisma/enums';
 
 const getCookieOptions = (): CookieOptions => ({
   httpOnly: true,
@@ -130,9 +133,10 @@ export class AuthController {
     description: 'Usuario no autorizado',
   })
   @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
-  @UseGuards(AuthGuard)
-  all(@Req() request: AuthRequest): Promise<UserResponseDto[]> {
-    return this.auth.getAllUsers(request.user.id);
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles([Role.ADMIN])
+  all(): Promise<UserResponseDto[]> {
+    return this.auth.getAllUsers();
   }
 
   @Get('me')
