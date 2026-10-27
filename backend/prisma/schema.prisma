@@ -58,11 +58,23 @@ model PuntoLimpio {
   direccion String
   lat       Float
   long      Float
-  residuos  Residuo[]
+  residuos PuntoLimpioResiduo[]
+
 }
 
 model Residuo {
   id            String @id @default(uuid())
   nombre        String @unique
-  puntosLimpios PuntoLimpio[]
+  puntosLimpios PuntoLimpioResiduo[]
+}
+model PuntoLimpioResiduo {
+  puntoLimpioId String
+  residuoId     String
+
+  puntoLimpio PuntoLimpio @relation(fields: [puntoLimpioId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  residuo Residuo @relation(fields: [residuoId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([puntoLimpioId, residuoId])
+  @@index([residuoId])
+  @@map("_PuntoLimpioToResiduo")
 }
