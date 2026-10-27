@@ -1,11 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PeopleIcon from '@mui/icons-material/People';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import iconoCiudadLimpia from '../assets/icono-ciudad-limpia.png';
 import { useAuthContext } from '../hooks/useAuthContext';
 import './AdminPage.css';
@@ -13,7 +10,6 @@ import './AdminPage.css';
 type AdminTab = 'dashboard' | 'puntos' | 'recoleccion' | 'usuarios';
 
 export function AdminPage() {
-  const navigate = useNavigate();
   const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
 
@@ -24,7 +20,7 @@ export function AdminPage() {
 
   return (
     <div className="admin-wrapper">
-      {/* Barra Lateral / Sidebar Desktop */}
+      {/* Barra Lateral / Sidebar Desktop en verde #013A27 */}
       <aside className="admin-sidebar">
         <div>
           <div className="admin-sidebar-header">
@@ -86,7 +82,7 @@ export function AdminPage() {
           </nav>
         </div>
 
-        {/* Footer del sidebar con usuario y botón para volver */}
+        {/* Footer del sidebar con usuario */}
         <div className="admin-sidebar-footer">
           <div className="admin-user-card">
             <div className="admin-avatar">{adminInitials}</div>
@@ -95,16 +91,6 @@ export function AdminPage() {
               <span className="admin-user-role">{user?.role ?? 'ADMIN'}</span>
             </div>
           </div>
-
-          <button
-            type="button"
-            className="admin-back-btn"
-            onClick={() => navigate('/hoy')}
-            title="Volver a la vista del ciudadano"
-          >
-            <ArrowBackIcon fontSize="small" />
-            <span>Volver a la app</span>
-          </button>
         </div>
       </aside>
 
@@ -114,33 +100,6 @@ export function AdminPage() {
           <div className="admin-topbar-title">
             <h2>Panel de Control</h2>
             <p>Municipalidad de Trenque Lauquen</p>
-          </div>
-
-          <div className="admin-topbar-actions">
-            <div className="admin-status-chip">
-              <span className="status-dot" />
-              <span>Conectado</span>
-            </div>
-
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => navigate('/hoy')}
-              sx={{
-                borderColor: '#cbd5e1',
-                color: '#1E6000',
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.82rem',
-                borderRadius: '6px',
-                '&:hover': {
-                  borderColor: '#68A544',
-                  backgroundColor: '#f0f7ed',
-                },
-              }}
-            >
-              Ir a la web
-            </Button>
           </div>
         </header>
 
