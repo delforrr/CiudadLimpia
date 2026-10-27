@@ -362,7 +362,12 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
 
         <footer className="login-footer">
           <span>{register ? '¿Ya tenés cuenta? ' : '¿No tenés cuenta? '}</span>
-          <Button type="button" onClick={() => navigate(register ? '/perfil' : '/registro')} disabled={pending}>
+          <Button
+            type="button"
+            className="login-toggle-button"
+            onClick={() => navigate(register ? '/perfil' : '/registro')}
+            disabled={pending}
+          >
             {register ? 'Iniciar sesión' : 'Registrate'}
           </Button>
         </footer>

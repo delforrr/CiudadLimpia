@@ -73,31 +73,70 @@
   color: #222222;
 }
 
-/* Botón de acción con color institucional #68A544 */
+/* Botón de acción con fondo verde claro (#68A544) */
+.login-button.MuiButton-root,
 .login-button {
   width: 100%;
   padding: 0.6875rem;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #ffffff;
-  background-color: #68A544;
+  text-transform: none;
+  color: #ffffff !important;
+  background-color: #68A544 !important;
   border: 1px solid #68A544;
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+.login-button.MuiButton-root:hover,
 .login-button:hover {
-  background-color: #1E6000;
-  border-color: #1E6000;
+  background-color: #558a36 !important;
+  border-color: #558a36;
+}
+
+.login-button.Mui-disabled,
+.login-button:disabled {
+  background-color: #a3cc8e !important;
+  border-color: #a3cc8e;
+  color: #ffffff !important;
+  cursor: not-allowed;
 }
 
 /* Pie */
 .login-footer {
   margin-top: 1.5rem;
   text-align: center;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: #666666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+/* Botón alternador (ej. Registrate) en verde oscuro solo a las letras */
+.login-toggle-button.MuiButton-root,
+.login-toggle-button {
+  color: #1E6000 !important;
+  background-color: transparent !important;
+  background: transparent !important;
+  border: none;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: none;
+  padding: 0 0.25rem;
+  min-width: unset;
+  cursor: pointer;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.login-toggle-button.MuiButton-root:hover,
+.login-toggle-button:hover {
+  background-color: transparent !important;
+  color: #144200 !important;
+  text-decoration: underline;
 }
 
 /* PERFIL ACTIVO (SESIÓN INICIADA) */
