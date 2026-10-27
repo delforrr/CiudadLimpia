@@ -1,4 +1,15 @@
-import { Alert, Button, Checkbox, FormControlLabel, TextField } from '@mui/material';
+import { useState } from 'react';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  IconButton,
+  InputAdornment,
+  TextField,
+} from '@mui/material';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAuthForm } from '../hooks/useAuthForm';
@@ -8,6 +19,8 @@ import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
 export default function Login({ initialRegister = false }: { initialRegister?: boolean }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRepeatedPassword, setShowRepeatedPassword] = useState(false);
   const { isAuthenticated, user, onAuthenticated, checking, logout, logoutError, loggingOut } = useAuthContext();
   const navigate = useNavigate();
   const { form, register, updateField, handleSubmit, error, pending, fieldErrors, validateField } = useAuthForm((authenticatedUser) => {
@@ -287,7 +300,7 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
   // Si no inició sesión, mostrar formulario de login
   return (
     <div className="login-container">
-      <div className="login-card">
+      <div className={`login-card ${register ? 'register-card' : ''}`}>
         <header className="login-header">
           <div className="login-title-row">
             <h2>{register ? 'Crear cuenta' : 'Iniciar Sesión'}</h2>
@@ -297,7 +310,7 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
               className="login-truck-icon"
             />
           </div>
-          <p>{register ? 'Completá tus datos y al menos un domicilio' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
+          <p>{register ? 'Completá tus datos para crear tu cuenta' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
         </header>
 
         <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
@@ -305,7 +318,8 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
           {register && (
             <>
               <TextField
-                label="Nombre" autoComplete="given-name" required fullWidth
+                id="name" name="name" type="text"
+                label="Nombre" autoComplete="given-name" required fullWidth size="small"
                 value={form.name} disabled={pending}
                 onChange={(e) => updateField('name', e.target.value)}
                 onBlur={() => validateField('name')}
@@ -313,40 +327,88 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                 slotProps={{ htmlInput: { maxLength: 100 } }}
               />
               <TextField
-                label="Apellido" autoComplete="family-name" required fullWidth
+                id="lastName" name="lastName" type="text"
+                label="Apellido" autoComplete="family-name" required fullWidth size="small"
                 value={form.lastName} disabled={pending}
                 onChange={(e) => updateField('lastName', e.target.value)}
                 onBlur={() => validateField('lastName')}
                 error={Boolean(fieldErrors.lastName)} helperText={fieldErrors.lastName?.[0]}
                 slotProps={{ htmlInput: { maxLength: 100 } }}
               />
-              <DomiciliosCard domicilios={form.domicilios}
-                onChange={(domicilios) => updateField('domicilios', domicilios)}
-                disabled={pending} errors={fieldErrors.domicilios} />
             </>
           )}
           <TextField
             id="email" label="Correo electrónico" type="email" autoComplete="email"
-            required fullWidth value={form.email} disabled={pending}
+            required fullWidth size={register ? 'small' : undefined} value={form.email} disabled={pending}
             onChange={(e) => updateField('email', e.target.value)} onBlur={() => validateField('email')}
             error={Boolean(fieldErrors.email)} helperText={fieldErrors.email?.[0]}
             slotProps={{ htmlInput: { maxLength: 254 } }}
           />
           <TextField
-            id="password" label="Contraseña" type="password"
+            id="password"
+            label="Contraseña"
+            type={showPassword ? 'text' : 'password'}
             autoComplete={register ? 'new-password' : 'current-password'}
-            required fullWidth value={form.password} disabled={pending}
-            onChange={(e) => updateField('password', e.target.value)} onBlur={() => validateField('password')}
+            required
+            fullWidth
+            size={register ? 'small' : undefined}
+            value={form.password}
+            disabled={pending}
+            onChange={(e) => updateField('password', e.target.value)}
+            onBlur={() => validateField('password')}
             error={Boolean(fieldErrors.password)}
-            helperText={fieldErrors.password?.[0] || (register ? 'Al menos 8 caracteres; hasta 72 bytes.' : '')}
+            helperText={fieldErrors.password?.[0]}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                      disabled={pending}
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
           {register ? (
             <TextField
-              label="Repetir contraseña" type="password" autoComplete="new-password"
-              required fullWidth value={form.repeatedPassword} disabled={pending}
+              id="repeatedPassword"
+              name="repeatedPassword"
+              label="Repetir contraseña"
+              type={showRepeatedPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              required
+              fullWidth
+              size="small"
+              value={form.repeatedPassword}
+              disabled={pending}
               onChange={(e) => updateField('repeatedPassword', e.target.value)}
               onBlur={() => validateField('repeatedPassword')}
-              error={Boolean(fieldErrors.repeatedPassword)} helperText={fieldErrors.repeatedPassword?.[0]}
+              error={Boolean(fieldErrors.repeatedPassword)}
+              helperText={fieldErrors.repeatedPassword?.[0]}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label={showRepeatedPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                        onClick={() => setShowRepeatedPassword((prev) => !prev)}
+                        edge="end"
+                        disabled={pending}
+                        size="small"
+                      >
+                        {showRepeatedPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
           ) : (
             <FormControlLabel label="Recordarme" control={

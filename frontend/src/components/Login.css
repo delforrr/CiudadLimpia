@@ -4,7 +4,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2.5rem 1.5rem;
+  padding: 1rem 1rem;
+  box-sizing: border-box;
 }
 
 /* Tarjeta de iniciar sesión */
@@ -14,15 +15,25 @@
   background-color: #ffffff;
   border: 1px solid #68A544;
   border-radius: 12px;
-  padding: 2.25rem 2rem;
+  padding: 1.5rem 1.75rem;
   box-sizing: border-box;
   box-shadow: 0 4px 16px rgba(104, 165, 68, 0.08);
 }
 
+/* Versión balanceada para registro (cómoda y sin scroll) */
+.login-card.register-card {
+  max-width: 390px;
+  padding: 1.25rem 1.65rem;
+}
+
 /* Encabezado */
 .login-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.15rem;
   text-align: center;
+}
+
+.login-card.register-card .login-header {
+  margin-bottom: 0.75rem;
 }
 
 .login-title-row {
@@ -30,34 +41,61 @@
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.login-card.register-card .login-title-row {
+  margin-bottom: 0.2rem;
 }
 
 .login-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.45rem;
   font-weight: 600;
   color: #1E6000;
 }
 
+.login-card.register-card .login-header h2 {
+  font-size: 1.35rem;
+}
+
 .login-truck-icon {
-  height: 32px;
+  height: 30px;
   width: auto;
   object-fit: contain;
   display: block;
 }
 
+.login-card.register-card .login-truck-icon {
+  height: 28px;
+}
+
 .login-header p {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: #666666;
+}
+
+.login-card.register-card .login-header p {
+  font-size: 0.82rem;
 }
 
 /* Formulario */
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.1rem;
+}
+
+.login-card.register-card .login-form {
+  gap: 0.75rem;
+}
+
+.login-card.register-card .MuiFormHelperText-root {
+  margin-top: 2px;
+  margin-bottom: 0;
+  font-size: 0.74rem;
+  line-height: 1.15;
 }
 
 .form-group {
@@ -89,6 +127,12 @@
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+.login-card.register-card .login-button.MuiButton-root,
+.login-card.register-card .login-button {
+  padding: 0.625rem;
+  font-size: 0.9rem;
+}
+
 .login-button.MuiButton-root:hover,
 .login-button:hover {
   background-color: #558a36 !important;
@@ -105,7 +149,7 @@
 
 /* Pie */
 .login-footer {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   text-align: center;
   font-size: 0.875rem;
   color: #666666;
@@ -114,6 +158,11 @@
   justify-content: center;
   gap: 0.25rem;
   flex-wrap: wrap;
+}
+
+.login-card.register-card .login-footer {
+  margin-top: 0.75rem;
+  font-size: 0.825rem;
 }
 
 /* Botón alternador (ej. Registrate) en verde oscuro solo a las letras */

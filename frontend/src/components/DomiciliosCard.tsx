@@ -24,10 +24,12 @@ export default function DomiciliosCard({ domicilios, onChange, disabled = false,
       {domicilios.map((domicilio, index) => (
         <div className="domicilio-item" key={index}>
           <TextField label="Dirección" required fullWidth disabled={disabled}
+            type="text" id={`direccion-${index}`} name="direccion"
             autoComplete="street-address" placeholder="Calle y número · Barrio"
             value={domicilio.direccion} slotProps={{ htmlInput: { maxLength: 200 } }}
             onChange={(event) => onChange(domicilios.map((item, i) => i === index ? { ...item, direccion: event.target.value } : item))} />
           <TextField label="Etiqueta (opcional)" fullWidth disabled={disabled}
+            type="text" id={`etiqueta-${index}`} name="etiqueta"
             placeholder="Ej. Casa, Trabajo, Local" value={domicilio.etiqueta ?? ''}
             slotProps={{ htmlInput: { maxLength: 100 } }}
             onChange={(event) => onChange(domicilios.map((item, i) => i === index ? { ...item, etiqueta: event.target.value } : item))} />

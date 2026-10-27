@@ -16,7 +16,7 @@ before(async () => {
     configFile: false,
     server: { middlewareMode: true },
     appType: 'custom',
-    ssr: { external: ['react', 'react/jsx-runtime', 'react-router-dom', '@mui/material'] },
+    ssr: { external: ['react', 'react/jsx-runtime', 'react-router-dom', '@mui/material', '@mui/icons-material'] },
   })
   ;({ PerfilPage } = await server.ssrLoadModule('/src/pages/PerfilPage.tsx'))
   ;({ AuthContext } = await server.ssrLoadModule('/src/context/auth-context.ts'))
@@ -33,11 +33,11 @@ function render(initialRegister = false, user: User | null = null) {
 
 test('opens registration with all fields required by the current API', () => {
   const html = render(true)
-  for (const label of ['Crear cuenta', 'Nombre', 'Apellido', 'Mis domicilios', 'Dirección', 'Etiqueta (opcional)', 'Agregar domicilio', 'Correo electrónico', 'Contraseña', 'Repetir contraseña']) {
+  for (const label of ['Crear cuenta', 'Nombre', 'Apellido', 'Correo electrónico', 'Contraseña', 'Repetir contraseña']) {
     assert.ok(html.includes(label), label)
   }
   assert.match(html, /autoComplete="new-password"/)
-  assert.doesNotMatch(html, /Recordarme|Ingresá tu nombre|Las contraseñas no coinciden/)
+  assert.doesNotMatch(html, /Recordarme|Ingresá tu nombre|Las contraseñas no coinciden|Mis domicilios|Dirección|Agregar domicilio/)
 })
 
 test('opens login separately without registration fields', () => {
@@ -61,18 +61,16 @@ test('displays saved address labels from the authenticated profile', () => {
 
 test('validates registration fields together and normalizes the backend payload', () => {
   const form = { name: ' Ana ', lastName: ' Pérez ', email: ' ANA@example.com ',
-    domicilios: [{ direccion: ' San Martín 123 ', etiqueta: ' Casa ' }, { direccion: ' Belgrano 456 ' }], password: 'Clave!123',
-    repeatedPassword: 'Clave!123', rememberMe: false }
+    password: 'Clave!123', repeatedPassword: 'Clave!123', rememberMe: false }
   assert.deepEqual(registerSchema.parse(form), {
     name: 'Ana', lastName: 'Pérez', email: 'ana@example.com',
-    domicilios: [{ direccion: 'San Martín 123', etiqueta: 'Casa' }, { direccion: 'Belgrano 456' }],
-    password: 'Clave!123', repeatedPassword: 'Clave!123', rememberMe: false,
+    password: 'Clave!123', repeatedPassword: 'Clave!123',
   })
   const invalid = registerSchema.safeParse({ ...form, name: ' ', lastName: ' ',
-    domicilios: [], email: 'inválido', repeatedPassword: 'otra' })
+    email: 'inválido', repeatedPassword: 'otra' })
   assert.equal(invalid.success, false)
   if (!invalid.success) {
     assert.deepEqual(invalid.error.issues.map(({ path }) => path[0]).sort(),
-      ['domicilios', 'email', 'lastName', 'name', 'repeatedPassword'])
+      ['email', 'lastName', 'name', 'repeatedPassword'])
   }
 })

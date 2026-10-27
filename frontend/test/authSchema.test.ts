@@ -64,9 +64,9 @@ test('reports email and password errors together for submission', () => {
 })
 
 test('validates name and lastName with length and trimming constraints', () => {
-  for (const empty of ['', '   ']) {
-    assert.equal(nameSchema.safeParse(empty).success, false)
-    assert.equal(lastNameSchema.safeParse(empty).success, false)
+  for (const empty of ['', '   ', 'Ana123', 'Perez!', '12345']) {
+    assert.equal(nameSchema.safeParse(empty).success, false, empty)
+    assert.equal(lastNameSchema.safeParse(empty).success, false, empty)
   }
   assert.equal(nameSchema.safeParse('a'.repeat(101)).success, false)
   assert.equal(lastNameSchema.safeParse('b'.repeat(101)).success, false)

@@ -4,11 +4,17 @@ export const nameSchema = z.string()
   .trim()
   .min(1, 'Ingresá tu nombre')
   .max(100, 'El nombre no puede superar 100 caracteres')
+  .refine((val) => !val || /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(val), {
+    message: 'El nombre solo puede contener letras y espacios',
+  })
 
 export const lastNameSchema = z.string()
   .trim()
   .min(1, 'Ingresá tu apellido')
   .max(100, 'El apellido no puede superar 100 caracteres')
+  .refine((val) => !val || /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(val), {
+    message: 'El apellido solo puede contener letras y espacios',
+  })
 
 export const emailSchema = z.string()
   .trim()

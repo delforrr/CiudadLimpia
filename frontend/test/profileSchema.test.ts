@@ -28,10 +28,10 @@ test('rejects empty names, missing addresses and limits before saving', () => {
   assert.equal(profileSchema.safeParse({ ...profile, domicilios: Array(20).fill({ direccion: 'a'.repeat(200), etiqueta: 'a'.repeat(100) }) }).success, true)
 })
 
-test('registration requires matching passwords and a complete profile', () => {
-  const registration = { ...profile, password: 'contraseña!2026', repeatedPassword: 'contraseña!2026', rememberMe: false }
+test('registration requires matching passwords and valid credentials', () => {
+  const registration = { name: 'Ana', lastName: 'Pérez', email: 'ana@example.com', password: 'contraseña!2026', repeatedPassword: 'contraseña!2026', rememberMe: false }
   assert.equal(registerSchema.safeParse(registration).success, true)
-  for (const change of [{ repeatedPassword: 'otra' }, { domicilios: [] }, { name: '' }]) {
+  for (const change of [{ repeatedPassword: 'otra' }, { name: '' }, { email: 'invalido' }]) {
     assert.equal(registerSchema.safeParse({ ...registration, ...change }).success, false)
   }
 })
