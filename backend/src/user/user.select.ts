@@ -8,7 +8,7 @@ export const publicUserSelect = {
       name: true,
       lastName: true,
       domicilios: {
-        select: { id: true, direccion: true },
+        select: { id: true, direccion: true, etiqueta: true },
         orderBy: { id: 'asc' as const },
       },
     },

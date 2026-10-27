@@ -18,7 +18,7 @@ describe('Email/password authentication (HTTP)', () => {
     email: ' ANA@Example.com ',
     name: 'Ana María',
     lastName: 'Pérez',
-    domicilios: [{ direccion: ' San Martín 123 ' }],
+    domicilios: [{ direccion: ' San Martín 123 ', etiqueta: ' Casa ' }],
     password: ' pass!word á ',
     repeatedPassword: ' pass!word á ',
   };
@@ -39,7 +39,9 @@ describe('Email/password authentication (HTTP)', () => {
                 create: {
                   name: string;
                   lastName: string;
-                  domicilios: { create: { direccion: string }[] };
+                  domicilios: {
+                    create: { direccion: string; etiqueta?: string | null }[];
+                  };
                 };
               };
             };
@@ -60,6 +62,7 @@ describe('Email/password authentication (HTTP)', () => {
                 domicilios: data.cliente.create.domicilios.create.map((d) => ({
                   id: 'domicilio-1',
                   clienteId: 'cliente-1',
+                  etiqueta: null,
                   ...d,
                 })),
               },
@@ -74,7 +77,11 @@ describe('Email/password authentication (HTTP)', () => {
                 name: user.cliente!.name,
                 lastName: user.cliente!.lastName,
                 domicilios: user.cliente!.domicilios.map(
-                  ({ id, direccion }) => ({ id, direccion }),
+                  ({ id, direccion, etiqueta }) => ({
+                    id,
+                    direccion,
+                    etiqueta,
+                  }),
                 ),
               },
             };
@@ -89,7 +96,11 @@ describe('Email/password authentication (HTTP)', () => {
                 name: user.cliente!.name,
                 lastName: user.cliente!.lastName,
                 domicilios: user.cliente!.domicilios.map(
-                  ({ id, direccion }) => ({ id, direccion }),
+                  ({ id, direccion, etiqueta }) => ({
+                    id,
+                    direccion,
+                    etiqueta,
+                  }),
                 ),
               },
             })),
@@ -114,7 +125,11 @@ describe('Email/password authentication (HTTP)', () => {
                 name: user.cliente!.name,
                 lastName: user.cliente!.lastName,
                 domicilios: user.cliente!.domicilios.map(
-                  ({ id, direccion }) => ({ id, direccion }),
+                  ({ id, direccion, etiqueta }) => ({
+                    id,
+                    direccion,
+                    etiqueta,
+                  }),
                 ),
               },
               ...(select.passwordHash
@@ -163,7 +178,9 @@ describe('Email/password authentication (HTTP)', () => {
         id: 'cliente-1',
         name: 'Ana María',
         lastName: 'Pérez',
-        domicilios: [{ id: 'domicilio-1', direccion: 'San Martín 123' }],
+        domicilios: [
+          { id: 'domicilio-1', direccion: 'San Martín 123', etiqueta: 'Casa' },
+        ],
       },
     });
     const cookie = String(registered.headers['set-cookie']);
@@ -248,6 +265,10 @@ describe('Email/password authentication (HTTP)', () => {
     { domicilios: ['invalid'] },
     { domicilios: [{ direccion: ' ' }] },
     { domicilios: [{ direccion: 'x'.repeat(201) }] },
+    {
+      domicilios: [{ direccion: 'San Martín 123', etiqueta: 'x'.repeat(101) }],
+    },
+    { domicilios: [{ direccion: 'San Martín 123', etiqueta: 123 }] },
     {
       domicilios: Array.from({ length: 21 }, () => ({
         direccion: 'San Martín 123',

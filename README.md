@@ -53,6 +53,8 @@ La configuración local usa `NODE_ENV=development` para permitir la cookie de se
 
 ## Autenticación
 
+Los domicilios guardan `direccion` y una `etiqueta` opcional de hasta 100 caracteres (por ejemplo, Casa o Trabajo) en PostgreSQL. Registro y edición de perfil permiten agregarlos desde la tarjeta de domicilios; no se guardan en localStorage.
+
 - `POST /auth/register`: `{ email, name, lastName, domicilios: [{ direccion }], password, repeatedPassword }`. Crea la cuenta e inicia sesión.
 - `POST /auth/login`: `{ email, password, rememberMe? }`.
 - `GET /auth/all`: listado de usuarios, exclusivo para cuentas con rol `ADMIN`; devuelve 403 para `USER`.

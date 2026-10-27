@@ -1,5 +1,7 @@
 import { httpRequest } from './http.ts'
 
+export type Domicilio = { direccion: string; etiqueta?: string | null }
+
 export type User = {
   id: string
   email: string
@@ -8,7 +10,7 @@ export type User = {
     id: string
     name: string
     lastName: string
-    domicilios: { id: string; direccion: string }[]
+    domicilios: (Domicilio & { id: string })[]
   } | null
 }
 export type LoginCredentials = {
@@ -22,7 +24,7 @@ export type RegisterCredentials = {
   name: string
   lastName: string
   repeatedPassword: string
-  domicilios: { direccion: string }[]
+  domicilios: Domicilio[]
 }
 
 export const authService = {

@@ -264,6 +264,78 @@ describe('User CRUD (HTTP)', () => {
       .expect(401);
   });
 
+  it.each([undefined, null, '', ' Casa '])(
+    'saves and returns an optional address label: %j',
+    async (etiqueta) => {
+      const domicilios = [{ direccion: 'San Martín 123', etiqueta }];
+      const saved = {
+        ...user,
+        cliente: {
+          ...user.cliente,
+          domicilios: [
+            {
+              id: 'domicilio-1',
+              direccion: 'San Martín 123',
+              etiqueta: etiqueta?.trim() ?? null,
+            },
+          ],
+        },
+      };
+      db.user.update.mockResolvedValue(saved);
+      await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ cliente: { name: 'Ana', lastName: 'Pérez', domicilios } })
+        .expect(200)
+        .expect(saved);
+      const normalized = [
+        {
+          direccion: 'San Martín 123',
+          ...(etiqueta !== undefined
+            ? { etiqueta: etiqueta?.trim() ?? null }
+            : {}),
+        },
+      ];
+      const profile = { name: 'Ana', lastName: 'Pérez' };
+      expect(db.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          cliente: {
+            upsert: {
+              create: { ...profile, domicilios: { create: normalized } },
+              update: {
+                ...profile,
+                domicilios: { deleteMany: {}, create: normalized },
+              },
+            },
+          },
+        },
+        select: publicUserSelect,
+      });
+      expect(publicUserSelect.cliente.select.domicilios.select.etiqueta).toBe(
+        true,
+      );
+    },
+  );
+
+  it.each([123, {}, [], 'x'.repeat(101)])(
+    'rejects an invalid address label: %j',
+    async (etiqueta) => {
+      await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          cliente: {
+            name: 'Ana',
+            lastName: 'Pérez',
+            domicilios: [{ direccion: 'San Martín 123', etiqueta }],
+          },
+        })
+        .expect(400);
+      expect(db.user.update).not.toHaveBeenCalled();
+    },
+  );
+
   it('updates the profile atomically and preserves addresses unless explicitly replaced', async () => {
     const endpoint = `/users/${userId}`;
     const cliente = { name: 'Ana', lastName: 'Gómez' };
