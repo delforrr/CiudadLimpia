@@ -1,6 +1,5 @@
 import { useState, type SubmitEvent } from 'react'
 import { authService, type User } from '../services/authService'
-import { z } from 'zod'
 import { authSchema } from '../schemas/authSchema'
 import { registerSchema } from '../schemas/registerSchema'
 
@@ -18,8 +17,11 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
   const [touched, setTouched] = useState<Partial<Record<keyof typeof form, boolean>>>({})
   const [submitted, setSubmitted] = useState(false)
   const registration = register ? registerSchema.safeParse(form) : null
-  const validation = registration ?? authSchema.safeParse(form)
-  const fieldErrors: Partial<Record<keyof typeof form, string[]>> = validation.success ? {} : z.flattenError(validation.error).fieldErrors
+  const login = !register ? authSchema.safeParse(form) : null
+  const validation = registration ?? login!
+  const fieldErrors: Partial<Record<keyof typeof form, string[]>> = validation.success
+    ? {}
+    : (validation.error.flatten().fieldErrors as Partial<Record<keyof typeof form, string[]>>)
   const visibleErrors = Object.fromEntries(
     Object.entries(fieldErrors).filter(([field]) => submitted || touched[field as keyof typeof form]),
   )
@@ -42,16 +44,24 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
     if (!validation.success) return
     setPending(true)
     try {
-      const { email, password, rememberMe } = validation.data
-      const user = registration?.success
-        ? await authService.register({
-            email,
-            password,
-            name: registration.data.name,
-            lastName: registration.data.lastName,
-            repeatedPassword: registration.data.repeatedPassword,
-          })
-        : await authService.login({ email, password, rememberMe })
+      let user: User
+      if (register && registration?.success) {
+        user = await authService.register({
+          email: registration.data.email,
+          password: registration.data.password,
+          name: registration.data.name,
+          lastName: registration.data.lastName,
+          repeatedPassword: registration.data.repeatedPassword,
+        })
+      } else if (!register && login?.success) {
+        user = await authService.login({
+          email: login.data.email,
+          password: login.data.password,
+          rememberMe: login.data.rememberMe,
+        })
+      } else {
+        return
+      }
       onAuthenticated(user)
     } catch (error) {
       setError(
