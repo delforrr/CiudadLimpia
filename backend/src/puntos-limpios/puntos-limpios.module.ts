@@ -4,6 +4,6 @@ import { PuntosLimpiosService } from './puntos-limpios.service';
 
 @Module({
   controllers: [PuntosLimpiosController],
-  providers: [PuntosLimpiosService]
+  providers: [PuntosLimpiosService],
 })
 export class PuntosLimpiosModule {}
