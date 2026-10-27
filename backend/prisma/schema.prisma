@@ -41,6 +41,7 @@ model Domicilio {
   clienteId String
   cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   direccion String
+  etiqueta  String? @db.VarChar(100)
 
   @@index([clienteId])
 }

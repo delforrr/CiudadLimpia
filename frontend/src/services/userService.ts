@@ -1,12 +1,12 @@
 import { httpRequest } from './http.ts'
-import type { User } from './authService.ts'
+import type { Domicilio, User } from './authService.ts'
 
 export type ProfileUpdate = {
   email: string
   cliente: {
     name: string
     lastName: string
-    domicilios: { direccion: string }[]
+    domicilios: Domicilio[]
   }
 }
 

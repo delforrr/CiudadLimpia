@@ -82,6 +82,20 @@ describe('AppController (e2e)', () => {
       'required',
       expect.arrayContaining(['domicilios']),
     );
+    for (const name of ['DomicilioDto', 'DomicilioResponseDto']) {
+      expect(document.components?.schemas?.[name]).toHaveProperty(
+        'properties.etiqueta',
+        expect.objectContaining({
+          type: 'string',
+          nullable: true,
+          maxLength: 100,
+        }),
+      );
+    }
+    expect(document.components?.schemas?.DomicilioDto).toHaveProperty(
+      'required',
+      ['direccion'],
+    );
     expect(document.paths['/users/{id}'].delete?.responses).toHaveProperty(
       '204',
     );

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAuthForm } from '../hooks/useAuthForm';
 import { useProfileForm } from '../hooks/useProfileForm';
+import DomiciliosCard from './DomiciliosCard';
 import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
@@ -26,7 +27,6 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
   // Si ya tiene sesión iniciada, mostrar su perfil o formulario de edición
   if (isAuthenticated) {
     const needsAddress = !user?.cliente?.domicilios.length;
-    const direccionActual = user?.cliente?.domicilios.map(({ direccion }) => direccion).join(' · ') || 'Sin domicilio registrado';
 
     return (
       <div className="login-container">
@@ -117,22 +117,9 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                 />
               </div>
 
-              <div className="form-group">
-                <TextField
-                  fullWidth
-                  label="Domicilios"
-                  id="perfil-direccion"
-                  disabled={savingProfile}
-                  error={Boolean(profileFieldErrors.direccion)}
-                  multiline
-                  minRows={2}
-                  required
-                  helperText={profileFieldErrors.direccion?.[0] ?? "Una dirección por línea. Al menos una y hasta 20; máximo 200 caracteres por dirección."}
-                  value={profile.direccion}
-                  onChange={(e) => updateProfileField('direccion', e.target.value)}
-                  placeholder="Calle y número · Barrio"
-                />
-              </div>
+              <DomiciliosCard domicilios={profile.domicilios}
+                onChange={(domicilios) => updateProfileField('domicilios', domicilios)}
+                disabled={savingProfile} errors={profileFieldErrors.domicilios} />
 
               <div className="form-group">
                 <TextField
@@ -204,26 +191,20 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                   </div>
                 </div>
 
-                <div className="perfil-detalle-item">
-                  <span className="detalle-label">Dirección vinculada</span>
-                  <div className="detalle-valor-row">
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#1E6000"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
-                    <span className="detalle-valor">{direccionActual}</span>
+                <section className="perfil-domicilios-box" aria-label="Mis domicilios">
+                  <div className="perfil-domicilios-header">
+                    <h3>Mis domicilios</h3>
+                    <Button type="button" disabled={(user?.cliente?.domicilios.length ?? 0) >= 20}
+                      onClick={() => handleIniciarEdicion(true)}>Agregar domicilio</Button>
                   </div>
-                </div>
+                  {user?.cliente?.domicilios.map((domicilio) => (
+                    <div className="domicilio-item" key={domicilio.id}>
+                      <span className="detalle-valor">{domicilio.direccion}</span>
+                      {domicilio.etiqueta && <span>{domicilio.etiqueta}</span>}
+                    </div>
+                  ))}
+                  {needsAddress && <p>No tenés domicilios registrados.</p>}
+                </section>
 
                 <div className="perfil-detalle-item">
                   <span className="detalle-label">Correo registrado</span>
@@ -251,7 +232,7 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                 <Button
                   type="button"
                   className="btn-editar-perfil"
-                  onClick={handleIniciarEdicion}
+                  onClick={() => handleIniciarEdicion()}
                 >
                   <svg
                     width="15"
@@ -339,14 +320,9 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                 error={Boolean(fieldErrors.lastName)} helperText={fieldErrors.lastName?.[0]}
                 slotProps={{ htmlInput: { maxLength: 100 } }}
               />
-              <TextField
-                label="Domicilios" required fullWidth multiline minRows={2}
-                placeholder="San Martín 123" value={form.direccion} disabled={pending}
-                onChange={(e) => updateField('direccion', e.target.value)}
-                onBlur={() => validateField('direccion')}
-                error={Boolean(fieldErrors.direccion)}
-                helperText={fieldErrors.direccion?.[0] ?? 'Una dirección por línea. Entre 1 y 20; hasta 200 caracteres cada una.'}
-              />
+              <DomiciliosCard domicilios={form.domicilios}
+                onChange={(domicilios) => updateField('domicilios', domicilios)}
+                disabled={pending} errors={fieldErrors.domicilios} />
             </>
           )}
           <TextField

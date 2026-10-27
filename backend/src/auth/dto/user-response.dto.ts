@@ -7,6 +7,14 @@ export class DomicilioResponseDto {
 
   @ApiProperty({ example: 'San Martín 123' })
   direccion!: string;
+
+  @ApiProperty({
+    type: String,
+    example: 'Casa',
+    maxLength: 100,
+    nullable: true,
+  })
+  etiqueta!: string | null;
 }
 
 export class ClienteResponseDto {
