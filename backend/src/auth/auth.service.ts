@@ -27,7 +27,7 @@ export class AuthService {
       throw new BadRequestException('Las contraseñas no coinciden');
     }
     try {
-      const user = await this.prisma.user.create({
+      return await this.prisma.user.create({
         data: {
           email: dto.email,
           cliente: {
@@ -41,7 +41,6 @@ export class AuthService {
         },
         select: publicUserSelect,
       });
-      return user;
     } catch (error: unknown) {
       if (
         typeof error === 'object' &&
@@ -91,7 +90,7 @@ export class AuthService {
     return user;
   }
 
-  async getAllUsers(): Promise<UserResponseDto[]> {
+  getAllUsers(): Promise<UserResponseDto[]> {
     return this.prisma.user.findMany({ select: publicUserSelect });
   }
 }
