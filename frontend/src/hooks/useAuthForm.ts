@@ -1,57 +1,32 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { authService, type User } from '../services/authService'
 import { z } from 'zod'
-import { loginSchema, registerSchema } from '../schemas/authSchema'
+import { authSchema } from '../schemas/authSchema'
+import { registerSchema } from '../schemas/registerSchema'
 
-export function useAuthForm(
-  onAuthenticated: (user: User) => void,
-  initialRegister = false,
-) {
+export function useAuthForm(onAuthenticated: (user: User) => void, register = false) {
   const [form, setForm] = useState({
     email: '',
     password: '',
     name: '',
     lastName: '',
     repeatedPassword: '',
+    direccion: '',
     rememberMe: false,
   })
-  const [register, setRegister] = useState(initialRegister)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
-  const [nameTouched, setNameTouched] = useState(false)
-  const [lastNameTouched, setLastNameTouched] = useState(false)
-  const [emailTouched, setEmailTouched] = useState(false)
-  const [passwordTouched, setPasswordTouched] = useState(false)
-  const [repeatedPasswordTouched, setRepeatedPasswordTouched] = useState(false)
-
-  const registerResult = registerSchema.safeParse(form)
-  const loginResult = loginSchema.safeParse(form)
-
-  const registerErrors = !register || registerResult.success
-    ? {}
-    : z.flattenError(registerResult.error).fieldErrors
-
-  const loginErrors = register || loginResult.success
-    ? {}
-    : z.flattenError(loginResult.error).fieldErrors
-
-  const nameError = nameTouched ? registerErrors.name?.[0] ?? '' : ''
-  const lastNameError = lastNameTouched ? registerErrors.lastName?.[0] ?? '' : ''
-  const emailError = emailTouched
-    ? (register ? registerErrors.email?.[0] : loginErrors.email?.[0]) ?? ''
-    : ''
-  const passwordError = passwordTouched
-    ? (register ? registerErrors.password?.[0] : loginErrors.password?.[0]) ?? ''
-    : ''
-  const repeatedPasswordError = repeatedPasswordTouched
-    ? registerErrors.repeatedPassword?.[0] ?? ''
-    : ''
-
-  const validateName = () => setNameTouched(true)
-  const validateLastName = () => setLastNameTouched(true)
-  const validateEmail = () => setEmailTouched(true)
-  const validatePassword = () => setPasswordTouched(true)
-  const validateRepeatedPassword = () => setRepeatedPasswordTouched(true)
+  const [touched, setTouched] = useState<Partial<Record<keyof typeof form, boolean>>>({})
+  const [submitted, setSubmitted] = useState(false)
+  const registration = register ? registerSchema.safeParse(form) : null
+  const validation = registration ?? authSchema.safeParse(form)
+  const fieldErrors: Partial<Record<keyof typeof form, string[]>> = validation.success ? {} : z.flattenError(validation.error).fieldErrors
+  const visibleErrors = Object.fromEntries(
+    Object.entries(fieldErrors).filter(([field]) => submitted || touched[field as keyof typeof form]),
+  )
+  const validateField = (field: keyof typeof form) => {
+    setTouched((previous) => ({ ...previous, [field]: true }))
+  }
 
   const updateField = <K extends keyof typeof form>(
     field: K,
@@ -60,77 +35,32 @@ export function useAuthForm(
     setForm((previous) => ({ ...previous, [field]: value }))
   }
 
-  const resetErrorsAndPasswords = useCallback(() => {
-    setError('')
-    setNameTouched(false)
-    setLastNameTouched(false)
-    setEmailTouched(false)
-    setPasswordTouched(false)
-    setRepeatedPasswordTouched(false)
-    setForm((previous) => ({ ...previous, password: '', repeatedPassword: '' }))
-  }, [])
-
-  const toggleMode = useCallback(() => {
-    setRegister((prev) => !prev)
-    resetErrorsAndPasswords()
-  }, [resetErrorsAndPasswords])
-
-  const setMode = useCallback((isRegister: boolean) => {
-    setRegister(isRegister)
-    resetErrorsAndPasswords()
-  }, [resetErrorsAndPasswords])
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (pending) return
     setError('')
-    setEmailTouched(true)
-    setPasswordTouched(true)
-    if (register) {
-      setNameTouched(true)
-      setLastNameTouched(true)
-      setRepeatedPasswordTouched(true)
-    }
-
-    if (register) {
-      if (!registerResult.success) return
-      setPending(true)
-      try {
-        const { email, password, name, lastName, repeatedPassword } =
-          registerResult.data
-        const user = await authService.register({
-          email,
-          password,
-          name,
-          lastName,
-          repeatedPassword,
-        })
-        onAuthenticated(user)
-      } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : 'No se pudo crear la cuenta',
-        )
-      } finally {
-        setPending(false)
-      }
-    } else {
-      if (!loginResult.success) return
-      setPending(true)
-      try {
-        const { email, password, rememberMe } = loginResult.data
-        const user = await authService.login({ email, password, rememberMe })
-        onAuthenticated(user)
-      } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : 'No se pudo iniciar sesión',
-        )
-      } finally {
-        setPending(false)
-      }
+    setSubmitted(true)
+    if (!validation.success) return
+    setPending(true)
+    try {
+      const { email, password, rememberMe } = validation.data
+      const user = registration?.success
+        ? await authService.register({
+            email,
+            password,
+            name: registration.data.name,
+            lastName: registration.data.lastName,
+            repeatedPassword: registration.data.repeatedPassword,
+            domicilios: registration.data.direccion,
+          })
+        : await authService.login({ email, password, rememberMe })
+      onAuthenticated(user)
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : register ? 'No se pudo crear la cuenta' : 'No se pudo iniciar sesión',
+      )
+    } finally {
+      setPending(false)
     }
   }
 
@@ -139,20 +69,9 @@ export function useAuthForm(
     register,
     error,
     pending,
-    nameError,
-    lastNameError,
-    emailError,
-    passwordError,
-    repeatedPasswordError,
-    validateName,
-    validateLastName,
-    validateEmail,
-    validatePassword,
-    validateRepeatedPassword,
+    fieldErrors: visibleErrors,
+    validateField,
     updateField,
-    toggleMode,
-    setMode,
     handleSubmit,
   }
 }
-

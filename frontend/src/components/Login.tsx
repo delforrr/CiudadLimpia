@@ -1,135 +1,33 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Alert } from '@mui/material';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Alert, Button, Checkbox, FormControlLabel, TextField } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAuthForm } from '../hooks/useAuthForm';
-import { useDomicilios } from '../hooks/useDomicilios';
+import { useProfileForm } from '../hooks/useProfileForm';
 import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
-interface LoginProps {
-  initialRegister?: boolean;
-}
-
-export default function Login({ initialRegister = false }: LoginProps) {
+export default function Login({ initialRegister = false }: { initialRegister?: boolean }) {
   const { isAuthenticated, user, onAuthenticated, checking, logout, logoutError, loggingOut } = useAuthContext();
-  const location = useLocation();
   const navigate = useNavigate();
-  const isRegisterPath = location.pathname === '/registro';
-
-  const {
-    form,
-    register,
-    updateField,
-    handleSubmit,
-    error,
-    pending,
-    nameError,
-    lastNameError,
-    emailError,
-    passwordError,
-    repeatedPasswordError,
-    validateName,
-    validateLastName,
-    validateEmail,
-    validatePassword,
-    validateRepeatedPassword,
-    toggleMode,
-    setMode,
-  } = useAuthForm((authenticatedUser) => {
+  const { form, register, updateField, handleSubmit, error, pending, fieldErrors, validateField } = useAuthForm((authenticatedUser) => {
     onAuthenticated(authenticatedUser);
-    navigate('/hoy');
-  }, initialRegister || isRegisterPath);
+    navigate('/hoy', { replace: true });
+  }, initialRegister);
 
-  // Hook de gestión de domicilios del usuario
   const {
-    domicilios,
-    agregarDomicilio,
-    eliminarDomicilio,
-    hacerPrincipal,
-  } = useDomicilios(user?.id);
-
-  // Estados de edición de datos personales
-  const [editando, setEditando] = useState(false);
-  const [nombreEdit, setNombreEdit] = useState('');
-  const [apellidoEdit, setApellidoEdit] = useState('');
-  const [emailEdit, setEmailEdit] = useState('');
-  const [mensajeExito, setMensajeExito] = useState(false);
-
-  // Estados para agregar un nuevo domicilio
-  const [mostrandoAgregarDomicilio, setMostrandoAgregarDomicilio] = useState(false);
-  const [nuevaDireccion, setNuevaDireccion] = useState('');
-  const [nuevaEtiqueta, setNuevaEtiqueta] = useState('');
-  const [nuevoEsPrincipal, setNuevoEsPrincipal] = useState(false);
-  const [errorDomicilio, setErrorDomicilio] = useState('');
-
-  useEffect(() => {
-    if (location.pathname === '/registro' && !register) {
-      setMode(true);
-    } else if (location.pathname === '/perfil' && register && !initialRegister) {
-      setMode(false);
-    }
-  }, [location.pathname, register, initialRegister, setMode]);
-
-  const handleToggleMode = () => {
-    const nextRegister = !register;
-    toggleMode();
-    navigate(nextRegister ? '/registro' : '/perfil');
-  };
+    editando, form: profile, updateField: updateProfileField, mensajeExito,
+    error: profileError, pending: savingProfile, fieldErrors: profileFieldErrors,
+    iniciarEdicion: handleIniciarEdicion, guardar: handleGuardarCambios,
+    cancelar: handleCancelarEdicion,
+  } = useProfileForm(user, onAuthenticated);
 
   if (checking) return <p role="status">Comprobando sesión…</p>;
 
-  const handleIniciarEdicion = () => {
-    setNombreEdit(user?.name || '');
-    setApellidoEdit(user?.lastName || '');
-    setEmailEdit(user?.email || '');
-    setEditando(true);
-    setMensajeExito(false);
-  };
-
-  const handleGuardarCambios = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (user) {
-      const updatedUser = {
-        ...user,
-        name: nombreEdit.trim() || user.name,
-        lastName: apellidoEdit.trim() || user.lastName,
-        email: emailEdit.trim() || user.email,
-      };
-      onAuthenticated(updatedUser);
-    }
-    setEditando(false);
-    setMensajeExito(true);
-  };
-
-  const handleCancelarEdicion = () => {
-    setEditando(false);
-    if (user) {
-      setNombreEdit(user.name || '');
-      setApellidoEdit(user.lastName || '');
-      setEmailEdit(user.email || '');
-    }
-  };
-
-  const handleGuardarNuevoDomicilio = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!nuevaDireccion.trim()) {
-      setErrorDomicilio('Ingresá una dirección');
-      return;
-    }
-    const ok = agregarDomicilio(nuevaDireccion, nuevaEtiqueta, nuevoEsPrincipal);
-    if (ok) {
-      setNuevaDireccion('');
-      setNuevaEtiqueta('');
-      setNuevoEsPrincipal(false);
-      setMostrandoAgregarDomicilio(false);
-      setErrorDomicilio('');
-      setMensajeExito(true);
-    }
-  };
-
   // Si ya tiene sesión iniciada, mostrar su perfil o formulario de edición
   if (isAuthenticated) {
+    const needsAddress = !user?.cliente?.domicilios.length;
+    const direccionActual = user?.cliente?.domicilios.map(({ direccion }) => direccion).join(' · ') || 'Sin domicilio registrado';
+
     return (
       <div className="login-container">
         <div className="login-card perfil-card-activo">
@@ -152,10 +50,14 @@ export default function Login({ initialRegister = false }: LoginProps) {
             <h2>{editando ? 'Editar mis datos' : 'Mi Perfil'}</h2>
             <p>
               {editando
-                ? 'Actualizá tu información personal'
-                : <>Sesión activa para <strong>{user?.name} {user?.lastName}</strong></>}
+                ? 'Actualizá tu información personal y domicilio'
+                : <>Sesión activa para <strong>{user?.cliente ? `${user.cliente.name} ${user.cliente.lastName}` : user?.email}</strong></>}
             </p>
           </header>
+
+          {needsAddress && (
+            <Alert severity="warning">Completá al menos un domicilio para continuar usando la aplicación.</Alert>
+          )}
 
           {mensajeExito && !editando && (
             <div className="perfil-alerta-exito" role="status">
@@ -177,44 +79,81 @@ export default function Login({ initialRegister = false }: LoginProps) {
           )}
 
           {editando ? (
-            <form onSubmit={handleGuardarCambios} className="perfil-edit-form">
+            <form onSubmit={handleGuardarCambios} className="perfil-edit-form" aria-busy={savingProfile} noValidate>
+              {profileError && <Alert severity="error">{profileError}</Alert>}
               <div className="form-group">
-                <label htmlFor="perfil-nombre">Nombre</label>
-                <input
+                <TextField
+                  fullWidth
+                  label="Nombre"
+                  autoComplete="given-name"
+                  slotProps={{ htmlInput: { maxLength: 100 } }}
                   id="perfil-nombre"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.name)}
+                  helperText={profileFieldErrors.name?.[0]}
                   type="text"
-                  value={nombreEdit}
-                  onChange={(e) => setNombreEdit(e.target.value)}
+                  value={profile.name}
+                  onChange={(e) => updateProfileField('name', e.target.value)}
                   placeholder="Tu nombre"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="perfil-apellido">Apellido</label>
-                <input
+                <TextField
+                  fullWidth
+                  label="Apellido"
+                  autoComplete="family-name"
+                  slotProps={{ htmlInput: { maxLength: 100 } }}
                   id="perfil-apellido"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.lastName)}
+                  helperText={profileFieldErrors.lastName?.[0]}
                   type="text"
-                  value={apellidoEdit}
-                  onChange={(e) => setApellidoEdit(e.target.value)}
+                  value={profile.lastName}
+                  onChange={(e) => updateProfileField('lastName', e.target.value)}
                   placeholder="Tu apellido"
+                  required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="perfil-email">Correo electrónico</label>
-                <input
+                <TextField
+                  fullWidth
+                  label="Domicilios"
+                  id="perfil-direccion"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.direccion)}
+                  multiline
+                  minRows={2}
+                  required
+                  helperText={profileFieldErrors.direccion?.[0] ?? "Una dirección por línea. Al menos una y hasta 20; máximo 200 caracteres por dirección."}
+                  value={profile.direccion}
+                  onChange={(e) => updateProfileField('direccion', e.target.value)}
+                  placeholder="Calle y número · Barrio"
+                />
+              </div>
+
+              <div className="form-group">
+                <TextField
+                  fullWidth
+                  label="Correo electrónico"
+                  autoComplete="email"
+                  slotProps={{ htmlInput: { maxLength: 254 } }}
                   id="perfil-email"
+                  disabled={savingProfile}
+                  error={Boolean(profileFieldErrors.email)}
+                  helperText={profileFieldErrors.email?.[0]}
                   type="email"
-                  value={emailEdit}
-                  onChange={(e) => setEmailEdit(e.target.value)}
+                  value={profile.email}
+                  onChange={(e) => updateProfileField('email', e.target.value)}
                   placeholder="correo@trenquelauquen.gov.ar"
                   required
                 />
               </div>
 
               <div className="perfil-edit-acciones">
-                <button type="submit" className="login-button btn-guardar-perfil">
+                <Button type="submit" className="login-button btn-guardar-perfil" disabled={savingProfile}>
                   <svg
                     width="16"
                     height="16"
@@ -228,16 +167,17 @@ export default function Login({ initialRegister = false }: LoginProps) {
                   >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  <span>Guardar cambios</span>
-                </button>
+                  <span>{savingProfile ? 'Guardando…' : 'Guardar cambios'}</span>
+                </Button>
 
-                <button
+                <Button
                   type="button"
                   className="btn-cancelar-edicion"
                   onClick={handleCancelarEdicion}
+                  disabled={savingProfile}
                 >
                   Cancelar
-                </button>
+                </Button>
               </div>
             </form>
           ) : (
@@ -260,7 +200,28 @@ export default function Login({ initialRegister = false }: LoginProps) {
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
-                    <span className="detalle-valor">{user?.name} {user?.lastName}</span>
+                    <span className="detalle-valor">{user?.cliente ? `${user.cliente.name} ${user.cliente.lastName}` : 'Sin cliente asociado'}</span>
+                  </div>
+                </div>
+
+                <div className="perfil-detalle-item">
+                  <span className="detalle-label">Dirección vinculada</span>
+                  <div className="detalle-valor-row">
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#1E6000"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span className="detalle-valor">{direccionActual}</span>
                   </div>
                 </div>
 
@@ -284,208 +245,10 @@ export default function Login({ initialRegister = false }: LoginProps) {
                     <span className="detalle-valor">{user?.email}</span>
                   </div>
                 </div>
-
-                {/* Sección de domicilios vinculados */}
-                <div className="perfil-domicilios-box">
-                  <div className="perfil-domicilios-header">
-                    <span className="detalle-label">Mis Domicilios</span>
-                    {!mostrandoAgregarDomicilio && (
-                      <button
-                        type="button"
-                        className="btn-link-agregar-domicilio"
-                        onClick={() => {
-                          setMostrandoAgregarDomicilio(true);
-                          setMensajeExito(false);
-                        }}
-                      >
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        <span>Agregar domicilio</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {domicilios.length === 0 && !mostrandoAgregarDomicilio ? (
-                    <div className="domicilio-vacio-box">
-                      <div className="domicilio-vacio-row">
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#68A544"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        <span className="domicilio-vacio-texto">Sin dirección vinculada</span>
-                      </div>
-                      <p className="domicilio-vacio-desc">
-                        Podés agregar tu dirección desde cero para consultar el recolector en tu cuadra.
-                      </p>
-                      <button
-                        type="button"
-                        className="btn-agregar-primer-domicilio"
-                        onClick={() => {
-                          setMostrandoAgregarDomicilio(true);
-                          setMensajeExito(false);
-                        }}
-                      >
-                        + Agregar domicilio desde cero
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="domicilios-lista">
-                      {domicilios.map((dom) => (
-                        <div
-                          key={dom.id}
-                          className={`domicilio-card-item ${dom.esPrincipal ? 'es-principal' : ''}`}
-                        >
-                          <div className="domicilio-item-main">
-                            <div className="domicilio-pin-icon" aria-hidden="true">
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="#1E6000"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                <circle cx="12" cy="10" r="3" />
-                              </svg>
-                            </div>
-                            <div className="domicilio-item-datos">
-                              <div className="domicilio-item-top">
-                                <span className="domicilio-item-direccion">{dom.direccion}</span>
-                                {dom.esPrincipal && (
-                                  <span className="badge-domicilio-principal">Principal</span>
-                                )}
-                              </div>
-                              {dom.etiqueta && (
-                                <span className="domicilio-item-etiqueta">{dom.etiqueta}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="domicilio-item-acciones">
-                            {!dom.esPrincipal && (
-                              <button
-                                type="button"
-                                className="btn-hacer-principal"
-                                onClick={() => hacerPrincipal(dom.id)}
-                              >
-                                Usar como principal
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="btn-eliminar-domicilio"
-                              onClick={() => eliminarDomicilio(dom.id)}
-                              title="Eliminar este domicilio"
-                              aria-label={`Eliminar domicilio ${dom.direccion}`}
-                            >
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                aria-hidden="true"
-                              >
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {mostrandoAgregarDomicilio && (
-                    <form onSubmit={handleGuardarNuevoDomicilio} className="form-agregar-domicilio">
-                      <div className="form-group">
-                        <label htmlFor="nuevo-domicilio-dir">Dirección</label>
-                        <input
-                          id="nuevo-domicilio-dir"
-                          type="text"
-                          value={nuevaDireccion}
-                          onChange={(e) => setNuevaDireccion(e.target.value)}
-                          placeholder="Calle y número · Barrio (ej. Villegas 450)"
-                          required
-                          autoFocus
-                        />
-                        {errorDomicilio && <span className="field-error-text">{errorDomicilio}</span>}
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="nuevo-domicilio-etiqueta">Etiqueta (opcional)</label>
-                        <input
-                          id="nuevo-domicilio-etiqueta"
-                          type="text"
-                          value={nuevaEtiqueta}
-                          onChange={(e) => setNuevaEtiqueta(e.target.value)}
-                          placeholder="Ej. Casa, Trabajo, Local"
-                        />
-                      </div>
-
-                      {domicilios.length > 0 && (
-                        <label className="checkbox-label domicilio-checkbox-principal">
-                          <input
-                            type="checkbox"
-                            checked={nuevoEsPrincipal}
-                            onChange={(e) => setNuevoEsPrincipal(e.target.checked)}
-                          />
-                          Marcar como domicilio principal
-                        </label>
-                      )}
-
-                      <div className="form-domicilio-botones">
-                        <button type="submit" className="login-button btn-guardar-domicilio">
-                          Guardar domicilio
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-cancelar-edicion"
-                          onClick={() => {
-                            setMostrandoAgregarDomicilio(false);
-                            setNuevaDireccion('');
-                            setNuevaEtiqueta('');
-                            setErrorDomicilio('');
-                          }}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
               </div>
 
               <div className="perfil-acciones">
-                <button
+                <Button
                   type="button"
                   className="btn-editar-perfil"
                   onClick={handleIniciarEdicion}
@@ -504,12 +267,12 @@ export default function Login({ initialRegister = false }: LoginProps) {
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
-                  <span>Editar mis datos</span>
-                </button>
+                  <span>{needsAddress ? 'Completar mis datos' : 'Editar mis datos'}</span>
+                </Button>
 
                 {logoutError && <Alert severity="error">{logoutError}</Alert>}
 
-                <button
+                <Button
                   type="button"
                   className="btn-cerrar-sesion"
                   onClick={logout}
@@ -531,7 +294,7 @@ export default function Login({ initialRegister = false }: LoginProps) {
                     <line x1="21" y1="12" x2="9" y2="12" />
                   </svg>
                   <span>{loggingOut ? 'Cerrando sesión…' : 'Cerrar Sesión'}</span>
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -540,166 +303,92 @@ export default function Login({ initialRegister = false }: LoginProps) {
     );
   }
 
-  // Si no inició sesión, mostrar formulario de login o registro
+  // Si no inició sesión, mostrar formulario de login
   return (
     <div className="login-container">
       <div className="login-card">
         <header className="login-header">
           <div className="login-title-row">
-            <h2>{register ? 'Crear Cuenta' : 'Iniciar Sesión'}</h2>
+            <h2>{register ? 'Crear cuenta' : 'Iniciar Sesión'}</h2>
             <img
               src={camionRecolector}
               alt="Camión recolector"
               className="login-truck-icon"
             />
           </div>
-          <p>
-            {register
-              ? 'Completá tus datos para ver el recolector en tu cuadra'
-              : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}
-          </p>
+          <p>{register ? 'Completá tus datos y al menos un domicilio' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
         </header>
 
         <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
           {error && <Alert severity="error">{error}</Alert>}
-
           {register && (
             <>
-              <div className="form-group">
-                <label htmlFor="name">Nombre</label>
-                <input
-                  id="name"
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => updateField('name', e.target.value)}
-                  onBlur={validateName}
-                  placeholder="Ej. Ana María"
-                  autoComplete="given-name"
-                  required
-                  className={nameError ? 'input-error' : ''}
-                />
-                {nameError && <span className="field-error-text">{nameError}</span>}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="lastName">Apellido</label>
-                <input
-                  id="lastName"
-                  type="text"
-                  value={form.lastName}
-                  onChange={(e) => updateField('lastName', e.target.value)}
-                  onBlur={validateLastName}
-                  placeholder="Ej. Pérez"
-                  autoComplete="family-name"
-                  required
-                  className={lastNameError ? 'input-error' : ''}
-                />
-                {lastNameError && <span className="field-error-text">{lastNameError}</span>}
-              </div>
+              <TextField
+                label="Nombre" autoComplete="given-name" required fullWidth
+                value={form.name} disabled={pending}
+                onChange={(e) => updateField('name', e.target.value)}
+                onBlur={() => validateField('name')}
+                error={Boolean(fieldErrors.name)} helperText={fieldErrors.name?.[0]}
+                slotProps={{ htmlInput: { maxLength: 100 } }}
+              />
+              <TextField
+                label="Apellido" autoComplete="family-name" required fullWidth
+                value={form.lastName} disabled={pending}
+                onChange={(e) => updateField('lastName', e.target.value)}
+                onBlur={() => validateField('lastName')}
+                error={Boolean(fieldErrors.lastName)} helperText={fieldErrors.lastName?.[0]}
+                slotProps={{ htmlInput: { maxLength: 100 } }}
+              />
+              <TextField
+                label="Domicilios" required fullWidth multiline minRows={2}
+                placeholder="San Martín 123" value={form.direccion} disabled={pending}
+                onChange={(e) => updateField('direccion', e.target.value)}
+                onBlur={() => validateField('direccion')}
+                error={Boolean(fieldErrors.direccion)}
+                helperText={fieldErrors.direccion?.[0] ?? 'Una dirección por línea. Entre 1 y 20; hasta 200 caracteres cada una.'}
+              />
             </>
           )}
-
-          <div className="form-group">
-            <label htmlFor="email">Correo electrónico</label>
-            <input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => updateField('email', e.target.value)}
-              onBlur={validateEmail}
-              placeholder="ana@correo.com"
-              autoComplete="email"
-              required
-              className={emailError ? 'input-error' : ''}
-            />
-            {emailError && <span className="field-error-text">{emailError}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Contraseña</label>
-            <input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={(e) => updateField('password', e.target.value)}
-              onBlur={validatePassword}
-              placeholder="••••••••"
-              autoComplete={register ? 'new-password' : 'current-password'}
-              required
-              className={passwordError ? 'input-error' : ''}
-            />
-            {passwordError && <span className="field-error-text">{passwordError}</span>}
-          </div>
-
+          <TextField
+            id="email" label="Correo electrónico" type="email" autoComplete="email"
+            required fullWidth value={form.email} disabled={pending}
+            onChange={(e) => updateField('email', e.target.value)} onBlur={() => validateField('email')}
+            error={Boolean(fieldErrors.email)} helperText={fieldErrors.email?.[0]}
+            slotProps={{ htmlInput: { maxLength: 254 } }}
+          />
+          <TextField
+            id="password" label="Contraseña" type="password"
+            autoComplete={register ? 'new-password' : 'current-password'}
+            required fullWidth value={form.password} disabled={pending}
+            onChange={(e) => updateField('password', e.target.value)} onBlur={() => validateField('password')}
+            error={Boolean(fieldErrors.password)}
+            helperText={fieldErrors.password?.[0] || (register ? 'Al menos 8 caracteres; hasta 72 bytes.' : '')}
+          />
           {register ? (
-            <div className="form-group">
-              <label htmlFor="repeatedPassword">Repetir contraseña</label>
-              <input
-                id="repeatedPassword"
-                type="password"
-                value={form.repeatedPassword}
-                onChange={(e) => updateField('repeatedPassword', e.target.value)}
-                onBlur={validateRepeatedPassword}
-                placeholder="••••••••"
-                autoComplete="new-password"
-                required
-                className={repeatedPasswordError ? 'input-error' : ''}
-              />
-              {repeatedPasswordError && (
-                <span className="field-error-text">{repeatedPasswordError}</span>
-              )}
-            </div>
+            <TextField
+              label="Repetir contraseña" type="password" autoComplete="new-password"
+              required fullWidth value={form.repeatedPassword} disabled={pending}
+              onChange={(e) => updateField('repeatedPassword', e.target.value)}
+              onBlur={() => validateField('repeatedPassword')}
+              error={Boolean(fieldErrors.repeatedPassword)} helperText={fieldErrors.repeatedPassword?.[0]}
+            />
           ) : (
-            <div className="form-options">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={form.rememberMe}
-                  onChange={(e) => updateField('rememberMe', e.target.checked)}
-                />
-                Recordarme
-              </label>
-              <a href="#recuperar" className="login-link">
-                ¿Olvidaste tu contraseña?
-              </a>
-            </div>
+            <FormControlLabel label="Recordarme" control={
+              <Checkbox checked={form.rememberMe} disabled={pending}
+                onChange={(e) => updateField('rememberMe', e.target.checked)} />
+            } />
           )}
 
-          <button type="submit" className="login-button" disabled={pending}>
-            {pending
-              ? register
-                ? 'Registrando…'
-                : 'Procesando…'
-              : register
-                ? 'Registrarse'
-                : 'Ingresar'}
-          </button>
+          <Button type="submit" className="login-button" disabled={pending}>
+            {pending ? 'Procesando…' : register ? 'Crear cuenta' : 'Ingresar'}
+          </Button>
         </form>
 
         <footer className="login-footer">
-          {register ? (
-            <>
-              <span>¿Ya tenés una cuenta? </span>
-              <button
-                type="button"
-                className="login-link-btn"
-                onClick={handleToggleMode}
-              >
-                Iniciá sesión
-              </button>
-            </>
-          ) : (
-            <>
-              <span>¿No tenés una cuenta? </span>
-              <button
-                type="button"
-                className="login-link-btn"
-                onClick={handleToggleMode}
-              >
-                Regístrate
-              </button>
-            </>
-          )}
+          <span>{register ? '¿Ya tenés cuenta? ' : '¿No tenés cuenta? '}</span>
+          <Button type="button" onClick={() => navigate(register ? '/perfil' : '/registro')} disabled={pending}>
+            {register ? 'Iniciar sesión' : 'Registrate'}
+          </Button>
         </footer>
       </div>
     </div>

@@ -1,7 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsObject,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 import { LoginRequestDto } from './login-request.dto';
+import { DomicilioDto } from '../../user/dto/domicilio.dto';
 
 export class SigninRequestDto extends LoginRequestDto {
   @ApiProperty({ example: 'Ana María', minLength: 1, maxLength: 100 })
@@ -21,6 +31,15 @@ export class SigninRequestDto extends LoginRequestDto {
   @MinLength(1, { message: 'Se requiere un apellido' })
   @MaxLength(100)
   lastName!: string;
+
+  @ApiProperty({ type: DomicilioDto, isArray: true, minItems: 1, maxItems: 20 })
+  @IsArray()
+  @ArrayMinSize(1, { message: 'Se requiere al menos un domicilio' })
+  @ArrayMaxSize(20)
+  @IsObject({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => DomicilioDto)
+  domicilios!: DomicilioDto[];
 
   @ApiProperty({
     format: 'password',

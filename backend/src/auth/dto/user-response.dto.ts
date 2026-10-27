@@ -1,4 +1,27 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Role } from '../../generated/prisma/enums';
+
+export class DomicilioResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ example: 'San Martín 123' })
+  direccion!: string;
+}
+
+export class ClienteResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ example: 'Ana María' })
+  name!: string;
+
+  @ApiProperty({ example: 'Pérez' })
+  lastName!: string;
+
+  @ApiProperty({ type: DomicilioResponseDto, isArray: true })
+  domicilios!: DomicilioResponseDto[];
+}
 
 export class UserResponseDto {
   @ApiProperty({
@@ -10,9 +33,9 @@ export class UserResponseDto {
   @ApiProperty({ format: 'email', example: 'ana@example.com' })
   email!: string;
 
-  @ApiProperty({ example: 'Ana María' })
-  name!: string;
+  @ApiProperty({ enum: Role, enumName: 'Role' })
+  role!: Role;
 
-  @ApiProperty({ example: 'Pérez' })
-  lastName!: string;
+  @ApiProperty({ type: ClienteResponseDto, nullable: true })
+  cliente!: ClienteResponseDto | null;
 }

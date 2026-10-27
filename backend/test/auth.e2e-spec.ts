@@ -1,19 +1,24 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
-import type { User } from '../src/generated/prisma/client';
+import type { Prisma } from '../src/generated/prisma/client';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { AuthService } from '../src/auth/auth.service';
 
 describe('Email/password authentication (HTTP)', () => {
   let app: INestApplication<App>;
+  type User = Prisma.UserGetPayload<{
+    include: { cliente: { include: { domicilios: true } } };
+  }>;
   const users = new Map<string, User>();
   const account = {
     email: ' ANA@Example.com ',
     name: 'Ana María',
     lastName: 'Pérez',
+    domicilios: [{ direccion: ' San Martín 123 ' }],
     password: ' pass!word á ',
     repeatedPassword: ' pass!word á ',
   };
@@ -24,31 +29,97 @@ describe('Email/password authentication (HTTP)', () => {
       .overrideProvider(PrismaService)
       .useValue({
         user: {
-          create: ({ data }: { data: Omit<User, 'id'> }) => {
+          create: ({
+            data,
+          }: {
+            data: {
+              email: string;
+              passwordHash: string;
+              cliente: {
+                create: {
+                  name: string;
+                  lastName: string;
+                  domicilios: { create: { direccion: string }[] };
+                };
+              };
+            };
+          }) => {
             if (users.has(data.email))
               throw Object.assign(new Error('Duplicate email'), {
                 code: 'P2002',
               });
-            const user = { id: 'user-1', ...data };
+            const user: User = {
+              id: 'user-1',
+              role: 'USER',
+              email: data.email,
+              passwordHash: data.passwordHash,
+              cliente: {
+                id: 'cliente-1',
+                userId: 'user-1',
+                ...data.cliente.create,
+                domicilios: data.cliente.create.domicilios.create.map((d) => ({
+                  id: 'domicilio-1',
+                  clienteId: 'cliente-1',
+                  ...d,
+                })),
+              },
+            };
             users.set(user.email, user);
-            return user;
+            return {
+              id: user.id,
+              email: user.email,
+              role: user.role,
+              cliente: {
+                id: user.cliente!.id,
+                name: user.cliente!.name,
+                lastName: user.cliente!.lastName,
+                domicilios: user.cliente!.domicilios.map(
+                  ({ id, direccion }) => ({ id, direccion }),
+                ),
+              },
+            };
           },
+          findMany: () =>
+            [...users.values()].map((user) => ({
+              id: user.id,
+              email: user.email,
+              role: user.role,
+              cliente: {
+                id: user.cliente!.id,
+                name: user.cliente!.name,
+                lastName: user.cliente!.lastName,
+                domicilios: user.cliente!.domicilios.map(
+                  ({ id, direccion }) => ({ id, direccion }),
+                ),
+              },
+            })),
           findUnique: ({
             where,
             select,
           }: {
             where: { email?: string; id?: string };
-            select?: object;
+            select?: { role?: boolean; id?: boolean; passwordHash?: boolean };
           }) => {
             const user = where.email
               ? users.get(where.email)
               : [...users.values()].find((u) => u.id === where.id);
             if (!user || !select) return user ?? null;
+            if (select.role && !select.id) return { role: user.role };
             return {
               id: user.id,
               email: user.email,
-              name: user.name,
-              lastName: user.lastName,
+              role: user.role,
+              cliente: {
+                id: user.cliente!.id,
+                name: user.cliente!.name,
+                lastName: user.cliente!.lastName,
+                domicilios: user.cliente!.domicilios.map(
+                  ({ id, direccion }) => ({ id, direccion }),
+                ),
+              },
+              ...(select.passwordHash
+                ? { passwordHash: user.passwordHash }
+                : {}),
             };
           },
         },
@@ -87,8 +158,13 @@ describe('Email/password authentication (HTTP)', () => {
     expect(registered.body).toEqual({
       id: 'user-1',
       email: 'ana@example.com',
-      name: 'Ana María',
-      lastName: 'Pérez',
+      role: 'USER',
+      cliente: {
+        id: 'cliente-1',
+        name: 'Ana María',
+        lastName: 'Pérez',
+        domicilios: [{ id: 'domicilio-1', direccion: 'San Martín 123' }],
+      },
     });
     const cookie = String(registered.headers['set-cookie']);
     expect(cookie).toContain('HttpOnly');
@@ -110,6 +186,34 @@ describe('Email/password authentication (HTTP)', () => {
       .expect(200);
     expect(String(login.headers['set-cookie'])).toContain('Max-Age=604800');
     await agent.get('/auth/me').expect(200).expect(registered.body);
+  });
+
+  it('restricts the user list to existing admins and never exposes hashes', async () => {
+    const agent = request.agent(app.getHttpServer());
+    await agent.get('/auth/all').expect(401);
+    const registered = await agent
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    await agent.get('/auth/all').expect(403);
+    const admin = users.get('ana@example.com')!;
+    expect(admin.role).toBe('USER');
+    admin.role = 'ADMIN';
+    await agent
+      .get('/auth/all')
+      .expect(200)
+      .expect([{ ...(registered.body as object), role: 'ADMIN' }]);
+    const jwt = app.get(JwtService);
+    const token = jwt.sign({ sub: 'user-1' }, { expiresIn: 60 });
+    await request(app.getHttpServer())
+      .get('/auth/all')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect([{ ...(registered.body as object), role: 'ADMIN' }]);
+    admin.role = 'USER';
+    await agent.get('/auth/all').expect(403);
+    users.clear();
+    await agent.get('/auth/all').expect(401);
   });
 
   it('rejects duplicate registrations, wrong passwords and unknown users', async () => {
@@ -136,12 +240,26 @@ describe('Email/password authentication (HTTP)', () => {
   it.each([
     { email: 123 },
     { email: 'invalid' },
+    { domicilios: undefined },
+    { domicilios: null },
+    { domicilios: [] },
+    { domicilios: [[]] },
+    { domicilios: [null] },
+    { domicilios: ['invalid'] },
+    { domicilios: [{ direccion: ' ' }] },
+    { domicilios: [{ direccion: 'x'.repeat(201) }] },
+    {
+      domicilios: Array.from({ length: 21 }, () => ({
+        direccion: 'San Martín 123',
+      })),
+    },
     { name: 123 },
     { name: ' ' },
     { password: 'short' },
     { password: 'á'.repeat(37), repeatedPassword: 'á'.repeat(37) },
     { repeatedPassword: 'different' },
     { role: 'admin' },
+    { role: 'ADMIN' },
     { rememberMe: 'true' },
   ])('rejects invalid registration: %j', async (change) => {
     await request(app.getHttpServer())
@@ -170,6 +288,71 @@ describe('Email/password authentication (HTTP)', () => {
       .expect(401);
   });
 
+  it('accepts the Bearer scheme without depending on its case', async () => {
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    const token = app.get(JwtService).sign({ sub: 'user-1' });
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `bearer ${token}`)
+      .expect(200)
+      .expect(registered.body);
+  });
+
+  it('gives Bearer credentials priority over the session cookie', async () => {
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    const cookie = String(registered.headers['set-cookie']).split(';')[0];
+    const token = app.get(JwtService).sign({ sub: 'user-1' });
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', 'other=value; session=invalid')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect(registered.body);
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', cookie)
+      .set('Authorization', 'Bearer invalid')
+      .expect(401);
+  });
+
+  it.each([{}, { sub: '' }, { sub: 123 }, { sub: null }])(
+    'rejects a signed token without a valid subject: %j',
+    async (payload) => {
+      const getUser = jest.spyOn(app.get(AuthService), 'getUser');
+      const token = app.get(JwtService).sign(payload);
+      await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(401);
+      expect(getUser).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects tokens signed with another secret or algorithm', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(account)
+      .expect(201);
+    const tokens = [
+      new JwtService({ secret: 'another-test-only-secret' }).sign({
+        sub: 'user-1',
+      }),
+      app.get(JwtService).sign({ sub: 'user-1' }, { algorithm: 'HS384' }),
+    ];
+    for (const token of tokens) {
+      await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(401);
+    }
+  });
+
   it('rejects cross-site forms and rate limits repeated attempts', async () => {
     await request(app.getHttpServer())
       .post('/auth/login')
@@ -193,4 +376,22 @@ describe('Email/password authentication (HTTP)', () => {
       .expect(429);
     expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
   });
+
+  it.each(['/auth/login/', '/AUTH/LOGIN', '/auth/register/', '/AUTH/REGISTER'])(
+    'shares the attempt limit with the accepted route variant %s',
+    async (path) => {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await request(app.getHttpServer())
+          .post('/auth/login')
+          .send({ email: 'invalid' })
+          .expect(400);
+      }
+      const response = await request(app.getHttpServer())
+        .post(path)
+        .send({ email: 'invalid' })
+        .expect(429);
+      expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
+      expect(users.size).toBe(0);
+    },
+  );
 });

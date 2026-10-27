@@ -6,8 +6,7 @@ interface PerfilPageProps {
 }
 
 export const PerfilPage: React.FC<PerfilPageProps> = ({ initialRegister = false }) => {
-  return <Login initialRegister={initialRegister} />;
+  return <Login key={initialRegister ? 'registro' : 'login'} initialRegister={initialRegister} />;
 };
 
 export default PerfilPage;
-

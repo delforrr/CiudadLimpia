@@ -57,7 +57,7 @@ test('starts checking the server session without trusting sessionStorage', () =>
 
 test('all consumers receive the same user and session actions', () => {
   const session = {
-    user: { id: '1', email: 'ana@example.com', name: 'Ana', lastName: 'Pérez' },
+    user: { id: '1', email: 'ana@example.com', role: 'USER' as const, cliente: { id: 'c1', name: 'Ana', lastName: 'Pérez', domicilios: [] } },
     isAuthenticated: true,
     checking: false,
     loggingOut: false,
