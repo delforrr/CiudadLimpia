@@ -5,7 +5,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { LoginRequest, RegisterRequest } from './auth.schemas';
 import { UserService } from '../user/user.service';
 import { Role } from '../generated/prisma/enums';
-import { UserResponseDto } from './dto/user-response.dto';
 import { publicUserSelect } from '../user/user.select';
 
 export const sessionSeconds = (remember: boolean) =>
@@ -35,12 +34,9 @@ export class AuthService {
     const matches = await bcrypt.compare(dto.password, hash);
     if (!user || !matches)
       throw new UnauthorizedException('Email o contraseña incorrectos');
-    return {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      cliente: user.cliente,
-    };
+    const { passwordHash, ...publicUser } = user;
+    void passwordHash;
+    return publicUser;
   }
 
   createToken(id: string, remember: boolean) {
@@ -57,9 +53,5 @@ export class AuthService {
     });
     if (!user) throw new UnauthorizedException('Sesión inválida');
     return user;
-  }
-
-  getAllUsers(): Promise<UserResponseDto[]> {
-    return this.prisma.user.findMany({ select: publicUserSelect });
   }
 }

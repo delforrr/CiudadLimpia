@@ -31,7 +31,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UserAccessGuard } from './user-access.guard';
 import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
-import { UserResponseDto } from '../auth/dto/user-response.dto';
+import { publicUserSchema } from '../accounts/account.schemas';
 import {
   createUserSchema,
   updateUserSchema,
@@ -62,7 +62,7 @@ export class UserController {
   @ApiOperation({
     summary: 'Crear una cuenta con cliente y al menos un domicilio (ADMIN)',
   })
-  @ApiCreatedResponse({ type: UserResponseDto })
+  @ApiCreatedResponse({ standardSchema: publicUserSchema })
   @ApiBadRequestResponse({ description: 'Datos inválidos.' })
   @ApiConflictResponse({ description: 'El email ya está registrado.' })
   create(@Body({ schema: createUserSchema }) dto: CreateUserInput) {
@@ -73,7 +73,7 @@ export class UserController {
   @Get()
   @Roles([Role.ADMIN])
   @ApiOperation({ summary: 'Listar usuarios (ADMIN)' })
-  @ApiOkResponse({ type: UserResponseDto, isArray: true })
+  @ApiOkResponse({ standardSchema: publicUserSchema.array() })
   findAll() {
     return this.users.findAll();
   }
@@ -81,7 +81,7 @@ export class UserController {
   @Get(':id')
   @UseGuards(UserAccessGuard)
   @ApiOperation({ summary: 'Consultar una cuenta (titular o ADMIN)' })
-  @ApiOkResponse({ type: UserResponseDto })
+  @ApiOkResponse({ standardSchema: publicUserSchema })
   @ApiBadRequestResponse({ description: 'Identificador inválido.' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -99,7 +99,7 @@ export class UserController {
     description:
       'Solo ADMIN puede enviar role; USER recibe 403 incluso si el valor es inválido. Si se envía cliente, requiere name y lastName. Omitir domicilios conserva la lista de un cliente existente; enviarlo requiere entre 1 y 20 direcciones y reemplaza la lista completa, con nuevos identificadores. Las cuentas antiguas sin domicilios deben completarlos para poder guardar cualquier actualización (400).',
   })
-  @ApiOkResponse({ type: UserResponseDto })
+  @ApiOkResponse({ standardSchema: publicUserSchema })
   @ApiBadRequestResponse({ description: 'Datos o identificador inválidos.' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.' })
   @ApiConflictResponse({ description: 'El email ya está registrado.' })

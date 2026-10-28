@@ -28,7 +28,14 @@ export const passwordSchema = z
     (value) => Buffer.byteLength(value, 'utf8') <= 72,
     'La contraseña no puede superar 72 bytes',
   )
-  .meta({ format: 'password', writeOnly: true, minLength: 8, maxLength: 72 });
+  .meta({
+    format: 'password',
+    writeOnly: true,
+    minLength: 8,
+    maxLength: 72,
+    description:
+      'Mínimo 8 caracteres y máximo 72 bytes UTF-8. Conserva espacios y símbolos.',
+  });
 export const roleSchema = z.enum(Role);
 export const domicilioSchema = z.strictObject({
   direccion: textSchema(200),
