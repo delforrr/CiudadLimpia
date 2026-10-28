@@ -21,6 +21,14 @@ Vite envía `/auth` y `/users` a `http://localhost:3000`. En producción, servir
 
 El frontend centraliza las rutas de sesión en `src/services/authService.ts` y la edición del perfil en `src/services/userService.ts`; ambos usan `http.ts`. `useAuth` administra la sesión y `useAuthForm` administra el formulario; los componentes presentan la interfaz con componentes MUI y estilos CSS.
 
+## Arquitectura del backend
+
+`AccountsModule` registra los controladores de autenticación y usuarios, sus servicios y los guards. `AuthService` verifica credenciales y emite sesiones; delega la creación de cuentas en `UserService`, que concentra las escrituras y el mapeo de errores Prisma a 409/404. `PrismaModule` proporciona una sola instancia del cliente a cuentas y puntos limpios, sin depender de autenticación.
+
+El arranque y las pruebas HTTP usan la misma configuración de aplicación. La política HTTP mantiene `no-store`, rechazo cross-site y Content-Type JSON; el límite de intentos de registro/login tiene su propio guard. Se usa `AuthGuard('jwt')` de Passport directamente y se conserva `publicUserSelect` como lista explícita de campos públicos.
+
+Este refactor no cambia el esquema, las migraciones históricas ni la relación explícita de residuos. La integración funcional de puntos limpios sigue fuera de alcance.
+
 ## App completa con Docker
 
 Requiere Docker con Compose; no hace falta instalar Node en el host. Toda la configuración está en `docker-compose.yml`, en la raíz. Usar `--env-file backend/.env` para cargar las variables existentes sin duplicar credenciales.
@@ -55,9 +63,8 @@ La configuración local usa `NODE_ENV=development` para permitir la cookie de se
 
 Los domicilios guardan `direccion` y una `etiqueta` opcional de hasta 100 caracteres (por ejemplo, Casa o Trabajo) en PostgreSQL. Registro y edición de perfil permiten agregarlos desde la tarjeta de domicilios; no se guardan en localStorage.
 
-- `POST /auth/register`: `{ email, name, lastName, domicilios: [{ direccion }], password, repeatedPassword }`. Crea la cuenta e inicia sesión.
+- `POST /auth/register`: `{ email, password, cliente: { name, lastName, domicilios: [{ direccion, etiqueta? }] } }`. Crea una cuenta USER e inicia sesión. La confirmación de contraseña queda en el formulario y no se envía al servidor. El registro rechaza `role`, `rememberMe` y `repeatedPassword`.
 - `POST /auth/login`: `{ email, password, rememberMe? }`.
-- `GET /auth/all`: listado de usuarios, exclusivo para cuentas con rol `ADMIN`; devuelve 403 para `USER`.
 - `GET /auth/me`: usuario autenticado, sin hash ni token; devuelve 401 si la sesión venció.
 - `POST /auth/logout`: elimina la cookie del navegador.
 
@@ -67,9 +74,9 @@ Los POST requieren `Content-Type: application/json`. El email se normaliza a min
 
 El JWT se guarda en una cookie HttpOnly y SameSite=Strict. Dura una hora; con Recordarme dura siete días y la cookie persiste. El guard también acepta `Authorization: Bearer <JWT>` para clientes API. El logout elimina la cookie; un JWT copiado previamente sigue válido hasta vencer. No se implementaron refresh tokens ni recuperación de contraseña.
 
-La verificación usa `passport-jwt` mediante `JwtStrategy` y el guard de `@nestjs/passport`. Solo acepta HS256 y comprueba la firma, el vencimiento y un `sub` no vacío. Si se envían ambos mecanismos, Bearer tiene prioridad sobre la cookie. El usuario identificado queda en `request.user`; los servicios consultan la cuenta y su rol actual en PostgreSQL antes de autorizar la operación.
+La verificación usa `passport-jwt` mediante `JwtStrategy` y el guard de `@nestjs/passport`. Solo acepta HS256 y comprueba la firma, el vencimiento y un `sub` no vacío. Si se envían ambos mecanismos, Bearer tiene prioridad sobre la cookie. La estrategia consulta la cuenta y su rol actual en PostgreSQL; deja esa identidad en `request.user` antes de que los guards autoricen la operación.
 
-Registro y login permiten diez intentos por IP cada quince minutos. El contador es local al proceso: usar un limitador compartido con múltiples réplicas y configurar la IP real en el proxy antes de desplegar.
+Registro y login comparten diez intentos por IP cada quince minutos; el guard de intentos se aplica solo a esos endpoints y devuelve `Retry-After` al bloquearlos. El contador es local al proceso: usar un limitador compartido con múltiples réplicas y configurar la IP real en el proxy antes de desplegar.
 
 ## Cuentas, clientes y domicilios
 
@@ -77,23 +84,23 @@ Registro y login permiten diez intentos por IP cada quince minutos. El contador 
 
 La migración `20261023000000_separate_cliente` copia los nombres y apellidos existentes a `Cliente` antes de quitarlos de `User`, en una transacción. Conserva IDs de cuentas, emails, hashes y roles; no inventa domicilios. Los domicilios que la pantalla antigua guardaba en localStorage no están en PostgreSQL y deben ingresarse nuevamente.
 
-Las respuestas de autenticación y usuarios ahora tienen `{ id, email, role, cliente }`; `cliente` puede ser `null` o `{ id, name, lastName, domicilios: [{ id, direccion }] }`. Los consumidores anteriores deben leer los nombres dentro de `cliente`. El registro requiere ahora `domicilios: [{ direccion }]`, con al menos una dirección.
+Las respuestas de autenticación y usuarios ahora tienen `{ id, email, role, cliente }`; `cliente` puede ser `null` o `{ id, name, lastName, domicilios: [{ id, direccion, etiqueta }] }`. Los consumidores anteriores deben leer los nombres dentro de `cliente`. El registro requiere `cliente.domicilios: [{ direccion }]`, con al menos una dirección.
 
 | Endpoint | Permiso | Comportamiento |
 | --- | --- | --- |
-| `POST /users?role=USER` | ADMIN | Crea cuenta con cliente y al menos un domicilio; también acepta `role=ADMIN` |
+| `POST /users` | ADMIN | Crea cuenta con `role` en el cuerpo JSON, cliente y al menos un domicilio |
 | `GET /users` | ADMIN | Lista cuentas con su cliente y domicilios |
 | `GET /users/:id` | Titular o ADMIN | Consulta una cuenta |
 | `PATCH /users/:id` | Titular o ADMIN | Actualiza cuenta y cliente juntos |
 | `DELETE /users/:id` | ADMIN | Elimina cuenta, cliente y domicilios |
 
-`POST /users?role=USER` recibe `email`, `password` y `cliente: { name, lastName, domicilios: [{ direccion }] }`. El query param `role` es obligatorio (`USER` o `ADMIN`), y no se acepta en el cuerpo del POST. El registro público siempre crea `USER` y no acepta roles.
+`POST /users` recibe `{ email, password, role, cliente: { name, lastName, domicilios: [{ direccion, etiqueta? }] } }`. `role` es obligatorio en el JSON (`USER` o `ADMIN`); la query antigua ya no lo proporciona. El registro público siempre crea `USER` y rechaza roles.
 
 `PATCH` acepta `email`, `password`, `role` y `cliente` de forma opcional; solo ADMIN puede enviar `role`. Al enviar `cliente`, se requieren `name` y `lastName`; omitir `domicilios` conserva la lista de un cliente existente y enviar el array la reemplaza de forma atómica (se generan nuevos IDs). Tanto el alta como el reemplazo requieren entre 1 y 20 direcciones de hasta 200 caracteres, sin espacios vacíos. No se puede vaciar la lista. Para asociar un cliente a una cuenta antigua, enviar también sus domicilios.
 
 Esta obligación se valida en la API. Las cuentas antiguas sin domicilios pueden iniciar sesión y consultar su perfil, pero la interfaz las redirige a `/perfil` hasta que completen una dirección. La API rechaza con 400 cualquier actualización de una cuenta sin domicilios que no incluya los datos necesarios para completarlos; no se inventan direcciones ni se modifica el esquema de PostgreSQL. No hay asignación de un domicilio principal.
 
-Los identificadores de `/users/:id` son UUID. Las escrituras requieren `Content-Type: application/json`, incluso DELETE sin cuerpo. Los errores son 400 (validación), 401 (sesión ausente o usuario eliminado), 403 (sin permisos), 404 (cuenta inexistente) y 409 (email duplicado). `/auth/all` permanece disponible para ADMIN. Los hashes nunca se incluyen en las respuestas. Cambiar la contraseña no revoca JWT emitidos: siguen válidos hasta vencer.
+Los identificadores de `/users/:id` son UUID. Las escrituras requieren `Content-Type: application/json`, incluso DELETE sin cuerpo. Los errores son 400 (validación), 401 (sesión ausente o usuario eliminado), 403 (sin permisos), 404 (cuenta inexistente) y 409 (email duplicado). `/auth/all` se eliminó; el listado administrativo único es `GET /users`. Los hashes nunca se incluyen en las respuestas. Cambiar la contraseña no revoca JWT emitidos: siguen válidos hasta vencer.
 
 El formulario de registro está en `/registro`, y el inicio de sesión en `/perfil`. Usan controles MUI y Zod para validar cada campo al salir de él y al enviar; el perfil también valida con Zod antes de guardar. Los domicilios se ingresan uno por línea; se validan nombres, email y los límites de las direcciones antes de guardar. La lógica vive en `useAuthForm` y `useProfileForm`. No se agregan pantallas de administración ni endpoints independientes para clientes o domicilios.
 
@@ -109,7 +116,7 @@ La integración usa [Nest Swagger](https://docs.nestjs.com/openapi/introduction)
 
 ## Dependencias y verificación
 
-El backend usa Nest 12 y Prisma 7 estable. TypeScript permanece en 6.0 por los rangos soportados por Nest Swagger, typescript-eslint y ts-jest. Prisma requiere `@prisma/adapter-pg` y genera el cliente en `backend/src/generated/prisma` (ignorado por Git).
+El backend usa Nest 12, Prisma 7 y Zod 4.6.7. `StandardSchemaValidationPipe` valida los contratos de entrada y Swagger documenta directamente los mismos esquemas, sin DTOs con decoradores ni adaptadores adicionales. Los objetos de entrada son estrictos, incluidos los anidados: campos desconocidos producen 400 y `message` es una lista. PATCH permite omitir campos, pero rechaza `null` salvo en la etiqueta del domicilio. Los límites de texto cuentan caracteres Unicode y la contraseña conserva el límite adicional en bytes. TypeScript permanece en 6.0 por los rangos soportados por Nest Swagger, typescript-eslint y ts-jest. Prisma requiere `@prisma/adapter-pg` y genera el cliente en `backend/src/generated/prisma` (ignorado por Git).
 
 El override de `@istanbuljs/load-nyc-config > js-yaml` elimina la rama vulnerable de YAML 3. El consumidor utiliza `load`, que existe en YAML 4; las pruebas incluyen lectura de configuración YAML y cobertura para comprobar esta compatibilidad.
 
@@ -127,6 +134,10 @@ npm run audit
 
 En `frontend`: `npm test`, `npm run build` y `npm run lint`.
 
-Las pruebas HTTP sustituyen únicamente PostgreSQL por un repositorio en memoria; ejecutan Nest, validaciones, bcrypt y JWT reales. No escriben en la base configurada. Un resultado de cero vulnerabilidades de npm audit corresponde al lockfile y a los avisos conocidos al momento de ejecutarlo; debe repetirse al actualizar dependencias.
+Las pruebas HTTP sustituyen únicamente la persistencia por mocks por operación; ejecutan Nest, la configuración real de validación, bcrypt y JWT. No escriben en la base configurada ni demuestran transacciones reales de PostgreSQL. Un resultado de cero vulnerabilidades de npm audit corresponde al lockfile y a los avisos conocidos al momento de ejecutarlo; debe repetirse al actualizar dependencias.
 
 Referencias de migración: [Nest 12](https://docs.nestjs.com/migration-guide), [Prisma 7](https://www.prisma.io/docs/guides/upgrade-prisma-orm/v7).
+
+### Pendiente de seguridad aceptado
+
+Al 28 de octubre de 2026, `npm audit` informa seis avisos low de desarrollo transitivos de Jest/ts-jest por [deepmerge, GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4), sin versión corregida publicada. Se acordó entregar el refactor con este pendiente documentado: `npm run audit` sigue estricto y devuelve un código de error mientras exista el aviso. No se degradó Jest ni se agregaron overrides para ocultarlo.

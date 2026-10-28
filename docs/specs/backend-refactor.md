@@ -58,7 +58,7 @@ Reunir autenticación y usuarios en AccountsModule, compartir Prisma desde Prism
 - Probar Unicode astral, UTF-8, null/ausencia, arrays vacíos/excesivos, normalización y edición de domicilios.
 - Probar contador conjunto, ventana y Retry-After; cookies en producción/desarrollo.
 - Compartir configuración de aplicación entre bootstrap y pruebas. Reducir simulación artesanal de Prisma con fixtures/mocks por operación.
-- Backend: build, unitarias, HTTP, lint sin correcciones, audit cero. Frontend: pruebas, build y lint.
+- Backend: build, unitarias, HTTP y lint sin correcciones. Audit estricto ejecutado; excepción aprobada: seis avisos low de desarrollo de deepmerge/Jest sin versión corregida, documentados sin degradar dependencias ni ocultar el resultado. Frontend: pruebas, build y lint.
 - No afirmar atomicidad real a partir de mocks: escrituras anidadas mantienen garantías Prisma, sin ejecutar migraciones sobre la base local.
 
 ## Out of Scope
@@ -67,3 +67,9 @@ Integración HTTP/frontend de puntos limpios, cambios de esquema/migraciones/dat
 ## Further Notes
 Spec sintetizado del plan acordado, sin issue original. Base comparada contra develop. Implementación mediante commits atómicos por slices y revisión final de Standards/Spec. Preservar los cambios locales originales y no incorporarlos en los commits.
 
+
+## Implementation status
+
+Los cuatro slices están implementados. [Spec #1](https://github.com/delforrr/CiudadLimpia/issues/1), tickets [#2](https://github.com/delforrr/CiudadLimpia/issues/2), [#3](https://github.com/delforrr/CiudadLimpia/issues/3), [#4](https://github.com/delforrr/CiudadLimpia/issues/4), [#5](https://github.com/delforrr/CiudadLimpia/issues/5); integración y revisión final en [PR #6](https://github.com/delforrr/CiudadLimpia/pull/6). Los tickets externos se cierran al integrar el PR.
+
+La excepción de audit fue aceptada explícitamente por el usuario después del spec original: mantener el audit estricto y documentar los seis avisos low sin versión corregida (GHSA-gcqx-w48m-w2h4).

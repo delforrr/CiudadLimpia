@@ -31,10 +31,7 @@ import {
   type RegisterRequest,
 } from './auth.schemas';
 import { AuthEndpointGuard } from './auth-endpoint.guard';
-import { UserResponseDto } from './dto/user-response.dto';
-import { Roles } from './roles.decorator';
-import { RolesGuard } from './roles.guard';
-import { Role } from '../generated/prisma/enums';
+import { publicUserSchema, type PublicUser } from '../accounts/account.schemas';
 
 const getCookieOptions = (): CookieOptions => ({
   httpOnly: true,
@@ -58,7 +55,7 @@ export class AuthController {
   })
   @ApiConsumes('application/json')
   @ApiCreatedResponse({
-    type: UserResponseDto,
+    standardSchema: publicUserSchema,
     description:
       'Cuenta creada. La sesión se entrega en Set-Cookie, no en el JSON.',
   })
@@ -83,7 +80,7 @@ export class AuthController {
   async register(
     @Body({ schema: registerSchema }) dto: RegisterRequest,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<UserResponseDto> {
+  ): Promise<PublicUser> {
     const user = await this.auth.register(dto);
     await this.setSession(response, user.id, false);
     return user;
@@ -99,7 +96,7 @@ export class AuthController {
   })
   @ApiConsumes('application/json')
   @ApiOkResponse({
-    type: UserResponseDto,
+    standardSchema: publicUserSchema,
     description:
       'Sesión iniciada mediante Set-Cookie. El JSON contiene únicamente el usuario.',
   })
@@ -121,30 +118,10 @@ export class AuthController {
   async login(
     @Body({ schema: loginSchema }) dto: LoginRequest,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<UserResponseDto> {
+  ): Promise<PublicUser> {
     const user = await this.auth.login(dto);
     await this.setSession(response, user.id, dto.rememberMe ?? false);
     return user;
-  }
-
-  @Get('all')
-  @ApiCookieAuth('session')
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Consultar todos los usuarios registrados',
-    description:
-      'Requiere rol ADMIN. Acepta la cookie session del navegador o un JWT existente mediante Authorization: Bearer.',
-  })
-  @ApiOkResponse({ type: UserResponseDto, isArray: true })
-  @ApiResponse({
-    status: 401,
-    description: 'Usuario no autorizado',
-  })
-  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles([Role.ADMIN])
-  all(): Promise<UserResponseDto[]> {
-    return this.auth.getAllUsers();
   }
 
   @Get('me')
@@ -155,13 +132,13 @@ export class AuthController {
     description:
       'Acepta la cookie session del navegador o un JWT existente mediante Authorization: Bearer. Cualquiera de los dos mecanismos es suficiente.',
   })
-  @ApiOkResponse({ type: UserResponseDto })
+  @ApiOkResponse({ standardSchema: publicUserSchema })
   @ApiResponse({
     status: 401,
     description: 'Sesión ausente, inválida, vencida o usuario eliminado.',
   })
   @UseGuards(AuthGuard('jwt'))
-  me(@Req() request: AuthRequest): Promise<UserResponseDto> {
+  me(@Req() request: AuthRequest): Promise<PublicUser> {
     return this.auth.getUser(request.user.id);
   }
 

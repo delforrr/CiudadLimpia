@@ -8,13 +8,11 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/configure-app';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { AuthService } from '../src/auth/auth.service';
+import type { PublicUser } from '../src/accounts/account.schemas';
 
 describe('Email/password authentication (HTTP)', () => {
   let app: INestApplication<App>;
-  type User = Prisma.UserGetPayload<{
-    include: { cliente: { include: { domicilios: true } } };
-  }>;
-  const users = new Map<string, User>();
+  const users = new Map<string, { user: PublicUser; passwordHash: string }>();
   const account = {
     email: ' ANA@Example.com ',
     password: ' pass!word á ',
@@ -31,115 +29,70 @@ describe('Email/password authentication (HTTP)', () => {
       .overrideProvider(PrismaService)
       .useValue({
         user: {
-          create: ({
-            data,
-          }: {
-            data: {
-              email: string;
-              passwordHash: string;
-              cliente: {
-                create: {
-                  name: string;
-                  lastName: string;
-                  domicilios: {
-                    create: { direccion: string; etiqueta?: string | null }[];
+          create: jest.fn(
+            ({
+              data,
+            }: {
+              data: {
+                email: string;
+                passwordHash: string;
+                cliente: {
+                  create: {
+                    name: string;
+                    lastName: string;
+                    domicilios: {
+                      create: { direccion: string; etiqueta?: string | null }[];
+                    };
                   };
                 };
               };
-            };
-          }) => {
-            if (users.has(data.email))
-              throw new Prisma.PrismaClientKnownRequestError(
-                'Duplicate email',
-                { code: 'P2002', clientVersion: '7.10.1' },
-              );
-            const user: User = {
-              id: 'user-1',
-              role: 'USER',
-              email: data.email,
-              passwordHash: data.passwordHash,
-              cliente: {
-                id: 'cliente-1',
-                userId: 'user-1',
-                ...data.cliente.create,
-                domicilios: data.cliente.create.domicilios.create.map((d) => ({
-                  id: 'domicilio-1',
-                  clienteId: 'cliente-1',
-                  etiqueta: null,
-                  ...d,
-                })),
-              },
-            };
-            users.set(user.email, user);
-            return {
-              id: user.id,
-              email: user.email,
-              role: user.role,
-              cliente: {
-                id: user.cliente!.id,
-                name: user.cliente!.name,
-                lastName: user.cliente!.lastName,
-                domicilios: user.cliente!.domicilios.map(
-                  ({ id, direccion, etiqueta }) => ({
-                    id,
-                    direccion,
-                    etiqueta,
-                  }),
-                ),
-              },
-            };
-          },
-          findMany: () =>
-            [...users.values()].map((user) => ({
-              id: user.id,
-              email: user.email,
-              role: user.role,
-              cliente: {
-                id: user.cliente!.id,
-                name: user.cliente!.name,
-                lastName: user.cliente!.lastName,
-                domicilios: user.cliente!.domicilios.map(
-                  ({ id, direccion, etiqueta }) => ({
-                    id,
-                    direccion,
-                    etiqueta,
-                  }),
-                ),
-              },
-            })),
-          findUnique: ({
-            where,
-            select,
-          }: {
-            where: { email?: string; id?: string };
-            select?: { role?: boolean; id?: boolean; passwordHash?: boolean };
-          }) => {
-            const user = where.email
-              ? users.get(where.email)
-              : [...users.values()].find((u) => u.id === where.id);
-            if (!user || !select) return user ?? null;
-            if (select.role && !select.id) return { role: user.role };
-            return {
-              id: user.id,
-              email: user.email,
-              role: user.role,
-              cliente: {
-                id: user.cliente!.id,
-                name: user.cliente!.name,
-                lastName: user.cliente!.lastName,
-                domicilios: user.cliente!.domicilios.map(
-                  ({ id, direccion, etiqueta }) => ({
-                    id,
-                    direccion,
-                    etiqueta,
-                  }),
-                ),
-              },
-              ...(select.passwordHash
-                ? { passwordHash: user.passwordHash }
-                : {}),
-            };
-          },
+            }) => {
+              if (users.has(data.email))
+                throw new Prisma.PrismaClientKnownRequestError(
+                  'Duplicate email',
+                  { code: 'P2002', clientVersion: '7.10.1' },
+                );
+              const profile = data.cliente.create;
+              const user: PublicUser = {
+                id: 'user-1',
+                email: data.email,
+                role: 'USER',
+                cliente: {
+                  id: 'cliente-1',
+                  name: profile.name,
+                  lastName: profile.lastName,
+                  domicilios: profile.domicilios.create.map((domicilio) => ({
+                    id: 'domicilio-1',
+                    etiqueta: null,
+                    ...domicilio,
+                  })),
+                },
+              };
+              users.set(user.email, { user, passwordHash: data.passwordHash });
+              return user;
+            },
+          ),
+          findUnique: jest.fn(
+            ({
+              where,
+              select,
+            }: {
+              where: { email?: string; id?: string };
+              select?: { passwordHash?: boolean };
+            }) => {
+              const stored = where.email
+                ? users.get(where.email)
+                : [...users.values()].find(({ user }) => user.id === where.id);
+              return stored
+                ? {
+                    ...stored.user,
+                    ...(select?.passwordHash
+                      ? { passwordHash: stored.passwordHash }
+                      : {}),
+                  }
+                : null;
+            },
+          ),
         },
       })
       .compile();
@@ -200,34 +153,6 @@ describe('Email/password authentication (HTTP)', () => {
       .expect(200);
     expect(String(login.headers['set-cookie'])).toContain('Max-Age=604800');
     await agent.get('/auth/me').expect(200).expect(registered.body);
-  });
-
-  it('restricts the user list to existing admins and never exposes hashes', async () => {
-    const agent = request.agent(app.getHttpServer());
-    await agent.get('/auth/all').expect(401);
-    const registered = await agent
-      .post('/auth/register')
-      .send(account)
-      .expect(201);
-    await agent.get('/auth/all').expect(403);
-    const admin = users.get('ana@example.com')!;
-    expect(admin.role).toBe('USER');
-    admin.role = 'ADMIN';
-    await agent
-      .get('/auth/all')
-      .expect(200)
-      .expect([{ ...(registered.body as object), role: 'ADMIN' }]);
-    const jwt = app.get(JwtService);
-    const token = jwt.sign({ sub: 'user-1' }, { expiresIn: 60 });
-    await request(app.getHttpServer())
-      .get('/auth/all')
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200)
-      .expect([{ ...(registered.body as object), role: 'ADMIN' }]);
-    admin.role = 'USER';
-    await agent.get('/auth/all').expect(403);
-    users.clear();
-    await agent.get('/auth/all').expect(401);
   });
 
   it('rejects duplicate registrations, wrong passwords and unknown users', async () => {
