@@ -1,14 +1,10 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { LoginRequestDto } from './dto/login-request.dto';
-import { SigninRequestDto } from './dto/signin-request.dto';
+import type { LoginRequest, RegisterRequest } from './auth.schemas';
+import { UserService } from '../user/user.service';
+import { Role } from '../generated/prisma/enums';
 import { UserResponseDto } from './dto/user-response.dto';
 import { publicUserSelect } from '../user/user.select';
 
@@ -20,41 +16,14 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly users: UserService,
   ) {}
 
-  async register(dto: SigninRequestDto) {
-    if (dto.password !== dto.repeatedPassword) {
-      throw new BadRequestException('Las contraseñas no coinciden');
-    }
-    try {
-      return await this.prisma.user.create({
-        data: {
-          email: dto.email,
-          cliente: {
-            create: {
-              name: dto.name,
-              lastName: dto.lastName,
-              domicilios: { create: dto.domicilios },
-            },
-          },
-          passwordHash: await bcrypt.hash(dto.password, 12),
-        },
-        select: publicUserSelect,
-      });
-    } catch (error: unknown) {
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException('Ya existe una cuenta con ese email');
-      }
-      throw error;
-    }
+  register(dto: RegisterRequest) {
+    return this.users.create(dto, Role.USER);
   }
 
-  async login(dto: LoginRequestDto) {
+  async login(dto: LoginRequest) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
       select: { ...publicUserSelect, passwordHash: true },

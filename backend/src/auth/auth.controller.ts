@@ -24,8 +24,12 @@ import { AuthService, sessionSeconds } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import type { AuthRequest } from './auth.guard';
 import { AuthAttemptsGuard } from './auth-attempts.guard';
-import { LoginRequestDto } from './dto/login-request.dto';
-import { SigninRequestDto } from './dto/signin-request.dto';
+import {
+  loginSchema,
+  registerSchema,
+  type LoginRequest,
+  type RegisterRequest,
+} from './auth.schemas';
 import { AuthEndpointGuard } from './auth-endpoint.guard';
 import { UserResponseDto } from './dto/user-response.dto';
 import { Roles } from './roles.decorator';
@@ -50,7 +54,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Crear una cuenta e iniciar sesión',
     description:
-      'Crea una cookie session HttpOnly. La sesión dura una hora; rememberMe se ignora en registro.',
+      'Crea una cookie session HttpOnly. La sesión dura una hora. Recibe email, password y cliente anidado.',
   })
   @ApiConsumes('application/json')
   @ApiCreatedResponse({
@@ -60,7 +64,7 @@ export class AuthController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Datos inválidos o contraseñas diferentes.',
+    description: 'Datos inválidos.',
   })
   @ApiResponse({ status: 409, description: 'El email ya está registrado.' })
   @ApiResponse({
@@ -77,7 +81,7 @@ export class AuthController {
       'Más de diez intentos por IP en quince minutos. Retry-After indica los segundos de espera.',
   })
   async register(
-    @Body() dto: SigninRequestDto,
+    @Body({ schema: registerSchema }) dto: RegisterRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<UserResponseDto> {
     const user = await this.auth.register(dto);
@@ -115,7 +119,7 @@ export class AuthController {
       'Más de diez intentos por IP en quince minutos. Retry-After indica los segundos de espera.',
   })
   async login(
-    @Body() dto: LoginRequestDto,
+    @Body({ schema: loginSchema }) dto: LoginRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<UserResponseDto> {
     const user = await this.auth.login(dto);

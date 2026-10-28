@@ -21,10 +21,11 @@ export type LoginCredentials = {
 export type RegisterCredentials = {
   email: string
   password: string
-  name: string
-  lastName: string
-  repeatedPassword: string
-  domicilios: Domicilio[]
+  cliente: {
+    name: string
+    lastName: string
+    domicilios: Domicilio[]
+  }
 }
 
 export const authService = {

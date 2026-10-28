@@ -48,10 +48,11 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
         ? await authService.register({
             email,
             password,
-            name: registration.data.name,
-            lastName: registration.data.lastName,
-            repeatedPassword: registration.data.repeatedPassword,
-            domicilios: registration.data.domicilios,
+            cliente: {
+              name: registration.data.name,
+              lastName: registration.data.lastName,
+              domicilios: registration.data.domicilios,
+            },
           })
         : await authService.login({ email, password, rememberMe })
       onAuthenticated(user)
