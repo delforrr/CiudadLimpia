@@ -29,11 +29,12 @@ test('uses each auth route with the expected credentials and body', async () => 
   }
   const register = {
     email: user.email,
-    name: user.cliente.name,
-    lastName: user.cliente.lastName,
     password: login.password,
-    repeatedPassword: login.password,
-    domicilios: [{ direccion: 'San Martín 123', etiqueta: 'Casa' }],
+    cliente: {
+      name: user.cliente.name,
+      lastName: user.cliente.lastName,
+      domicilios: [{ direccion: 'San Martín 123', etiqueta: 'Casa' }],
+    },
   }
   assert.deepEqual(await authService.register(register), user)
   assert.deepEqual(await authService.login(login), user)
@@ -44,6 +45,7 @@ test('uses each auth route with the expected credentials and body', async () => 
     ['/auth/register', '/auth/login', '/auth/me', '/auth/logout'],
   )
   assert.equal(requests[0].options.body, JSON.stringify(register))
+  assert.ok(!String(requests[0].options.body).includes('repeatedPassword'))
   assert.equal(requests[1].options.body, JSON.stringify(login))
   assert.equal(requests[2].options.method, undefined)
   assert.equal(requests[3].options.method, 'POST')

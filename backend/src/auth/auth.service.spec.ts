@@ -1,12 +1,10 @@
-import {
-  BadRequestException,
-  ConflictException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserService } from '../user/user.service';
+import { Prisma } from '../generated/prisma/client';
 
 describe('AuthService', () => {
   const user = {
@@ -22,11 +20,12 @@ describe('AuthService', () => {
   };
   const dto = {
     email: user.email,
-    name: 'Ana',
-    lastName: 'Pérez',
-    domicilios: [{ direccion: 'San Martín 123' }],
+    cliente: {
+      name: 'Ana',
+      lastName: 'Pérez',
+      domicilios: [{ direccion: 'San Martín 123' }],
+    },
     password: ' contraseña! ',
-    repeatedPassword: ' contraseña! ',
   };
   let service: AuthService;
   let db: { user: { create: jest.Mock; findUnique: jest.Mock } };
@@ -36,6 +35,7 @@ describe('AuthService', () => {
     service = new AuthService(
       db as unknown as PrismaService,
       new JwtService({ secret: 'test-secret-only' }),
+      new UserService(db as unknown as PrismaService),
     );
   });
 
@@ -50,15 +50,13 @@ describe('AuthService', () => {
     expect(result).toEqual(user);
   });
 
-  it('rejects mismatched confirmation before creating a user', async () => {
-    await expect(
-      service.register({ ...dto, repeatedPassword: 'different' }),
-    ).rejects.toThrow(BadRequestException);
-    expect(db.user.create).not.toHaveBeenCalled();
-  });
-
   it('handles a duplicate email even when registrations race', async () => {
-    db.user.create.mockRejectedValue({ code: 'P2002' });
+    db.user.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Duplicate email', {
+        code: 'P2002',
+        clientVersion: '7.10.1',
+      }),
+    );
     await expect(service.register(dto)).rejects.toThrow(ConflictException);
   });
 

@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
-import type { Prisma } from '../src/generated/prisma/client';
+import { Prisma } from '../src/generated/prisma/client';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
@@ -17,11 +17,12 @@ describe('Email/password authentication (HTTP)', () => {
   const users = new Map<string, User>();
   const account = {
     email: ' ANA@Example.com ',
-    name: 'Ana María',
-    lastName: 'Pérez',
-    domicilios: [{ direccion: ' San Martín 123 ', etiqueta: ' Casa ' }],
     password: ' pass!word á ',
-    repeatedPassword: ' pass!word á ',
+    cliente: {
+      name: 'Ana María',
+      lastName: 'Pérez',
+      domicilios: [{ direccion: ' San Martín 123 ', etiqueta: ' Casa ' }],
+    },
   };
 
   beforeAll(async () => {
@@ -48,9 +49,10 @@ describe('Email/password authentication (HTTP)', () => {
             };
           }) => {
             if (users.has(data.email))
-              throw Object.assign(new Error('Duplicate email'), {
-                code: 'P2002',
-              });
+              throw new Prisma.PrismaClientKnownRequestError(
+                'Duplicate email',
+                { code: 'P2002', clientVersion: '7.10.1' },
+              );
             const user: User = {
               id: 'user-1',
               role: 'USER',
@@ -252,37 +254,59 @@ describe('Email/password authentication (HTTP)', () => {
   it.each([
     { email: 123 },
     { email: 'invalid' },
-    { domicilios: undefined },
-    { domicilios: null },
-    { domicilios: [] },
-    { domicilios: [[]] },
-    { domicilios: [null] },
-    { domicilios: ['invalid'] },
-    { domicilios: [{ direccion: ' ' }] },
-    { domicilios: [{ direccion: 'x'.repeat(201) }] },
-    {
-      domicilios: [{ direccion: 'San Martín 123', etiqueta: 'x'.repeat(101) }],
-    },
-    { domicilios: [{ direccion: 'San Martín 123', etiqueta: 123 }] },
-    {
-      domicilios: Array.from({ length: 21 }, () => ({
-        direccion: 'San Martín 123',
-      })),
-    },
-    { name: 123 },
-    { name: ' ' },
+    { cliente: undefined },
+    { cliente: null },
+    ...[
+      { domicilios: undefined },
+      { domicilios: null },
+      { domicilios: [] },
+      { domicilios: [[]] },
+      { domicilios: [null] },
+      { domicilios: ['invalid'] },
+      { domicilios: [{ direccion: ' ' }] },
+      { domicilios: [{ direccion: 'x'.repeat(201) }] },
+      {
+        domicilios: [
+          { direccion: 'San Martín 123', etiqueta: 'x'.repeat(101) },
+        ],
+      },
+      { domicilios: [{ direccion: 'San Martín 123', etiqueta: 123 }] },
+      {
+        domicilios: Array.from({ length: 21 }, () => ({
+          direccion: 'San Martín 123',
+        })),
+      },
+      { name: 123 },
+      { name: ' ' },
+      { role: 'ADMIN' },
+    ].map((change) => ({ cliente: { ...account.cliente, ...change } })),
     { password: 'short' },
-    { password: 'á'.repeat(37), repeatedPassword: 'á'.repeat(37) },
-    { repeatedPassword: 'different' },
+    { password: 'á'.repeat(37) },
+    { password: '😀'.repeat(4) },
+    { repeatedPassword: account.password },
+    { name: 'Ana', lastName: 'Pérez', domicilios: account.cliente.domicilios },
     { role: 'admin' },
     { role: 'ADMIN' },
-    { rememberMe: 'true' },
+    { rememberMe: true },
   ])('rejects invalid registration: %j', async (change) => {
     await request(app.getHttpServer())
       .post('/auth/register')
       .send({ ...account, ...change })
       .expect(400);
     expect(users.size).toBe(0);
+  });
+
+  it.each([
+    { rememberMe: null },
+    { rememberMe: 'true' },
+    { role: 'ADMIN' },
+    { repeatedPassword: account.password },
+    { password: '😀'.repeat(4) },
+  ])('rejects invalid login fields: %j', async (change) => {
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: account.email, password: account.password, ...change })
+      .expect(400);
   });
 
   it('rejects missing, tampered and expired tokens and deleted users', async () => {
