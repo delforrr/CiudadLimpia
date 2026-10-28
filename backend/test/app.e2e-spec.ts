@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { PrismaService } from '../src/prisma/prisma.service';
 import type { OpenAPIObject } from '@nestjs/swagger';
-import { setupSwagger } from '../src/swagger';
+import { configureApp } from '../src/configure-app';
 import { AppModule } from './../src/app.module';
 
 describe('AppController (e2e)', () => {
@@ -20,7 +20,7 @@ describe('AppController (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    setupSwagger(app);
+    configureApp(app);
     await app.init();
   });
 

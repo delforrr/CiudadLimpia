@@ -1,10 +1,11 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/configure-app';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { publicUserSelect } from '../src/user/user.select';
 
@@ -43,13 +44,7 @@ describe('User CRUD (HTTP)', () => {
       .useValue(db)
       .compile();
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureApp(app);
     await app.init();
     adminToken = await app.get(JwtService).signAsync({ sub: adminId });
     userToken = await app.get(JwtService).signAsync({ sub: userId });
