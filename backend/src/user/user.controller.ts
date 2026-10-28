@@ -5,11 +5,9 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseEnumPipe,
   ParseUUIDPipe,
   Patch,
   Post,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -24,7 +22,6 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
   ApiUnsupportedMediaTypeResponse,
@@ -35,8 +32,12 @@ import { RolesGuard } from '../auth/roles.guard';
 import { UserAccessGuard } from './user-access.guard';
 import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
 import { UserResponseDto } from '../auth/dto/user-response.dto';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  createUserSchema,
+  updateUserSchema,
+  type CreateUserInput,
+  type UpdateUserInput,
+} from './user.schemas';
 import { UserService } from './user.service';
 import { Role } from '../generated/prisma/enums';
 
@@ -61,15 +62,12 @@ export class UserController {
   @ApiOperation({
     summary: 'Crear una cuenta con cliente y al menos un domicilio (ADMIN)',
   })
-  @ApiQuery({ name: 'role', enum: Role, enumName: 'Role', required: true })
   @ApiCreatedResponse({ type: UserResponseDto })
   @ApiBadRequestResponse({ description: 'Datos inválidos.' })
   @ApiConflictResponse({ description: 'El email ya está registrado.' })
-  create(
-    @Body() dto: CreateUserDto,
-    @Query('role', new ParseEnumPipe(Role)) role: Role,
-  ) {
-    return this.users.create(dto, role);
+  create(@Body({ schema: createUserSchema }) dto: CreateUserInput) {
+    const { role, ...account } = dto;
+    return this.users.create(account, role);
   }
 
   @Get()
@@ -105,7 +103,10 @@ export class UserController {
   @ApiBadRequestResponse({ description: 'Datos o identificador inválidos.' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.' })
   @ApiConflictResponse({ description: 'El email ya está registrado.' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUserDto) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body({ schema: updateUserSchema }) dto: UpdateUserInput,
+  ) {
     return this.users.update(id, dto);
   }
 

@@ -69,14 +69,26 @@ describe('AppController (e2e)', () => {
       'patch',
     ]);
     expect(document.paths['/users'].post?.responses).toHaveProperty('201');
-    expect(document.paths['/users'].post?.parameters).toEqual(
+    expect(document.paths['/users'].post?.parameters ?? []).not.toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: 'role', in: 'query', required: true }),
+        expect.objectContaining({ name: 'role', in: 'query' }),
       ]),
     );
-    expect(document.components?.schemas?.CreateUserDto).toHaveProperty(
-      'required',
-      expect.arrayContaining(['cliente']),
+    expect(document.paths['/users'].post).toHaveProperty(
+      ['requestBody', 'content', 'application/json', 'schema', 'required'],
+      expect.arrayContaining(['email', 'password', 'role', 'cliente']),
+    );
+    expect(document.paths['/users/{id}'].patch).toHaveProperty(
+      [
+        'requestBody',
+        'content',
+        'application/json',
+        'schema',
+        'properties',
+        'cliente',
+        'required',
+      ],
+      ['name', 'lastName'],
     );
     expect(document.components?.schemas?.SigninRequestDto).toHaveProperty(
       'required',
