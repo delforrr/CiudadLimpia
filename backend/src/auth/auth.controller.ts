@@ -21,7 +21,9 @@ import {
 } from '@nestjs/swagger';
 import type { CookieOptions, Response } from 'express';
 import { AuthService, sessionSeconds } from './auth.service';
-import { AuthGuard, type AuthRequest } from './auth.guard';
+import { AuthGuard } from '@nestjs/passport';
+import type { AuthRequest } from './auth.guard';
+import { AuthAttemptsGuard } from './auth-attempts.guard';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { SigninRequestDto } from './dto/signin-request.dto';
 import { AuthEndpointGuard } from './auth-endpoint.guard';
@@ -44,6 +46,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
+  @UseGuards(AuthAttemptsGuard)
   @ApiOperation({
     summary: 'Crear una cuenta e iniciar sesión',
     description:
@@ -83,6 +86,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @UseGuards(AuthAttemptsGuard)
   @HttpCode(200)
   @ApiOperation({
     summary: 'Iniciar sesión con email y contraseña',
@@ -133,7 +137,7 @@ export class AuthController {
     description: 'Usuario no autorizado',
   })
   @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
-  @UseGuards(AuthGuard, RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles([Role.ADMIN])
   all(): Promise<UserResponseDto[]> {
     return this.auth.getAllUsers();
@@ -152,7 +156,7 @@ export class AuthController {
     status: 401,
     description: 'Sesión ausente, inválida, vencida o usuario eliminado.',
   })
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard('jwt'))
   me(@Req() request: AuthRequest): Promise<UserResponseDto> {
     return this.auth.getUser(request.user.id);
   }

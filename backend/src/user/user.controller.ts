@@ -29,7 +29,7 @@ import {
   ApiUnauthorizedResponse,
   ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
-import { AuthGuard } from '../auth/auth.guard';
+import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UserAccessGuard } from './user-access.guard';
@@ -48,7 +48,7 @@ import { Role } from '../generated/prisma/enums';
 })
 @ApiForbiddenResponse({ description: 'No tenés permiso para esta operación.' })
 @Controller('users')
-@UseGuards(AuthEndpointGuard, AuthGuard, RolesGuard)
+@UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
 export class UserController {
   constructor(private readonly users: UserService) {}
 
