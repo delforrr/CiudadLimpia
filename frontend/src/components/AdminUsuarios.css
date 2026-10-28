@@ -1,0 +1,406 @@
+/* =========================================================
+   MÓDULO DE USUARIOS - PANEL DE ADMINISTRADOR
+   ========================================================= */
+
+.admin-users {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+/* ===================== TARJETAS DE RESUMEN ===================== */
+.admin-users-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.admin-users-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.admin-users-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: #eef6e8;
+  color: #1e6000;
+}
+
+.admin-users-stat-icon .MuiSvgIcon-root {
+  font-size: 1.45rem;
+}
+
+.admin-users-stat-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.admin-users-stat-value {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.5rem;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #013a27;
+}
+
+/* ===================== PANEL PRINCIPAL ===================== */
+.admin-users-panel {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.admin-users-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.admin-users-search {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.admin-users-filter {
+  min-width: 190px;
+}
+
+.admin-users-refresh {
+  flex-shrink: 0;
+}
+
+.admin-users-table-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem 0.85rem;
+}
+
+.admin-users-table-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #013a27;
+}
+
+.admin-users-table-header p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.admin-users-count {
+  flex-shrink: 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  background-color: #eef6e8;
+  color: #1e6000;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ===================== TABLA ===================== */
+.admin-users-table .MuiTableCell-head {
+  background-color: #f8fafc;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-users-table .MuiTableCell-body {
+  border-bottom-color: #eef2f7;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.admin-users-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 220px;
+}
+
+.admin-users-avatar.MuiAvatar-root {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  background-color: #68a245;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.admin-users-avatar.is-admin {
+  background-color: #013a27;
+}
+
+.admin-users-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.admin-users-self-badge {
+  padding: 0.05rem 0.4rem;
+  border-radius: 9999px;
+  background-color: #eef6e8;
+  color: #1e6000;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-users-email {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.admin-users-role.MuiChip-root {
+  height: 24px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.admin-users-role.is-admin {
+  background-color: #013a27;
+  color: #ffffff;
+}
+
+.admin-users-role.is-user {
+  background-color: #eef6e8;
+  color: #1e6000;
+}
+
+.admin-users-address-count {
+  display: inline-flex;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  background-color: #f1f5f9;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.admin-users-address {
+  display: block;
+  margin-top: 0.25rem;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.admin-users-muted {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.admin-users-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.1rem;
+}
+
+/* ===================== ESTADOS ===================== */
+.admin-users-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.admin-users-state {
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.admin-users-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.admin-users-empty-icon.MuiSvgIcon-root {
+  font-size: 3rem;
+  color: #cbd5e1;
+}
+
+.admin-users-empty h4 {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  color: #013a27;
+}
+
+.admin-users-empty p {
+  max-width: 420px;
+  margin: 0.35rem 0 0.85rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+/* ===================== DETALLE ===================== */
+.admin-users-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-users-detail-avatar.MuiAvatar-root {
+  width: 56px;
+  height: 56px;
+  font-size: 1.1rem;
+}
+
+.admin-users-detail-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #013a27;
+}
+
+.admin-users-detail-header p {
+  margin: 0.15rem 0 0.4rem;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.admin-users-detail-subtitle {
+  margin: 1.15rem 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.admin-users-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-users-detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+}
+
+.admin-users-detail-item .MuiSvgIcon-root {
+  margin-top: 0.1rem;
+  color: #68a245;
+}
+
+.admin-users-detail-item span {
+  display: block;
+  font-size: 0.86rem;
+}
+
+.admin-users-detail-item small {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+/* ===================== FORMULARIO DE EDICIÓN ===================== */
+.admin-users-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding-top: 0.25rem;
+}
+
+.admin-users-form-full {
+  grid-column: 1 / -1;
+}
+
+.admin-users-delete-error {
+  margin-bottom: 0.75rem;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1100px) {
+  .admin-users-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-users-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-users-search,
+  .admin-users-filter {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-users-table-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-users-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-users-form-full {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-users-stats {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,415 @@
+/* =========================================================
+   MÓDULO DE CHOFERES - PANEL DE ADMINISTRADOR
+   ========================================================= */
+
+.admin-drivers {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+/* ===================== TARJETAS DE RESUMEN ===================== */
+.admin-drivers-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.admin-drivers-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.admin-drivers-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: #eef6e8;
+  color: #1e6000;
+}
+
+.admin-drivers-stat-icon .MuiSvgIcon-root {
+  font-size: 1.45rem;
+}
+
+.admin-drivers-stat-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.admin-drivers-stat-value {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.5rem;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #013a27;
+}
+
+/* ===================== PANEL PRINCIPAL ===================== */
+.admin-drivers-panel {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.admin-drivers-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.admin-drivers-search {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.admin-drivers-filter {
+  min-width: 190px;
+}
+
+.admin-drivers-add {
+  flex-shrink: 0;
+}
+
+.admin-drivers-table-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem 0.85rem;
+}
+
+.admin-drivers-table-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #013a27;
+}
+
+.admin-drivers-table-header p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.admin-drivers-count {
+  flex-shrink: 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  background-color: #eef6e8;
+  color: #1e6000;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ===================== TABLA ===================== */
+.admin-drivers-table .MuiTableCell-head {
+  background-color: #f8fafc;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-drivers-table .MuiTableCell-body {
+  border-bottom-color: #eef2f7;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.admin-drivers-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 220px;
+}
+
+.admin-drivers-avatar.MuiAvatar-root {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  background-color: #68a245;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.admin-drivers-name {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.admin-drivers-subtext {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.admin-drivers-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.admin-drivers-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+.admin-drivers-contact-item .MuiSvgIcon-root {
+  color: #68a245;
+  font-size: 1rem;
+}
+
+.admin-drivers-license {
+  display: inline-flex;
+  padding: 0.18rem 0.55rem;
+  border-radius: 6px;
+  background-color: #f1f5f9;
+  color: #1e293b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.admin-drivers-truck {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+.admin-drivers-truck .MuiSvgIcon-root {
+  color: #013a27;
+}
+
+.admin-drivers-muted {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.admin-drivers-status.MuiChip-root {
+  height: 24px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.admin-drivers-status.is-active {
+  background-color: #eef6e8;
+  color: #1e6000;
+}
+
+.admin-drivers-status.is-inactive {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.admin-drivers-status.is-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.admin-drivers-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.1rem;
+}
+
+/* ===================== ESTADOS ===================== */
+.admin-drivers-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.admin-drivers-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.admin-drivers-empty-icon.MuiSvgIcon-root {
+  font-size: 3rem;
+  color: #cbd5e1;
+}
+
+.admin-drivers-empty h4 {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  color: #013a27;
+}
+
+.admin-drivers-empty p {
+  max-width: 420px;
+  margin: 0.35rem 0 0.85rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+/* ===================== DETALLE ===================== */
+.admin-drivers-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-drivers-detail-avatar.MuiAvatar-root {
+  width: 56px;
+  height: 56px;
+  font-size: 1rem;
+}
+
+.admin-drivers-detail-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #013a27;
+}
+
+.admin-drivers-detail-header p {
+  margin: 0.15rem 0 0.4rem;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.admin-drivers-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.admin-drivers-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background-color: #f8fafc;
+}
+
+.admin-drivers-detail-card-full {
+  grid-column: 1 / -1;
+}
+
+.admin-drivers-detail-card h4 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.admin-drivers-detail-card p {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+
+.admin-drivers-detail-card p .MuiSvgIcon-root {
+  color: #68a245;
+}
+
+.admin-drivers-detail-card small {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+/* ===================== FORMULARIO ===================== */
+.admin-drivers-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding-top: 0.25rem;
+}
+
+.admin-drivers-form-full {
+  grid-column: 1 / -1;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1100px) {
+  .admin-drivers-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-drivers-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-drivers-search,
+  .admin-drivers-filter,
+  .admin-drivers-add {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-drivers-table-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-drivers-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-drivers-form-full {
+    grid-column: auto;
+  }
+
+  .admin-drivers-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-drivers-stats {
+    grid-template-columns: 1fr;
+  }
+}
