@@ -17,7 +17,8 @@ export const emailSchema = z
   .trim()
   .toLowerCase()
   .max(254)
-  .pipe(z.email());
+  .pipe(z.email())
+  .meta({ format: 'email' });
 export const passwordSchema = z
   .string()
   .refine(

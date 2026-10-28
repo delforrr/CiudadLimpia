@@ -60,6 +60,25 @@ describe('Public API and documentation (HTTP)', () => {
       );
     }
     expect(document.paths['/health'].get?.security).toBeUndefined();
+    for (const [path, method] of [
+      ['/auth/login', 'post'],
+      ['/auth/register', 'post'],
+      ['/users', 'post'],
+      ['/users/{id}', 'patch'],
+    ] as const) {
+      expect(document.paths[path][method]).toHaveProperty(
+        [
+          'requestBody',
+          'content',
+          'application/json',
+          'schema',
+          'properties',
+          'email',
+          'format',
+        ],
+        'email',
+      );
+    }
     const register = document.paths['/auth/register'].post;
     expect(register).toHaveProperty(
       ['requestBody', 'content', 'application/json', 'schema', 'required'],
