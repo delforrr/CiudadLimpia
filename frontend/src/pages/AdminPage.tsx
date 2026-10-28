@@ -4,6 +4,8 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PeopleIcon from '@mui/icons-material/People';
 import iconoCiudadLimpia from '../assets/icono-ciudad-limpia.png';
+import { AdminUsuarios } from '../components/AdminUsuarios';
+import { AdminChoferes } from '../components/AdminChoferes';
 import { useAuthContext } from '../hooks/useAuthContext';
 import './AdminPage.css';
 
@@ -129,7 +131,7 @@ export function AdminPage() {
         </div>
       </aside>
 
-      {/* Área Principal (Esqueleto limpio) */}
+      {/* Área Principal */}
       <main className="admin-main-content">
         <header className="admin-topbar">
           <div className="admin-topbar-title">
@@ -139,21 +141,27 @@ export function AdminPage() {
         </header>
 
         <div className="admin-body">
-          {/* Contenedor esqueleto del panel */}
-          <section className="admin-empty-card">
-            <div className="admin-empty-content">
-              <img
-                src={iconoCiudadLimpia}
-                alt="Ciudad Limpia"
-                className="admin-empty-logo"
-                onError={(e) => {
-                  e.currentTarget.src = '/icono-ciudad-limpia.png';
-                }}
-              />
-              <h3>{seccionActual.titulo}</h3>
-              <p>Esqueleto base listo para incorporar los módulos de gestión y control.</p>
-            </div>
-          </section>
+          {activeTab === 'usuarios' ? (
+            <AdminUsuarios />
+          ) : activeTab === 'choferes' ? (
+            <AdminChoferes />
+          ) : (
+            /* Contenedor esqueleto del panel */
+            <section className="admin-empty-card">
+              <div className="admin-empty-content">
+                <img
+                  src={iconoCiudadLimpia}
+                  alt="Ciudad Limpia"
+                  className="admin-empty-logo"
+                  onError={(e) => {
+                    e.currentTarget.src = '/icono-ciudad-limpia.png';
+                  }}
+                />
+                <h3>{seccionActual.titulo}</h3>
+                <p>Esqueleto base listo para incorporar los módulos de gestión y control.</p>
+              </div>
+            </section>
+          )}
         </div>
       </main>
     </div>
