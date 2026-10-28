@@ -6,17 +6,16 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import type { CreateUserInput, UpdateUserInput } from './user.schemas';
 import { publicUserSelect } from './user.select';
 import { Role } from '../generated/prisma/enums';
-import type { Prisma } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma/client';
 
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateUserDto, role: Role) {
+  async create(dto: Omit<CreateUserInput, 'role'>, role: Role) {
     const { password, cliente, ...account } = dto;
     try {
       return await this.prisma.user.create({
@@ -55,7 +54,7 @@ export class UserService {
     return user;
   }
 
-  async update(id: string, dto: UpdateUserDto) {
+  async update(id: string, dto: UpdateUserInput) {
     const { password, cliente, ...account } = dto;
     const domicilios = cliente?.domicilios;
     if (domicilios === undefined) {
@@ -114,7 +113,7 @@ export class UserService {
   }
 
   private rethrow(error: unknown): never {
-    if (typeof error === 'object' && error !== null && 'code' in error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002')
         throw new ConflictException('Ya existe una cuenta con ese email');
       if (error.code === 'P2025')
