@@ -1,12 +1,14 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/configure-app';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { publicUserSelect } from '../src/user/user.select';
+import { Prisma } from '../src/generated/prisma/client';
 
 describe('User CRUD (HTTP)', () => {
   let app: INestApplication<App>;
@@ -43,13 +45,7 @@ describe('User CRUD (HTTP)', () => {
       .useValue(db)
       .compile();
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureApp(app);
     await app.init();
     adminToken = await app.get(JwtService).signAsync({ sub: adminId });
     userToken = await app.get(JwtService).signAsync({ sub: userId });
@@ -74,6 +70,23 @@ describe('User CRUD (HTTP)', () => {
     await app.close();
   });
 
+  it('creates an account with its role in the JSON body', async () => {
+    await request(app.getHttpServer())
+      .post('/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: 'new@example.com',
+        password: 'password!2026',
+        role: 'ADMIN',
+        cliente: {
+          name: 'Ana',
+          lastName: 'Pérez',
+          domicilios: [{ direccion: 'Casa' }],
+        },
+      })
+      .expect(201);
+  });
+
   it.each([
     undefined,
     null,
@@ -86,16 +99,21 @@ describe('User CRUD (HTTP)', () => {
     'requires a cliente with at least one address on creation: %j',
     async (cliente) => {
       await request(app.getHttpServer())
-        .post('/users?role=USER')
+        .post('/users')
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ email: 'new@example.com', password: 'password!2026', cliente })
+        .send({
+          email: 'new@example.com',
+          password: 'password!2026',
+          role: 'USER',
+          cliente,
+        })
         .expect(400);
       expect(db.user.create).not.toHaveBeenCalled();
     },
   );
 
   it.each(['', '?role=invalid', '?role=USER&role=ADMIN'])(
-    'requires a single valid role query parameter: %s',
+    'rejects the old query role without a JSON role: %s',
     async (query) => {
       await request(app.getHttpServer())
         .post(`/users${query}`)
@@ -116,6 +134,7 @@ describe('User CRUD (HTTP)', () => {
 
   it('creates an account with an atomic nested cliente, hashes passwords and handles duplicate emails', async () => {
     const dto = {
+      role: 'USER',
       email: ' ANA@example.com ',
       password: 'password!2026',
       cliente: {
@@ -125,7 +144,7 @@ describe('User CRUD (HTTP)', () => {
       },
     };
     await request(app.getHttpServer())
-      .post('/users?role=USER')
+      .post('/users')
       .set('Authorization', `Bearer ${adminToken}`)
       .send(dto)
       .expect(201)
@@ -153,18 +172,24 @@ describe('User CRUD (HTTP)', () => {
     expect(
       await bcrypt.compare(dto.password, calls[0][0].data.passwordHash),
     ).toBe(true);
-    db.user.create.mockRejectedValue({ code: 'P2002' });
+    db.user.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Duplicate email', {
+        code: 'P2002',
+        clientVersion: '7.10.1',
+      }),
+    );
     await request(app.getHttpServer())
-      .post('/users?role=USER')
+      .post('/users')
       .set('Authorization', `Bearer ${adminToken}`)
       .send(dto)
       .expect(409);
   });
 
   it.each(['USER', 'ADMIN'])(
-    'creates the role requested in the query: %s',
+    'creates the role requested in the JSON body: %s',
     async (role) => {
       const body = {
+        role,
         email: 'new@example.com',
         password: 'password!2026',
         cliente: {
@@ -174,7 +199,7 @@ describe('User CRUD (HTTP)', () => {
         },
       };
       await request(app.getHttpServer())
-        .post(`/users?role=${role}`)
+        .post('/users')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(body)
         .expect(201);
@@ -182,13 +207,43 @@ describe('User CRUD (HTTP)', () => {
       expect(calls[0][0].data.role).toBe(role);
       db.user.create.mockClear();
       await request(app.getHttpServer())
-        .post(`/users?role=${role}`)
+        .post('/users')
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ ...body, role: 'ADMIN' })
+        .send({ ...body, role: 'invalid' })
         .expect(400);
       expect(db.user.create).not.toHaveBeenCalled();
     },
   );
+
+  it.each([
+    { passwordHash: 'injected' },
+    { role: null },
+    { role: [] },
+    {
+      cliente: {
+        name: 'Ana',
+        lastName: 'Pérez',
+        domicilios: [{ direccion: 'Casa', userId: adminId }],
+      },
+    },
+  ])('rejects invalid creation fields before writing: %j', async (change) => {
+    await request(app.getHttpServer())
+      .post('/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: 'new@example.com',
+        password: 'password!2026',
+        role: 'USER',
+        cliente: {
+          name: 'Ana',
+          lastName: 'Pérez',
+          domicilios: [{ direccion: 'Casa' }],
+        },
+        ...change,
+      })
+      .expect(400);
+    expect(db.user.create).not.toHaveBeenCalled();
+  });
 
   it('requires admin for listing, creating, deleting and changing roles', async () => {
     await request(app.getHttpServer()).get('/users').expect(401);
@@ -202,7 +257,7 @@ describe('User CRUD (HTTP)', () => {
       .expect(200)
       .expect([user]);
     await request(app.getHttpServer())
-      .post('/users?role=USER')
+      .post('/users')
       .set('Authorization', `Bearer ${userToken}`)
       .send({
         email: 'other@example.com',
@@ -241,6 +296,11 @@ describe('User CRUD (HTTP)', () => {
       .expect(200)
       .expect(user);
     await request(app.getHttpServer())
+      .get(`/users/${userId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200)
+      .expect(user);
+    await request(app.getHttpServer())
       .get(`/users/${adminId}`)
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
@@ -263,6 +323,133 @@ describe('User CRUD (HTTP)', () => {
       .set('Authorization', `Bearer ${deleted}`)
       .expect(401);
   });
+
+  it('uses the current database role instead of a role claimed in the JWT', async () => {
+    const token = await app.get(JwtService).signAsync({
+      sub: userId,
+      role: 'ADMIN',
+    });
+    await request(app.getHttpServer())
+      .get('/users')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+    db.user.findUnique.mockResolvedValue({ id: userId, role: 'ADMIN' });
+    await request(app.getHttpServer())
+      .get('/users')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(db.user.findUnique).toHaveBeenLastCalledWith({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+    db.user.findUnique.mockResolvedValue(user);
+    await request(app.getHttpServer())
+      .get('/users')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+    db.user.findUnique.mockResolvedValue(null);
+    await request(app.getHttpServer())
+      .get(`/users/${userId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+    expect(db.user.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['USER', 'ADMIN', null, 'invalid'])(
+    'rejects any role field from a non-admin before updating: %j',
+    async (role) => {
+      await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ role })
+        .expect(403);
+      expect(db.user.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([null, 'invalid'])(
+    'validates the role field for admins: %j',
+    async (role) => {
+      await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ role })
+        .expect(400);
+      expect(db.user.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([undefined, null, '', ' Casa '])(
+    'saves and returns an optional address label: %j',
+    async (etiqueta) => {
+      const domicilios = [{ direccion: 'San Martín 123', etiqueta }];
+      const saved = {
+        ...user,
+        cliente: {
+          ...user.cliente,
+          domicilios: [
+            {
+              id: 'domicilio-1',
+              direccion: 'San Martín 123',
+              etiqueta: etiqueta?.trim() ?? null,
+            },
+          ],
+        },
+      };
+      db.user.update.mockResolvedValue(saved);
+      await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ cliente: { name: 'Ana', lastName: 'Pérez', domicilios } })
+        .expect(200)
+        .expect(saved);
+      const normalized = [
+        {
+          direccion: 'San Martín 123',
+          ...(etiqueta !== undefined
+            ? { etiqueta: etiqueta?.trim() ?? null }
+            : {}),
+        },
+      ];
+      const profile = { name: 'Ana', lastName: 'Pérez' };
+      expect(db.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          cliente: {
+            upsert: {
+              create: { ...profile, domicilios: { create: normalized } },
+              update: {
+                ...profile,
+                domicilios: { deleteMany: {}, create: normalized },
+              },
+            },
+          },
+        },
+        select: publicUserSelect,
+      });
+      expect(publicUserSelect.cliente.select.domicilios.select.etiqueta).toBe(
+        true,
+      );
+    },
+  );
+
+  it.each([123, {}, [], 'x'.repeat(101)])(
+    'rejects an invalid address label: %j',
+    async (etiqueta) => {
+      await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          cliente: {
+            name: 'Ana',
+            lastName: 'Pérez',
+            domicilios: [{ direccion: 'San Martín 123', etiqueta }],
+          },
+        })
+        .expect(400);
+      expect(db.user.update).not.toHaveBeenCalled();
+    },
+  );
 
   it('updates the profile atomically and preserves addresses unless explicitly replaced', async () => {
     const endpoint = `/users/${userId}`;
@@ -309,13 +496,23 @@ describe('User CRUD (HTTP)', () => {
         },
       }),
     );
-    db.user.update.mockRejectedValue({ code: 'P2002' });
+    db.user.update.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Duplicate email', {
+        code: 'P2002',
+        clientVersion: '7.10.1',
+      }),
+    );
     await request(app.getHttpServer())
       .patch(endpoint)
       .set('Authorization', `Bearer ${userToken}`)
       .send({ email: 'taken@example.com' })
       .expect(409);
-    db.user.update.mockRejectedValue({ code: 'P2025' });
+    db.user.update.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Missing user', {
+        code: 'P2025',
+        clientVersion: '7.10.1',
+      }),
+    );
     await request(app.getHttpServer())
       .patch(`/users/${missingId}`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -383,8 +580,6 @@ describe('User CRUD (HTTP)', () => {
     { password: 'short' },
     { password: 'á'.repeat(37) },
     { passwordHash: 'untrusted' },
-    { role: 'invalid' },
-    { role: null },
     { cliente: null },
     { cliente: [] },
     { cliente: { name: 'Ana', lastName: 'Pérez', domicilios: [] } },
@@ -431,7 +626,12 @@ describe('User CRUD (HTTP)', () => {
       .set('Content-Type', 'application/json')
       .expect(204);
     expect(db.user.delete).toHaveBeenCalledWith({ where: { id: userId } });
-    db.user.delete.mockRejectedValue({ code: 'P2025' });
+    db.user.delete.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Missing user', {
+        code: 'P2025',
+        clientVersion: '7.10.1',
+      }),
+    );
     await request(app.getHttpServer())
       .delete(`/users/${userId}`)
       .set('Authorization', `Bearer ${adminToken}`)

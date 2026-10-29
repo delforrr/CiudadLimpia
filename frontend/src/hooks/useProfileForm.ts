@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import type { User } from '../services/authService'
+import type { Domicilio, User } from '../services/authService'
 import { userService } from '../services/userService'
 import { z } from 'zod'
 import { profileSchema } from '../schemas/profileSchema'
@@ -13,26 +13,26 @@ export function useProfileForm(
     name: '',
     lastName: '',
     email: '',
-    direccion: '',
+    domicilios: [] as Domicilio[],
   })
   const [mensajeExito, setMensajeExito] = useState(false)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string[]>>>({})
 
-  const updateField = (field: keyof typeof form, value: string) => {
+  const updateField = <K extends keyof typeof form>(field: K, value: (typeof form)[K]) => {
     setForm((previous) => ({ ...previous, [field]: value }))
   }
 
-  const iniciarEdicion = () => {
+  const iniciarEdicion = (agregarDomicilio = false) => {
     setForm({
       name: user?.cliente?.name ?? '',
       lastName: user?.cliente?.lastName ?? '',
       email: user?.email ?? '',
-      direccion:
-        user?.cliente?.domicilios
-          .map(({ direccion }) => direccion)
-          .join('\n') ?? '',
+      domicilios: [
+        ...(user?.cliente?.domicilios.map(({ direccion, etiqueta }) => ({ direccion, etiqueta })) ?? []),
+        ...(agregarDomicilio ? [{ direccion: '', etiqueta: '' }] : []),
+      ],
     })
     setEditando(true)
     setMensajeExito(false)
@@ -47,7 +47,7 @@ export function useProfileForm(
     const validation = profileSchema.safeParse(form)
     setFieldErrors(validation.success ? {} : z.flattenError(validation.error).fieldErrors)
     if (!validation.success) return
-    const { email, name, lastName, direccion: domicilios } = validation.data
+    const { email, name, lastName, domicilios } = validation.data
     setPending(true)
     try {
       const updated = await userService.updateProfile(user.id, {

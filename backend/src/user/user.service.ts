@@ -1,39 +1,21 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import type { CreateUserInput, UpdateUserInput } from './user.schemas';
 import { publicUserSelect } from './user.select';
 import { Role } from '../generated/prisma/enums';
-import type { Prisma } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma/client';
 
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async authorize(
-    requesterId: string,
-    targetId?: string,
-    adminOnly = false,
-  ) {
-    const requester = await this.prisma.user.findUnique({
-      where: { id: requesterId },
-      select: { role: true },
-    });
-    if (!requester) throw new UnauthorizedException('Sesión inválida');
-    if (requester.role !== 'ADMIN' && (adminOnly || requesterId !== targetId))
-      throw new ForbiddenException('No tenés permiso para esta operación');
-  }
-
-  async create(requesterId: string, dto: CreateUserDto, role: Role) {
-    await this.authorize(requesterId, undefined, true);
+  async create(dto: Omit<CreateUserInput, 'role'>, role: Role) {
     const { password, cliente, ...account } = dto;
     try {
       return await this.prisma.user.create({
@@ -56,16 +38,14 @@ export class UserService {
     }
   }
 
-  async findAll(requesterId: string) {
-    await this.authorize(requesterId, undefined, true);
+  findAll() {
     return this.prisma.user.findMany({
       select: publicUserSelect,
       orderBy: { id: 'asc' },
     });
   }
 
-  async findOne(requesterId: string, id: string) {
-    await this.authorize(requesterId, id);
+  async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: publicUserSelect,
@@ -74,8 +54,7 @@ export class UserService {
     return user;
   }
 
-  async update(requesterId: string, id: string, dto: UpdateUserDto) {
-    await this.authorize(requesterId, id, dto.role !== undefined);
+  async update(id: string, dto: UpdateUserInput) {
     const { password, cliente, ...account } = dto;
     const domicilios = cliente?.domicilios;
     if (domicilios === undefined) {
@@ -125,8 +104,7 @@ export class UserService {
     }
   }
 
-  async remove(requesterId: string, id: string) {
-    await this.authorize(requesterId, undefined, true);
+  async remove(id: string) {
     try {
       await this.prisma.user.delete({ where: { id } });
     } catch (error: unknown) {
@@ -135,7 +113,7 @@ export class UserService {
   }
 
   private rethrow(error: unknown): never {
-    if (typeof error === 'object' && error !== null && 'code' in error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002')
         throw new ConflictException('Ya existe una cuenta con ese email');
       if (error.code === 'P2025')

@@ -10,7 +10,7 @@ test('saves the cliente and addresses through the authenticated user endpoint', 
     cliente: {
       name: 'Ana',
       lastName: 'Pérez',
-      domicilios: [{ direccion: 'San Martín 123' }],
+      domicilios: [{ direccion: 'San Martín 123', etiqueta: 'Casa' }],
     },
   }
   const saved = { id: '1', role: 'USER', ...profile }

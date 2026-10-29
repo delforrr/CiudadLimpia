@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { createServer, type ViteDevServer } from 'vite'
 import { registerSchema } from '../src/schemas/registerSchema.ts'
+import type { User } from '../src/services/authService.ts'
 
 let server: ViteDevServer
 let PerfilPage: ComponentType<{ initialRegister?: boolean }>
@@ -22,8 +23,8 @@ before(async () => {
 })
 after(async () => server?.close())
 
-function render(initialRegister = false) {
-  const session = { user: null, checking: false, isAuthenticated: false,
+function render(initialRegister = false, user: User | null = null) {
+  const session = { user, checking: false, isAuthenticated: user !== null,
     loggingOut: false, logoutError: '', onAuthenticated: () => {}, logout: async () => {} }
   return renderToStaticMarkup(createElement(AuthContext.Provider, { value: session },
     createElement(MemoryRouter, { initialEntries: [initialRegister ? '/registro' : '/perfil'] },
@@ -32,7 +33,7 @@ function render(initialRegister = false) {
 
 test('opens registration with all fields required by the current API', () => {
   const html = render(true)
-  for (const label of ['Crear cuenta', 'Nombre', 'Apellido', 'Domicilios', 'Correo electrónico', 'Contraseña', 'Repetir contraseña']) {
+  for (const label of ['Crear cuenta', 'Nombre', 'Apellido', 'Mis domicilios', 'Dirección', 'Etiqueta (opcional)', 'Agregar domicilio', 'Correo electrónico', 'Contraseña', 'Repetir contraseña']) {
     assert.ok(html.includes(label), label)
   }
   assert.match(html, /autoComplete="new-password"/)
@@ -43,23 +44,35 @@ test('opens login separately without registration fields', () => {
   const html = render()
   assert.match(html, /Iniciar Sesión/)
   assert.match(html, /Recordarme/)
-  assert.doesNotMatch(html, /Repetir contraseña|Una dirección por línea/)
+  assert.doesNotMatch(html, /Repetir contraseña|Mis domicilios|Etiqueta/)
+})
+
+test('displays saved address labels from the authenticated profile', () => {
+  const user: User = { id: 'user-1', email: 'ana@example.com', role: 'USER',
+    cliente: { id: 'cliente-1', name: 'Ana', lastName: 'Pérez',
+      domicilios: [{ id: 'domicilio-1', direccion: 'San Martín 123', etiqueta: 'Casa' },
+        { id: 'domicilio-2', direccion: 'Belgrano 456', etiqueta: null }] } }
+  const html = render(false, user)
+  for (const text of ['Mis domicilios', 'San Martín 123', 'Casa', 'Belgrano 456', 'Agregar domicilio']) {
+    assert.ok(html.includes(text), text)
+  }
+  assert.doesNotMatch(html, /Sin domicilio registrado|No tenés domicilios registrados/)
 })
 
 test('validates registration fields together and normalizes the backend payload', () => {
   const form = { name: ' Ana ', lastName: ' Pérez ', email: ' ANA@example.com ',
-    direccion: ' San Martín 123 \n Belgrano 456 ', password: 'Clave!123',
+    domicilios: [{ direccion: ' San Martín 123 ', etiqueta: ' Casa ' }, { direccion: ' Belgrano 456 ' }], password: 'Clave!123',
     repeatedPassword: 'Clave!123', rememberMe: false }
   assert.deepEqual(registerSchema.parse(form), {
     name: 'Ana', lastName: 'Pérez', email: 'ana@example.com',
-    direccion: [{ direccion: 'San Martín 123' }, { direccion: 'Belgrano 456' }],
+    domicilios: [{ direccion: 'San Martín 123', etiqueta: 'Casa' }, { direccion: 'Belgrano 456' }],
     password: 'Clave!123', repeatedPassword: 'Clave!123', rememberMe: false,
   })
   const invalid = registerSchema.safeParse({ ...form, name: ' ', lastName: ' ',
-    direccion: '', email: 'inválido', repeatedPassword: 'otra' })
+    domicilios: [], email: 'inválido', repeatedPassword: 'otra' })
   assert.equal(invalid.success, false)
   if (!invalid.success) {
     assert.deepEqual(invalid.error.issues.map(({ path }) => path[0]).sort(),
-      ['direccion', 'email', 'lastName', 'name', 'repeatedPassword'])
+      ['domicilios', 'email', 'lastName', 'name', 'repeatedPassword'])
   }
 })

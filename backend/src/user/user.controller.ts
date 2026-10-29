@@ -5,12 +5,9 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseEnumPipe,
   ParseUUIDPipe,
   Patch,
   Post,
-  Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -25,16 +22,22 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
   ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
-import { AuthGuard, type AuthRequest } from '../auth/auth.guard';
+import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+import { UserAccessGuard } from './user-access.guard';
 import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
-import { UserResponseDto } from '../auth/dto/user-response.dto';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { publicUserSchema } from '../accounts/account.schemas';
+import {
+  createUserSchema,
+  updateUserSchema,
+  type CreateUserInput,
+  type UpdateUserInput,
+} from './user.schemas';
 import { UserService } from './user.service';
 import { Role } from '../generated/prisma/enums';
 
@@ -46,11 +49,12 @@ import { Role } from '../generated/prisma/enums';
 })
 @ApiForbiddenResponse({ description: 'No tenés permiso para esta operación.' })
 @Controller('users')
-@UseGuards(AuthEndpointGuard, AuthGuard)
+@UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
 export class UserController {
   constructor(private readonly users: UserService) {}
 
   @Post()
+  @Roles([Role.ADMIN])
   @ApiConsumes('application/json')
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',
@@ -58,35 +62,34 @@ export class UserController {
   @ApiOperation({
     summary: 'Crear una cuenta con cliente y al menos un domicilio (ADMIN)',
   })
-  @ApiQuery({ name: 'role', enum: Role, enumName: 'Role', required: true })
-  @ApiCreatedResponse({ type: UserResponseDto })
+  @ApiCreatedResponse({ standardSchema: publicUserSchema })
   @ApiBadRequestResponse({ description: 'Datos inválidos.' })
   @ApiConflictResponse({ description: 'El email ya está registrado.' })
-  create(
-    @Req() request: AuthRequest,
-    @Body() dto: CreateUserDto,
-    @Query('role', new ParseEnumPipe(Role)) role: Role,
-  ) {
-    return this.users.create(request.user.id, dto, role);
+  create(@Body({ schema: createUserSchema }) dto: CreateUserInput) {
+    const { role, ...account } = dto;
+    return this.users.create(account, role);
   }
 
   @Get()
+  @Roles([Role.ADMIN])
   @ApiOperation({ summary: 'Listar usuarios (ADMIN)' })
-  @ApiOkResponse({ type: UserResponseDto, isArray: true })
-  findAll(@Req() request: AuthRequest) {
-    return this.users.findAll(request.user.id);
+  @ApiOkResponse({ standardSchema: publicUserSchema.array() })
+  findAll() {
+    return this.users.findAll();
   }
 
   @Get(':id')
+  @UseGuards(UserAccessGuard)
   @ApiOperation({ summary: 'Consultar una cuenta (titular o ADMIN)' })
-  @ApiOkResponse({ type: UserResponseDto })
+  @ApiOkResponse({ standardSchema: publicUserSchema })
   @ApiBadRequestResponse({ description: 'Identificador inválido.' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.' })
-  findOne(@Req() request: AuthRequest, @Param('id', ParseUUIDPipe) id: string) {
-    return this.users.findOne(request.user.id, id);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.users.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(UserAccessGuard)
   @ApiConsumes('application/json')
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',
@@ -94,21 +97,21 @@ export class UserController {
   @ApiOperation({
     summary: 'Editar cuenta y cliente (titular o ADMIN)',
     description:
-      'Solo ADMIN puede enviar role. Si se envía cliente, requiere name y lastName. Omitir domicilios conserva la lista de un cliente existente; enviarlo requiere entre 1 y 20 direcciones y reemplaza la lista completa, con nuevos identificadores. Las cuentas antiguas sin domicilios deben completarlos para poder guardar cualquier actualización (400).',
+      'Solo ADMIN puede enviar role; USER recibe 403 incluso si el valor es inválido. Si se envía cliente, requiere name y lastName. Omitir domicilios conserva la lista de un cliente existente; enviarlo requiere entre 1 y 20 direcciones y reemplaza la lista completa, con nuevos identificadores. Las cuentas antiguas sin domicilios deben completarlos para poder guardar cualquier actualización (400).',
   })
-  @ApiOkResponse({ type: UserResponseDto })
+  @ApiOkResponse({ standardSchema: publicUserSchema })
   @ApiBadRequestResponse({ description: 'Datos o identificador inválidos.' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.' })
   @ApiConflictResponse({ description: 'El email ya está registrado.' })
   update(
-    @Req() request: AuthRequest,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateUserDto,
+    @Body({ schema: updateUserSchema }) dto: UpdateUserInput,
   ) {
-    return this.users.update(request.user.id, id, dto);
+    return this.users.update(id, dto);
   }
 
   @Delete(':id')
+  @Roles([Role.ADMIN])
   @HttpCode(204)
   @ApiConsumes('application/json')
   @ApiUnsupportedMediaTypeResponse({
@@ -122,10 +125,7 @@ export class UserController {
   @ApiNoContentResponse()
   @ApiBadRequestResponse({ description: 'Identificador inválido.' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.' })
-  async remove(
-    @Req() request: AuthRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    await this.users.remove(request.user.id, id);
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    await this.users.remove(id);
   }
 }

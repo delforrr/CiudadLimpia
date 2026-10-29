@@ -1,5 +1,5 @@
 import { useState, type SubmitEvent } from 'react'
-import { authService, type User } from '../services/authService'
+import { authService, type Domicilio, type User } from '../services/authService'
 import { z } from 'zod'
 import { authSchema } from '../schemas/authSchema'
 import { registerSchema } from '../schemas/registerSchema'
@@ -11,7 +11,7 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
     name: '',
     lastName: '',
     repeatedPassword: '',
-    direccion: '',
+    domicilios: [{ direccion: '', etiqueta: '' }] as Domicilio[],
     rememberMe: false,
   })
   const [error, setError] = useState('')
@@ -48,10 +48,11 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
         ? await authService.register({
             email,
             password,
-            name: registration.data.name,
-            lastName: registration.data.lastName,
-            repeatedPassword: registration.data.repeatedPassword,
-            domicilios: registration.data.direccion,
+            cliente: {
+              name: registration.data.name,
+              lastName: registration.data.lastName,
+              domicilios: registration.data.domicilios,
+            },
           })
         : await authService.login({ email, password, rememberMe })
       onAuthenticated(user)

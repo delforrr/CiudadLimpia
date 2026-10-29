@@ -1,3 +1,5 @@
+import type { Prisma } from '../generated/prisma/client';
+
 export const publicUserSelect = {
   id: true,
   email: true,
@@ -8,9 +10,9 @@ export const publicUserSelect = {
       name: true,
       lastName: true,
       domicilios: {
-        select: { id: true, direccion: true },
-        orderBy: { id: 'asc' as const },
+        select: { id: true, direccion: true, etiqueta: true },
+        orderBy: { id: 'asc' },
       },
     },
   },
-} as const;
+} as const satisfies Prisma.UserSelect;
