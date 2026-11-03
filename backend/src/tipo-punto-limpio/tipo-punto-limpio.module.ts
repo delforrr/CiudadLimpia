@@ -8,5 +8,6 @@ import { TipoPuntoLimpioService } from './tipo-punto-limpio.service';
   imports: [AuthModule, UserPersistenceModule],
   controllers: [TipoPuntoLimpioController],
   providers: [TipoPuntoLimpioService],
+  exports: [TipoPuntoLimpioService],
 })
 export class TipoPuntoLimpioModule {}

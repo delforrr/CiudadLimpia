@@ -63,7 +63,6 @@ model PuntoLimpio {
   direccion   Direccion            @relation(fields: [direccionId], references: [id])
   lat         Float
   long        Float
-  residuos    PuntoLimpioResiduo[]
 
   @@index([tipoId])
   @@index([direccionId])
@@ -72,7 +71,6 @@ model PuntoLimpio {
 model Residuo {
   id               String                   @id @default(uuid())
   nombre           String                   @unique
-  puntosLimpios    PuntoLimpioResiduo[]
   tiposPuntoLimpio TipoPuntoLimpioResiduo[]
 }
 
@@ -86,16 +84,4 @@ model TipoPuntoLimpioResiduo {
   @@id([tipoPuntoLimpioId, residuoId])
   @@index([residuoId])
   @@map("_TipoPuntoLimpioToResiduo")
-}
-
-model PuntoLimpioResiduo {
-  puntoLimpioId String
-  residuoId     String
-
-  puntoLimpio PuntoLimpio @relation(fields: [puntoLimpioId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  residuo     Residuo     @relation(fields: [residuoId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@id([puntoLimpioId, residuoId])
-  @@index([residuoId])
-  @@map("_PuntoLimpioToResiduo")
 }
