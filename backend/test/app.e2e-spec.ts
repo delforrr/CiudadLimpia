@@ -46,6 +46,8 @@ describe('AppController (e2e)', () => {
       '/auth/me',
       '/auth/register',
       '/health',
+      '/tipos-punto-limpio',
+      '/tipos-punto-limpio/{id}',
       '/users',
       '/users/{id}',
     ]);
@@ -63,6 +65,13 @@ describe('AppController (e2e)', () => {
       expect.arrayContaining([{ session: [] }, { bearer: [] }]),
     );
     expect(document.paths['/health'].get?.security).toBeUndefined();
+    expect(document.paths['/tipos-punto-limpio'].get?.security).toBeUndefined();
+    expect(
+      document.paths['/tipos-punto-limpio'].post?.responses,
+    ).toHaveProperty('201');
+    expect(
+      document.paths['/tipos-punto-limpio/{id}'].delete?.responses,
+    ).toHaveProperty('204');
     expect(Object.keys(document.paths['/users/{id}']).sort()).toEqual([
       'delete',
       'get',

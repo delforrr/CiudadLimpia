@@ -10,6 +10,10 @@ export function setupSwagger(app: INestApplication) {
     .setVersion('1.0')
     .addTag('auth', 'Registro, inicio y cierre de sesión')
     .addTag('health', 'Estado de la API')
+    .addTag(
+      'tipos-punto-limpio',
+      'Tipos de punto limpio y los residuos que aceptan',
+    )
     .addBearerAuth()
     .addCookieAuth('session', { type: 'apiKey', in: 'cookie' }, 'session')
     .build();
