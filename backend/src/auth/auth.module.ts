@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { PrismaService } from '../prisma/prisma.service';
+import { UserPersistenceModule } from '../user/user-persistence.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
@@ -14,6 +14,7 @@ import { RolesGuard } from './roles.guard';
   imports: [
     ConfigModule.forRoot(),
     PassportModule,
+    UserPersistenceModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -37,13 +38,12 @@ import { RolesGuard } from './roles.guard';
   ],
   controllers: [AuthController],
   providers: [
-    PrismaService,
     AuthService,
     AuthGuard,
     RolesGuard,
     AuthEndpointGuard,
     JwtStrategy,
   ],
-  exports: [AuthGuard, RolesGuard, AuthEndpointGuard, PrismaService, JwtModule],
+  exports: [AuthGuard, RolesGuard, AuthEndpointGuard, JwtModule],
 })
 export class AuthModule {}

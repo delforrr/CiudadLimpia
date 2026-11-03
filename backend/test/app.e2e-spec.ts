@@ -41,7 +41,6 @@ describe('AppController (e2e)', () => {
       .expect(200);
     const document = response.body as OpenAPIObject;
     expect(Object.keys(document.paths).sort()).toEqual([
-      '/auth/all',
       '/auth/login',
       '/auth/logout',
       '/auth/me',
@@ -58,8 +57,9 @@ describe('AppController (e2e)', () => {
     expect(document.paths['/auth/me'].get?.security).toEqual(
       expect.arrayContaining([{ session: [] }, { bearer: [] }]),
     );
-    expect(document.paths['/auth/all'].get?.responses).toHaveProperty('403');
-    expect(document.paths['/auth/all'].get?.security).toEqual(
+    expect(document.paths).not.toHaveProperty('/auth/all');
+    expect(document.paths['/users'].get?.responses).toHaveProperty('403');
+    expect(document.paths['/users'].get?.security).toEqual(
       expect.arrayContaining([{ session: [] }, { bearer: [] }]),
     );
     expect(document.paths['/health'].get?.security).toBeUndefined();

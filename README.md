@@ -57,7 +57,6 @@ Los domicilios guardan `direccion` y una `etiqueta` opcional de hasta 100 caract
 
 - `POST /auth/register`: `{ email, name, lastName, domicilios: [{ direccion }], password, repeatedPassword }`. Crea la cuenta e inicia sesión.
 - `POST /auth/login`: `{ email, password, rememberMe? }`.
-- `GET /auth/all`: listado de usuarios, exclusivo para cuentas con rol `ADMIN`; devuelve 403 para `USER`.
 - `GET /auth/me`: usuario autenticado, sin hash ni token; devuelve 401 si la sesión venció.
 - `POST /auth/logout`: elimina la cookie del navegador.
 
@@ -93,7 +92,7 @@ Las respuestas de autenticación y usuarios ahora tienen `{ id, email, role, cli
 
 Esta obligación se valida en la API. Las cuentas antiguas sin domicilios pueden iniciar sesión y consultar su perfil, pero la interfaz las redirige a `/perfil` hasta que completen una dirección. La API rechaza con 400 cualquier actualización de una cuenta sin domicilios que no incluya los datos necesarios para completarlos; no se inventan direcciones ni se modifica el esquema de PostgreSQL. No hay asignación de un domicilio principal.
 
-Los identificadores de `/users/:id` son UUID. Las escrituras requieren `Content-Type: application/json`, incluso DELETE sin cuerpo. Los errores son 400 (validación), 401 (sesión ausente o usuario eliminado), 403 (sin permisos), 404 (cuenta inexistente) y 409 (email duplicado). `/auth/all` permanece disponible para ADMIN. Los hashes nunca se incluyen en las respuestas. Cambiar la contraseña no revoca JWT emitidos: siguen válidos hasta vencer.
+Los identificadores de `/users/:id` son UUID. Las escrituras requieren `Content-Type: application/json`, incluso DELETE sin cuerpo. Los errores son 400 (validación), 401 (sesión ausente o usuario eliminado), 403 (sin permisos), 404 (cuenta inexistente) y 409 (email duplicado). Los hashes nunca se incluyen en las respuestas. Cambiar la contraseña no revoca JWT emitidos: siguen válidos hasta vencer.
 
 El formulario de registro está en `/registro`, y el inicio de sesión en `/perfil`. Usan controles MUI y Zod para validar cada campo al salir de él y al enviar; el perfil también valida con Zod antes de guardar. Los domicilios se ingresan uno por línea; se validan nombres, email y los límites de las direcciones antes de guardar. La lógica vive en `useAuthForm` y `useProfileForm`. No se agregan pantallas de administración ni endpoints independientes para clientes o domicilios.
 
@@ -112,6 +111,8 @@ La integración usa [Nest Swagger](https://docs.nestjs.com/openapi/introduction)
 El backend usa Nest 12 y Prisma 7 estable. TypeScript permanece en 6.0 por los rangos soportados por Nest Swagger, typescript-eslint y ts-jest. Prisma requiere `@prisma/adapter-pg` y genera el cliente en `backend/src/generated/prisma` (ignorado por Git).
 
 El override de `@istanbuljs/load-nyc-config > js-yaml` elimina la rama vulnerable de YAML 3. El consumidor utiliza `load`, que existe en YAML 4; las pruebas incluyen lectura de configuración YAML y cobertura para comprobar esta compatibilidad.
+
+El override de `jest-config > deepmerge` usa `@stackline/deepmerge@1.1.0`, un reemplazo compatible que corrige CVE-2026-93753. Solo afecta a las herramientas de pruebas. `jest-config.spec.ts` comprueba la mezcla de configuración y que una clave `__proto__` no permita heredar propiedades inyectadas. Revisar este reemplazo cuando Jest deje de depender de la versión vulnerable de `deepmerge`.
 
 En `backend`:
 

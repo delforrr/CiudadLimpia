@@ -26,9 +26,6 @@ import { LoginRequestDto } from './dto/login-request.dto';
 import { SigninRequestDto } from './dto/signin-request.dto';
 import { AuthEndpointGuard } from './auth-endpoint.guard';
 import { UserResponseDto } from './dto/user-response.dto';
-import { Roles } from './roles.decorator';
-import { RolesGuard } from './roles.guard';
-import { Role } from '../generated/prisma/enums';
 
 const getCookieOptions = (): CookieOptions => ({
   httpOnly: true,
@@ -117,26 +114,6 @@ export class AuthController {
     const user = await this.auth.login(dto);
     await this.setSession(response, user.id, dto.rememberMe ?? false);
     return user;
-  }
-
-  @Get('all')
-  @ApiCookieAuth('session')
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Consultar todos los usuarios registrados',
-    description:
-      'Requiere rol ADMIN. Acepta la cookie session del navegador o un JWT existente mediante Authorization: Bearer.',
-  })
-  @ApiOkResponse({ type: UserResponseDto, isArray: true })
-  @ApiResponse({
-    status: 401,
-    description: 'Usuario no autorizado',
-  })
-  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles([Role.ADMIN])
-  all(): Promise<UserResponseDto[]> {
-    return this.auth.getAllUsers();
   }
 
   @Get('me')

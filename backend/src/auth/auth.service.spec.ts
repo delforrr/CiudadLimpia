@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserService } from '../user/user.service';
 
 describe('AuthService', () => {
   const user = {
@@ -36,6 +37,7 @@ describe('AuthService', () => {
     service = new AuthService(
       db as unknown as PrismaService,
       new JwtService({ secret: 'test-secret-only' }),
+      new UserService(db as unknown as PrismaService),
     );
   });
 

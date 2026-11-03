@@ -207,30 +207,30 @@ describe('Email/password authentication (HTTP)', () => {
 
   it('restricts the user list to existing admins and never exposes hashes', async () => {
     const agent = request.agent(app.getHttpServer());
-    await agent.get('/auth/all').expect(401);
+    await agent.get('/users').expect(401);
     const registered = await agent
       .post('/auth/register')
       .send(account)
       .expect(201);
-    await agent.get('/auth/all').expect(403);
+    await agent.get('/users').expect(403);
     const admin = users.get('ana@example.com')!;
     expect(admin.role).toBe('USER');
     admin.role = 'ADMIN';
     await agent
-      .get('/auth/all')
+      .get('/users')
       .expect(200)
       .expect([{ ...(registered.body as object), role: 'ADMIN' }]);
     const jwt = app.get(JwtService);
     const token = jwt.sign({ sub: 'user-1' }, { expiresIn: 60 });
     await request(app.getHttpServer())
-      .get('/auth/all')
+      .get('/users')
       .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect([{ ...(registered.body as object), role: 'ADMIN' }]);
     admin.role = 'USER';
-    await agent.get('/auth/all').expect(403);
+    await agent.get('/users').expect(403);
     users.clear();
-    await agent.get('/auth/all').expect(401);
+    await agent.get('/users').expect(401);
   });
 
   it('rejects duplicate registrations, wrong passwords and unknown users', async () => {
