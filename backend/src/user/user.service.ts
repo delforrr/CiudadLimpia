@@ -39,7 +39,7 @@ export class UserService {
     }
   }
 
-  async findAll() {
+  findAll() {
     return this.prisma.user.findMany({
       select: publicUserSelect,
       orderBy: { id: 'asc' },

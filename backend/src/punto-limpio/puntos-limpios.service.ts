@@ -3,5 +3,4 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class PuntosLimpiosService {
     
-    async create(dto: )
 }
