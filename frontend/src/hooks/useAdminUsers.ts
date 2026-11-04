@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { z } from 'zod'
-import { adminUserSchema } from '../schemas/adminUserSchema.ts'
+import { adminUserCreateSchema, adminUserSchema } from '../schemas/adminUserSchema.ts'
 import type { Domicilio, User } from '../services/authService.ts'
 import { userService } from '../services/userService.ts'
 import { userFullName } from '../utils/userFormat.ts'
@@ -13,6 +13,8 @@ export type AdminUserForm = {
   email: string
   role: User['role']
   domicilios: Domicilio[]
+  password: string
+  repeatedPassword: string
 }
 
 const EMPTY_ADDRESS: Domicilio = { direccion: '', etiqueta: '' }
@@ -37,12 +39,15 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('TODOS')
   const [editing, setEditing] = useState<User | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
   const [form, setForm] = useState<AdminUserForm>({
     name: '',
     lastName: '',
     email: '',
     role: 'USER',
     domicilios: [EMPTY_ADDRESS],
+    password: '',
+    repeatedPassword: '',
   })
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof AdminUserForm, string[]>>
@@ -126,12 +131,15 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
   )
 
   const startEdit = (user: User) => {
+    setIsCreating(false)
     setEditing(user)
     setForm({
       name: user.cliente?.name ?? '',
       lastName: user.cliente?.lastName ?? '',
       email: user.email,
       role: user.role,
+      password: '',
+      repeatedPassword: '',
       domicilios: user.cliente?.domicilios.length
         ? user.cliente.domicilios.map(({ direccion, etiqueta }) => ({
             direccion,
@@ -143,9 +151,22 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
     setFormError('')
   }
 
+  const openCreate = () => {
+    setEditing(null)
+    setIsCreating(true)
+    setForm({
+      name: '', lastName: '', email: '', role: 'USER',
+      domicilios: [{ ...EMPTY_ADDRESS }], password: '', repeatedPassword: '',
+    })
+    setFieldErrors({})
+    setFormError('')
+  }
+
   const closeEdit = () => {
     if (saving) return
     setEditing(null)
+    setIsCreating(false)
+    setForm((previous) => ({ ...previous, password: '', repeatedPassword: '' }))
     setFormError('')
     setFieldErrors({})
   }
@@ -159,9 +180,9 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!editing || saving) return
+    if ((!editing && !isCreating) || saving) return
     setFormError('')
-    const validation = adminUserSchema.safeParse(form)
+    const validation = (isCreating ? adminUserCreateSchema : adminUserSchema).safeParse(form)
     setFieldErrors(
       validation.success
         ? {}
@@ -172,22 +193,33 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
     setSaving(true)
     try {
       const { name, lastName, email, role, domicilios } = validation.data
-      const updated = await userService.update(editing.id, {
+      const payload = {
         email,
         role,
         cliente: { name, lastName, domicilios },
-      })
+      }
+      const updated = editing
+        ? await userService.update(editing.id, payload)
+        : await userService.create({ ...payload, password: form.password })
       setUsers((previous) =>
-        previous.map((user) => (user.id === updated.id ? updated : user)),
+        editing
+          ? previous.map((user) => (user.id === updated.id ? updated : user))
+          : [...previous, updated],
       )
       onUpdated?.(updated)
       setEditing(null)
-      setNotice('Usuario actualizado correctamente.')
+      setIsCreating(false)
+      setForm((previous) => ({ ...previous, password: '', repeatedPassword: '' }))
+      if (!editing) {
+        setSearch('')
+        setRoleFilter('TODOS')
+      }
+      setNotice(editing ? 'Usuario actualizado correctamente.' : 'Usuario creado correctamente.')
     } catch (error) {
       setFormError(
         error instanceof Error
           ? error.message
-          : 'No se pudo actualizar el usuario',
+          : 'No se pudo guardar el usuario',
       )
     } finally {
       setSaving(false)
@@ -243,6 +275,8 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
     },
     reload,
     editing,
+    isCreating,
+    openCreate,
     form,
     fieldErrors,
     formError,

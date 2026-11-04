@@ -68,5 +68,6 @@ test('renders the admin users module with its summary and search tools', () => {
   assert.match(html, /Padrón de usuarios/)
   assert.match(html, /Nombre, email o domicilio/)
   assert.match(html, /Todos los roles/)
+  assert.match(html, /Agregar usuario/)
   assert.match(html, /Cargando usuarios/)
 })

@@ -20,6 +20,8 @@ export type AdminUserUpdate = {
   }
 }
 
+export type AdminUserCreate = AdminUserUpdate & { password: string }
+
 export const userService = {
   updateProfile: (id: string, profile: ProfileUpdate) =>
     httpRequest<User>(`/users/${encodeURIComponent(id)}`, {
@@ -27,6 +29,11 @@ export const userService = {
       body: JSON.stringify(profile),
     }),
   list: () => httpRequest<User[]>('/users'),
+  create: ({ role, ...user }: AdminUserCreate) =>
+    httpRequest<User>(`/users?role=${encodeURIComponent(role)}`, {
+      method: 'POST',
+      body: JSON.stringify(user),
+    }),
   update: (id: string, user: AdminUserUpdate) =>
     httpRequest<User>(`/users/${encodeURIComponent(id)}`, {
       method: 'PATCH',

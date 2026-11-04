@@ -28,6 +28,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import EditIcon from '@mui/icons-material/Edit'
 import HomeWorkIcon from '@mui/icons-material/HomeWork'
@@ -143,12 +144,22 @@ export function AdminUsuarios() {
           >
             Actualizar
           </Button>
+          <Button
+            variant="contained"
+            color="success"
+            className="admin-users-add"
+            startIcon={<AddIcon />}
+            onClick={admin.openCreate}
+            disabled={admin.loading || admin.saving}
+          >
+            Agregar usuario
+          </Button>
         </div>
 
         <div className="admin-users-table-header">
           <div>
             <h3 id="admin-users-title">Padrón de usuarios</h3>
-            <p>Consultá, editá y administrá las cuentas registradas.</p>
+            <p>Agregá, consultá, editá y eliminá las cuentas registradas.</p>
           </div>
           <span className="admin-users-count">
             {admin.filteredUsers.length} de {admin.users.length}
@@ -188,7 +199,7 @@ export function AdminUsuarios() {
             </h4>
             <p>
               {admin.users.length === 0
-                ? 'Cuando los vecinos se registren van a aparecer en este listado.'
+                ? 'Agregá una cuenta para comenzar a administrar los usuarios.'
                 : 'Probá con otra búsqueda o cambiá el filtro de rol.'}
             </p>
             {(admin.search || admin.roleFilter !== 'TODOS') && (
@@ -386,13 +397,15 @@ export function AdminUsuarios() {
       </Dialog>
 
       <Dialog
-        open={Boolean(admin.editing)}
+        open={Boolean(admin.editing) || admin.isCreating}
         onClose={admin.closeEdit}
         fullWidth
         maxWidth="md"
         aria-labelledby="admin-users-edit-title"
       >
-        <DialogTitle id="admin-users-edit-title">Editar usuario</DialogTitle>
+        <DialogTitle id="admin-users-edit-title">
+          {admin.isCreating ? 'Agregar usuario' : 'Editar usuario'}
+        </DialogTitle>
         <DialogContent dividers>
           <form
             id="admin-users-form"
@@ -453,6 +466,35 @@ export function AdminUsuarios() {
               }
             />
 
+            {admin.isCreating && (
+              <>
+                <TextField
+                  label="Contraseña"
+                  type="password"
+                  required
+                  color="success"
+                  autoComplete="new-password"
+                  disabled={admin.saving}
+                  error={Boolean(admin.fieldErrors.password)}
+                  helperText={admin.fieldErrors.password?.[0] ?? 'Mínimo 8 caracteres y máximo 72 bytes.'}
+                  value={admin.form.password}
+                  onChange={(event) => admin.updateField('password', event.target.value)}
+                />
+                <TextField
+                  label="Repetir contraseña"
+                  type="password"
+                  required
+                  color="success"
+                  autoComplete="new-password"
+                  disabled={admin.saving}
+                  error={Boolean(admin.fieldErrors.repeatedPassword)}
+                  helperText={admin.fieldErrors.repeatedPassword?.[0]}
+                  value={admin.form.repeatedPassword}
+                  onChange={(event) => admin.updateField('repeatedPassword', event.target.value)}
+                />
+              </>
+            )}
+
             <FormControl
               className="admin-users-form-full"
               color="success"
@@ -503,10 +545,10 @@ export function AdminUsuarios() {
             color="success"
             disabled={admin.saving}
             startIcon={
-              admin.saving ? <CircularProgress size={16} /> : <EditIcon />
+              admin.saving ? <CircularProgress size={16} /> : admin.isCreating ? <AddIcon /> : <EditIcon />
             }
           >
-            {admin.saving ? 'Guardando…' : 'Guardar cambios'}
+            {admin.saving ? 'Guardando…' : admin.isCreating ? 'Crear usuario' : 'Guardar cambios'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -89,7 +89,8 @@
   min-width: 190px;
 }
 
-.admin-users-refresh {
+.admin-users-refresh,
+.admin-users-add {
   flex-shrink: 0;
 }
 
