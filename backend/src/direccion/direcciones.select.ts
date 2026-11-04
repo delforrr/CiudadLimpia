@@ -5,6 +5,8 @@ export const direccionSelect = {
   direccion: true,
   calle: { select: { calle: true } },
   altura: true,
+  lat: true,
+  long: true,
 } satisfies Prisma.DireccionSelect;
 
 type DireccionRecord = Prisma.DireccionGetPayload<{

@@ -4,11 +4,23 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { claveCalle } from '../calle/calle.dto';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { direccionSelect, toDireccionResponse } from './direcciones.select';
 import type { CreateDireccionDto } from './dto/create-direccion.dto';
 import type { UpdateDireccionDto } from './dto/update-direccion.dto';
+
+function coordenadas({ lat, long }: UpdateDireccionDto) {
+  if (lat === undefined && long === undefined) return {};
+  if (
+    lat === undefined ||
+    long === undefined ||
+    (lat === null) !== (long === null)
+  )
+    throw new BadRequestException('Enviá lat y long juntas o ambas nulas');
+  return { lat, long };
+}
 
 @Injectable()
 export class DireccionesService {
@@ -40,7 +52,10 @@ export class DireccionesService {
   async create(dto: CreateDireccionDto) {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        const data = await this.buildDireccionData(tx, dto);
+        const data = {
+          ...coordenadas(dto),
+          ...(await this.buildDireccionData(tx, dto)),
+        };
         return toDireccionResponse(
           await tx.direccion.create({ data, select: direccionSelect }),
         );
@@ -54,7 +69,10 @@ export class DireccionesService {
     tx: Prisma.TransactionClient,
     dto: CreateDireccionDto,
   ) {
-    const data = await this.buildDireccionData(tx, dto);
+    const data = {
+      ...coordenadas(dto),
+      ...(await this.buildDireccionData(tx, dto)),
+    };
     return tx.direccion.upsert({
       where: { calleId_altura: { calleId: data.calleId, altura: data.altura } },
       create: data,
@@ -64,22 +82,31 @@ export class DireccionesService {
   }
 
   async update(id: string, dto: UpdateDireccionDto) {
+    const ubicacion = coordenadas(dto);
     try {
       return await this.prisma.$transaction(async (tx) => {
         const actual = await tx.direccion.findUnique({
           where: { id, clienteId: null },
-          select: direccionSelect,
+          select: { ...direccionSelect, calleId: true },
         });
         if (!actual) throw new NotFoundException('Direccion no encontrada');
-        if (dto.calle === undefined && dto.altura === undefined)
-          return toDireccionResponse(actual);
-        const calle = dto.calle ?? actual.calle?.calle;
-        const altura = dto.altura ?? actual.altura;
-        if (calle === undefined || altura === null)
-          throw new BadRequestException(
-            'Indica calle y altura para completar la direccion',
-          );
-        const data = await this.buildDireccionData(tx, { calle, altura });
+        const { calleId, ...registro } = actual;
+        let data = ubicacion;
+        if (dto.calle !== undefined || dto.altura !== undefined) {
+          const altura = dto.altura ?? actual.altura;
+          if (altura === null || (dto.calle === undefined && !calleId))
+            throw new BadRequestException(
+              'Indica calle y altura para completar la direccion',
+            );
+          const direccion = dto.calle === undefined
+            ? await this.buildDireccionDataForCalle(tx, calleId!, altura)
+            : await this.buildDireccionData(tx, { calle: dto.calle, altura });
+          const cambio = altura !== actual.altura || direccion.calleId !== calleId;
+          const reinicio = cambio ? { lat: null, long: null } : {};
+          data = { ...direccion, ...reinicio, ...ubicacion };
+        } else if (dto.lat === undefined) {
+          return toDireccionResponse(registro);
+        }
         return toDireccionResponse(
           await tx.direccion.update({
             where: { id, clienteId: null },
@@ -91,6 +118,19 @@ export class DireccionesService {
     } catch (error: unknown) {
       this.rethrow(error);
     }
+  }
+
+  private async buildDireccionDataForCalle(
+    tx: Prisma.TransactionClient,
+    calleId: string,
+    altura: number,
+  ) {
+    // Serializa el cambio de altura con el renombre de la calle.
+    const [calle] = await tx.$queryRaw<{ calle: string }[]>`
+      SELECT "calle" FROM "Calle" WHERE "id" = ${calleId} FOR UPDATE
+    `;
+    if (!calle) throw new NotFoundException('Calle no encontrada');
+    return { calleId, altura, direccion: `${calle.calle} ${altura}` };
   }
 
   async remove(id: string) {
@@ -105,7 +145,7 @@ export class DireccionesService {
     tx: Prisma.TransactionClient,
     dto: CreateDireccionDto,
   ) {
-    const clave = dto.calle.toLocaleLowerCase('es-AR');
+    const clave = claveCalle(dto.calle);
     const calle = await tx.calle.upsert({
       where: { clave },
       create: { clave, calle: dto.calle },

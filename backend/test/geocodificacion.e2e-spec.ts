@@ -11,6 +11,7 @@ describe('Geocodificación (HTTP)', () => {
   let admin: string;
   let user: string;
   const findUnique = jest.fn();
+  const findFirst = jest.fn();
   const fetchMock = jest.spyOn(globalThis, 'fetch');
   const directa = '/geocodificacion/directa?calle=Villegas&altura=555';
   const inversa = '/geocodificacion/inversa?lat=-35.97&long=-62.73';
@@ -20,7 +21,7 @@ describe('Geocodificación (HTTP)', () => {
     process.env.JWT_SECRET = 'test-only-secret-at-least-32-characters';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
-      .useValue({ user: { findUnique } })
+      .useValue({ user: { findUnique }, direccion: { findFirst } })
       .compile();
     app = module.createNestApplication();
     app.useGlobalPipes(
@@ -38,6 +39,7 @@ describe('Geocodificación (HTTP)', () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
+    findFirst.mockReset().mockResolvedValue(null);
     findUnique.mockImplementation(({ where }: { where: { id: string } }) => ({
       id: where.id,
       role: where.id === 'admin' ? 'ADMIN' : 'USER',
@@ -54,6 +56,30 @@ describe('Geocodificación (HTTP)', () => {
       .get(path)
       .set('Authorization', `Bearer ${admin}`);
   }
+
+  it('reutiliza las coordenadas del catálogo de direcciones públicas', async () => {
+    findFirst.mockResolvedValue({
+      calle: { calle: 'Villegas' },
+      lat: -35.97,
+      long: -62.73,
+    });
+    await asAdmin(directa).expect(200).expect({
+      fuente: 'Catálogo de Ciudad Limpia',
+      sugerencias: [{ calle: 'Villegas', altura: 555, lat: -35.97, long: -62.73 }],
+    });
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          clienteId: null,
+          calle: { clave: 'villegas' },
+          altura: 555,
+          lat: { not: null },
+          long: { not: null },
+        },
+      }),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 
   it('devuelve hasta tres sugerencias válidas y únicas de la ciudad', async () => {
     const direccion = {

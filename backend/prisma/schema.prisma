@@ -51,6 +51,8 @@ model Direccion {
   calleId       String?
   calle         Calle?        @relation(fields: [calleId], references: [id], onDelete: Restrict)
   altura        Int?
+  lat           Float?
+  long          Float?
   etiqueta      String?       @db.VarChar(100)
   puntosLimpios PuntoLimpio[]
 

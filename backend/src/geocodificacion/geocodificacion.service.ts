@@ -4,6 +4,8 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { claveCalle } from '../calle/calle.dto';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   GEOREF_FUENTE,
   GeocodificacionDirectaQuery,
@@ -42,10 +44,28 @@ function coordenadaValida(value: unknown, max: number): value is number {
 
 @Injectable()
 export class GeocodificacionService {
+  constructor(private readonly prisma: PrismaService) {}
+
   async directa({
     calle,
     altura,
   }: GeocodificacionDirectaQuery): Promise<GeocodificacionDirectaResponse> {
+    const local = await this.prisma.direccion.findFirst({
+      where: {
+        clienteId: null,
+        calle: { clave: claveCalle(calle) },
+        altura,
+        lat: { not: null },
+        long: { not: null },
+      },
+      select: { calle: { select: { calle: true } }, lat: true, long: true },
+    });
+    if (local?.calle && local.lat !== null && local.long !== null) {
+      return {
+        sugerencias: [{ calle: local.calle.calle, altura, lat: local.lat, long: local.long }],
+        fuente: 'Catálogo de Ciudad Limpia',
+      };
+    }
     const datos = await this.consultar('direcciones', {
       direccion: `${calle} ${altura}`,
       provincia: '06',

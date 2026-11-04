@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PickType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsLatitude, IsLongitude, IsNumber } from 'class-validator';
 import { CreateDireccionDto } from '../direccion/dto/create-direccion.dto';
@@ -9,7 +9,10 @@ function numeroDecimal({ value }: { value: unknown }): unknown {
     : value;
 }
 
-export class GeocodificacionDirectaQuery extends CreateDireccionDto {
+export class GeocodificacionDirectaQuery extends PickType(CreateDireccionDto, [
+  'calle',
+  'altura',
+] as const) {
   @Transform(numeroDecimal)
   declare altura: number;
 }
