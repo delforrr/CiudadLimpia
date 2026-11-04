@@ -4,10 +4,8 @@ import 'leaflet/dist/leaflet.css';
 import fotoPunto1 from '../assets/punto-limpio-1.jpg';
 import fotoPunto2 from '../assets/punto-limpio-2.jpg';
 import fotoPunto3 from '../assets/punto-limpio-3.jpg';
-import iconoBotella from '../assets/icono-botella.png';
-import iconoLata from '../assets/icono-lata.png';
-import iconoPuntoVerde from '../assets/icono-punto-verde.png';
 import figuraPuntosLimpios from '../assets/figura-puntos-limpios.png';
+import { usePuntosLimpiosMapIcons } from '../hooks/usePuntosLimpiosMapIcons';
 import './PuntosLimpios.css';
 
 export type TipoPunto = 'punto-limpio' | 'botellero' | 'botellero-latero';
@@ -26,26 +24,23 @@ export type TipoFiltro = 'todos' | TipoPunto;
 
 const CATEGORIAS_INFO: Record<
   TipoPunto,
-  { label: string; singularLabel: string; icon: string; pinClass: string; headerClass: string }
+  { label: string; singularLabel: string; pinClass: string; headerClass: string }
 > = {
   'punto-limpio': {
     label: 'Puntos Limpios',
     singularLabel: 'Punto Limpio',
-    icon: iconoPuntoVerde,
     pinClass: 'pin-punto-limpio',
     headerClass: 'header--punto-limpio',
   },
   'botellero': {
     label: 'Botelleros',
     singularLabel: 'Botelleros',
-    icon: iconoBotella,
     pinClass: 'pin-botellero',
     headerClass: 'header--botellero',
   },
   'botellero-latero': {
     label: 'Botelleros y lateros',
     singularLabel: 'Botelleros y Lateros',
-    icon: iconoLata,
     pinClass: 'pin-botellero-latero',
     headerClass: 'header--botellero-latero',
   },
@@ -219,6 +214,7 @@ const FOTOS_CARRUSEL = [
 ];
 
 export const PuntosLimpios: React.FC = () => {
+  const categoryIcons = usePuntosLimpiosMapIcons();
   const [fotoActiva, setFotoActiva] = useState(0);
   const [filtroActivo, setFiltroActivo] = useState<TipoFiltro>('todos');
   const [mapReady, setMapReady] = useState(false);
@@ -231,11 +227,6 @@ export const PuntosLimpios: React.FC = () => {
   const countPuntosLimpios = PUNTOS_DATA.filter((p) => p.tipo === 'punto-limpio').length;
   const countBotelleros = PUNTOS_DATA.filter((p) => p.tipo === 'botellero').length;
   const countBotellerosLateros = PUNTOS_DATA.filter((p) => p.tipo === 'botellero-latero').length;
-
-  const puntosAMostrar =
-    filtroActivo === 'todos'
-      ? PUNTOS_DATA
-      : PUNTOS_DATA.filter((p) => p.tipo === filtroActivo);
 
   // Rotación automática de fotos cada 3 segundos
   useEffect(() => {
@@ -311,9 +302,13 @@ export const PuntosLimpios: React.FC = () => {
     const markersLayer = markersLayerRef.current;
     if (!map || !markersLayer || !mapReady) return;
 
+    const puntosAMostrar = filtroActivo === 'todos'
+      ? PUNTOS_DATA
+      : PUNTOS_DATA.filter((p) => p.tipo === filtroActivo);
+
     markersLayer.clearLayers();
 
-    // Generar pin con forma de gota, borde exterior blanco, relleno de un solo color e icono blanco en el centro
+    // Cada pin comparte el SVG elegido en administración, con su fondo de color.
     const createMarkerIcon = (tipo: TipoPunto) => {
       const config = CATEGORIAS_INFO[tipo];
 
@@ -321,8 +316,8 @@ export const PuntosLimpios: React.FC = () => {
         className: 'custom-teardrop-wrapper',
         html: `
           <div class="teardrop-pin-container">
-            <div class="teardrop-pin-body pin-bg-${tipo}">
-              <img src="${config.icon}" alt="${config.singularLabel}" class="teardrop-icon-white" />
+            <div class="teardrop-pin-body">
+              <img src="${categoryIcons[tipo]}" alt="${config.singularLabel}" class="teardrop-icon-white" />
             </div>
             <div class="teardrop-shadow"></div>
           </div>
@@ -340,13 +335,12 @@ export const PuntosLimpios: React.FC = () => {
         title: punto.nombre,
       });
 
-      // Popup limpio: SIN fondo de píldora ni círculo, logo directo con texto
+      // La ficha conserva el mismo ícono y fondo que el marcador.
       const popupHtml = `
         <div class="modern-popup-card">
-          <!-- Cabecera limpia sin fondo ni píldora -->
           <div class="modern-popup-header-clean">
             <div class="popup-categoria-item">
-              <img src="${config.icon}" alt="${config.singularLabel}" class="popup-categoria-logo logo--${punto.tipo}" />
+              <img src="${categoryIcons[punto.tipo]}" alt="${config.singularLabel}" class="popup-categoria-logo" />
               <span class="popup-categoria-texto cat-texto--${punto.tipo}">${config.singularLabel}</span>
             </div>
           </div>
@@ -391,7 +385,7 @@ export const PuntosLimpios: React.FC = () => {
     } else if (filtroActivo === 'todos') {
       map.flyTo([-35.973, -62.734], 13, { duration: 0.6 });
     }
-  }, [mapReady, filtroActivo]);
+  }, [mapReady, filtroActivo, categoryIcons]);
 
   return (
     <div className="puntos-page-container">
@@ -453,8 +447,8 @@ export const PuntosLimpios: React.FC = () => {
             }
             title="Tocar para filtrar por Puntos Limpios"
           >
-            <div className="leyenda-pin-badge pin-bg-punto-limpio">
-              <img src={iconoPuntoVerde} alt="Puntos Limpios" className="leyenda-icon-white" />
+            <div className="leyenda-pin-badge">
+              <img src={categoryIcons['punto-limpio']} alt="Puntos Limpios" className="leyenda-icon-white" />
             </div>
             <span className="leyenda-btn-texto">
               Puntos Limpios <span className="leyenda-btn-badge">({countPuntosLimpios})</span>
@@ -475,8 +469,8 @@ export const PuntosLimpios: React.FC = () => {
             }
             title="Tocar para filtrar por Botelleros"
           >
-            <div className="leyenda-pin-badge pin-bg-botellero">
-              <img src={iconoBotella} alt="Botelleros" className="leyenda-icon-white" />
+            <div className="leyenda-pin-badge">
+              <img src={categoryIcons.botellero} alt="Botelleros" className="leyenda-icon-white" />
             </div>
             <span className="leyenda-btn-texto">
               Botelleros <span className="leyenda-btn-badge">({countBotelleros})</span>
@@ -497,8 +491,8 @@ export const PuntosLimpios: React.FC = () => {
             }
             title="Tocar para filtrar por Botelleros y lateros"
           >
-            <div className="leyenda-pin-badge pin-bg-botellero-latero">
-              <img src={iconoLata} alt="Botelleros y lateros" className="leyenda-icon-white" />
+            <div className="leyenda-pin-badge">
+              <img src={categoryIcons['botellero-latero']} alt="Botelleros y lateros" className="leyenda-icon-white" />
             </div>
             <span className="leyenda-btn-texto">
               Botelleros y lateros <span className="leyenda-btn-badge">({countBotellerosLateros})</span>
