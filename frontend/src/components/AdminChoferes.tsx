@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Alert,
   Avatar,
@@ -8,11 +8,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControl,
   FormHelperText,
   IconButton,
   InputAdornment,
   InputLabel,
+  Menu,
   MenuItem,
   Select,
   Skeleton,
@@ -44,6 +46,34 @@ import {
 } from '../utils/driverFormat'
 import './AdminChoferes.css'
 
+interface SystemTruckOption {
+  code: string
+  label: string
+}
+
+function loadSystemTruckOptions(): SystemTruckOption[] {
+  const fallback: SystemTruckOption[] = [
+    { code: 'Camión 01', label: 'Camión 01 - Iveco Tector 170E28 (AE 123 CD)' },
+    { code: 'Camión 02', label: 'Camión 02 - Mercedes-Benz Atego 1726 (AF 456 TL)' },
+    { code: 'Camión 03', label: 'Camión 03 - Volkswagen Constellation (AD 789 ZX)' },
+    { code: 'Camión 04', label: 'Camión 04 - Ford Cargo 1722 (AC 321 QR)' },
+  ]
+  try {
+    const raw = localStorage.getItem('ciudad-limpia:camiones')
+    if (!raw) return fallback
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed) || parsed.length === 0) return fallback
+    return parsed
+      .map((t: { code?: string; brand?: string; model?: string; plate?: string }) => ({
+        code: t.code || '',
+        label: `${t.code ?? 'Camión'}${t.brand ? ` - ${t.brand}` : ''}${t.model ? ` ${t.model}` : ''}${t.plate ? ` (${t.plate})` : ''}`,
+      }))
+      .filter((t: SystemTruckOption) => Boolean(t.code))
+  } catch {
+    return fallback
+  }
+}
+
 function statusChipClass(status: Driver['status']) {
   if (status === 'ACTIVO') return 'is-active'
   return 'is-inactive'
@@ -52,7 +82,37 @@ function statusChipClass(status: Driver['status']) {
 export function AdminChoferes() {
   const drivers = useDrivers()
   const [detailDriver, setDetailDriver] = useState<Driver | null>(null)
+  const [assignAnchor, setAssignAnchor] = useState<null | HTMLElement>(null)
+  const [targetDriver, setTargetDriver] = useState<Driver | null>(null)
   const isEditing = Boolean(drivers.editing) || drivers.isCreating
+  const systemTrucks = useMemo(() => loadSystemTruckOptions(), [])
+
+  const handleOpenAssignMenu = (
+    event: React.MouseEvent<HTMLElement>,
+    driver: Driver,
+  ) => {
+    event.stopPropagation()
+    setAssignAnchor(event.currentTarget)
+    setTargetDriver(driver)
+  }
+
+  const handleCloseAssignMenu = () => {
+    setAssignAnchor(null)
+    setTargetDriver(null)
+  }
+
+  const handleSelectTruck = (truckCode: string | null) => {
+    if (targetDriver) {
+      drivers.assignTruck(targetDriver.id, truckCode)
+      if (detailDriver && detailDriver.id === targetDriver.id) {
+        setDetailDriver({
+          ...detailDriver,
+          assignedTruck: truckCode?.trim() || null,
+        })
+      }
+    }
+    handleCloseAssignMenu()
+  }
 
   const stats = [
     {
@@ -233,7 +293,18 @@ export function AdminChoferes() {
                           <span>{driver.assignedTruck}</span>
                         </div>
                       ) : (
-                        <span className="admin-drivers-muted">Sin asignar</span>
+                        <Tooltip title={`Asignar unidad a ${driverFullName(driver)}`}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="success"
+                            startIcon={<AddIcon />}
+                            className="admin-drivers-assign-btn"
+                            onClick={(event) => handleOpenAssignMenu(event, driver)}
+                          >
+                            Asignar
+                          </Button>
+                        </Tooltip>
                       )}
                     </TableCell>
 
@@ -331,10 +402,41 @@ export function AdminChoferes() {
                 </article>
                 <article className="admin-drivers-detail-card">
                   <h4>Unidad asignada</h4>
-                  <p>
-                    <LocalShippingIcon fontSize="small" aria-hidden="true" />
-                    {detailDriver.assignedTruck || 'Sin asignar'}
-                  </p>
+                  {detailDriver.assignedTruck ? (
+                    <div className="admin-drivers-detail-truck-row">
+                      <p>
+                        <LocalShippingIcon fontSize="small" aria-hidden="true" />
+                        {detailDriver.assignedTruck}
+                      </p>
+                      <Button
+                        size="small"
+                        color="success"
+                        onClick={(e) => handleOpenAssignMenu(e, detailDriver)}
+                        sx={{
+                          textTransform: 'none',
+                          fontSize: '0.75rem',
+                          minWidth: 'auto',
+                          p: '1px 8px',
+                          ml: 'auto',
+                        }}
+                      >
+                        Cambiar
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="admin-drivers-detail-truck-row">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="success"
+                        startIcon={<AddIcon />}
+                        className="admin-drivers-assign-btn"
+                        onClick={(e) => handleOpenAssignMenu(e, detailDriver)}
+                      >
+                        Asignar
+                      </Button>
+                    </div>
+                  )}
                 </article>
               </div>
             </>
@@ -440,46 +542,42 @@ export function AdminChoferes() {
               }
             />
 
-            <TextField
+            <FormControl
               className="admin-drivers-form-full"
-              label="Unidad asignada"
               color="success"
-              placeholder="Camión 01"
-              slotProps={{ htmlInput: { maxLength: 30 } }}
               disabled={drivers.saving}
               error={Boolean(drivers.fieldErrors.assignedTruck)}
-              helperText={
-                drivers.fieldErrors.assignedTruck?.[0] ||
-                'Opcional. Podés asignar la unidad después.'
-              }
-              value={drivers.form.assignedTruck}
-              onChange={(event) =>
-                drivers.updateField('assignedTruck', event.target.value)
-              }
-            />
-
-            <FormControl
-              color="success"
-              disabled={drivers.saving}
             >
-              <InputLabel id="admin-drivers-form-status">Estado</InputLabel>
+              <InputLabel id="admin-drivers-form-assigned-truck">
+                Unidad asignada
+              </InputLabel>
               <Select
-                labelId="admin-drivers-form-status"
-                id="admin-drivers-form-status-select"
-                label="Estado"
-                value={drivers.form.status}
+                labelId="admin-drivers-form-assigned-truck"
+                id="admin-drivers-form-assigned-truck-select"
+                label="Unidad asignada"
+                value={drivers.form.assignedTruck ?? ''}
                 onChange={(event) =>
-                  drivers.updateField(
-                    'status',
-                    event.target.value as Driver['status'],
-                  )
+                  drivers.updateField('assignedTruck', event.target.value)
                 }
               >
-                <MenuItem value="ACTIVO">Activo</MenuItem>
-                <MenuItem value="INACTIVO">Inactivo</MenuItem>
+                <MenuItem value="">
+                  <em>Sin unidad asignada</em>
+                </MenuItem>
+                {systemTrucks.map((truck) => (
+                  <MenuItem key={truck.code} value={truck.code}>
+                    {truck.label}
+                  </MenuItem>
+                ))}
+                {Boolean(drivers.form.assignedTruck) &&
+                  !systemTrucks.some((t) => t.code === drivers.form.assignedTruck) && (
+                    <MenuItem value={drivers.form.assignedTruck}>
+                      {drivers.form.assignedTruck}
+                    </MenuItem>
+                  )}
               </Select>
               <FormHelperText>
-                Definí si el chofer se encuentra disponible.
+                {drivers.fieldErrors.assignedTruck?.[0] ||
+                  'Seleccioná una unidad de la flota registrada en el sistema.'}
               </FormHelperText>
             </FormControl>
           </form>
@@ -557,6 +655,109 @@ export function AdminChoferes() {
           {drivers.notice}
         </Alert>
       </Snackbar>
+
+      <Menu
+        anchorEl={assignAnchor}
+        open={Boolean(assignAnchor)}
+        onClose={handleCloseAssignMenu}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: '12px',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)',
+              minWidth: 260,
+              maxWidth: 340,
+            },
+          },
+        }}
+      >
+        <MenuItem
+          disabled
+          sx={{
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            color: '#64748b !important',
+            opacity: '1 !important',
+            py: 0.5,
+          }}
+        >
+          {targetDriver
+            ? `Asignar a ${driverFullName(targetDriver)}`
+            : 'Asignar camión'}
+        </MenuItem>
+        <Divider sx={{ my: 0.5 }} />
+
+        {systemTrucks.length === 0 ? (
+          <MenuItem disabled sx={{ fontSize: '0.82rem', fontStyle: 'italic' }}>
+            No hay camiones registrados
+          </MenuItem>
+        ) : (
+          systemTrucks.map((truck) => {
+            const isCurrent = targetDriver?.assignedTruck === truck.code
+            return (
+              <MenuItem
+                key={truck.code}
+                selected={isCurrent}
+                onClick={() => handleSelectTruck(truck.code)}
+                sx={{
+                  fontSize: '0.82rem',
+                  gap: 1,
+                  fontWeight: isCurrent ? 600 : 400,
+                }}
+              >
+                <LocalShippingIcon
+                  fontSize="small"
+                  sx={{ color: isCurrent ? '#1e6000' : '#64748b' }}
+                />
+                <span
+                  style={{
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {truck.label}
+                </span>
+              </MenuItem>
+            )
+          })
+        )}
+
+        {targetDriver?.assignedTruck && (
+          <>
+            <Divider sx={{ my: 0.5 }} />
+            <MenuItem
+              onClick={() => handleSelectTruck(null)}
+              sx={{ fontSize: '0.82rem', color: '#dc2626' }}
+            >
+              <DeleteOutlineOutlinedIcon
+                fontSize="small"
+                sx={{ mr: 1, color: '#dc2626' }}
+              />
+              Desvincular unidad (Sin asignar)
+            </MenuItem>
+          </>
+        )}
+
+        <Divider sx={{ my: 0.5 }} />
+        <MenuItem
+          onClick={() => {
+            if (targetDriver) {
+              drivers.startEdit(targetDriver)
+            }
+            handleCloseAssignMenu()
+          }}
+          sx={{ fontSize: '0.8rem', color: '#1e6000', fontWeight: 600 }}
+        >
+          <EditIcon fontSize="small" sx={{ mr: 1 }} />
+          Editar chofer completo…
+        </MenuItem>
+      </Menu>
     </section>
   )
 }

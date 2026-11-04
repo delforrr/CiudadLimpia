@@ -31,7 +31,7 @@ export const driverSchema = z.object({
     .min(8, 'Ingresá un teléfono válido')
     .max(20, 'El teléfono no puede superar 20 caracteres')
     .regex(/^[0-9+\-\s()]+$/, 'El teléfono tiene un formato inválido'),
-  status: z.enum(['ACTIVO', 'INACTIVO']),
+  status: z.enum(['ACTIVO', 'INACTIVO']).default('ACTIVO'),
   assignedTruck: z
     .string()
     .trim()

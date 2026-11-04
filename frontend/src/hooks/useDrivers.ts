@@ -270,6 +270,55 @@ export function useDrivers() {
     setDeleting(false)
   }, [deleting, pendingDelete])
 
+  const assignTruck = useCallback(
+    (driverId: string, truckCode: string | null) => {
+      const normalizedTruck = truckCode?.trim() || null
+      let targetName = ''
+
+      setDrivers((previous) => {
+        const target = previous.find((d) => d.id === driverId)
+        if (target) {
+          targetName = `${target.firstName} ${target.lastName}`.trim()
+        }
+        const next = previous.map((d) =>
+          d.id === driverId ? { ...d, assignedTruck: normalizedTruck } : d,
+        )
+        saveDrivers(next)
+
+        // Sincronizar con el almacenamiento de camiones si existe
+        try {
+          const raw = localStorage.getItem('ciudad-limpia:camiones')
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (Array.isArray(parsed)) {
+              const updatedTrucks = parsed.map((t: { code?: string; assignedDriver?: string }) => {
+                if (normalizedTruck && t.code === normalizedTruck) {
+                  return { ...t, assignedDriver: targetName || t.assignedDriver }
+                }
+                if (targetName && t.assignedDriver === targetName && t.code !== normalizedTruck) {
+                  return { ...t, assignedDriver: 'Sin asignar' }
+                }
+                return t
+              })
+              localStorage.setItem('ciudad-limpia:camiones', JSON.stringify(updatedTrucks))
+            }
+          }
+        } catch {
+          // ignorar errores de almacenamiento
+        }
+
+        return next
+      })
+
+      if (normalizedTruck) {
+        setNotice(`Se asignó ${normalizedTruck} a ${targetName || 'chofer'}.`)
+      } else {
+        setNotice(`Se desvinculó la unidad de ${targetName || 'chofer'}.`)
+      }
+    },
+    [],
+  )
+
   return {
     drivers,
     filteredDrivers,
@@ -294,6 +343,7 @@ export function useDrivers() {
     saving,
     updateField,
     save,
+    assignTruck,
     pendingDelete,
     requestDelete,
     cancelDelete,
