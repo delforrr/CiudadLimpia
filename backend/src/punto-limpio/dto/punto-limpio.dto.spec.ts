@@ -35,6 +35,18 @@ describe('CreatePuntoLimpioDto', () => {
     expect((await validate(dto)).length).toBeGreaterThan(0);
   });
 
+  it('acepta una dirección nueva con calle y altura', async () => {
+    const dto = plainToInstance(CreatePuntoLimpioDto, {
+      ...punto,
+      direccionId: undefined,
+      direccion: { calle: '  San   Martín ', altura: 123 },
+    });
+    expect(await validate(dto)).toEqual([]);
+    expect(dto.direccion).toEqual(
+      expect.objectContaining({ calle: 'San Martín', altura: 123 }),
+    );
+  });
+
   it('exige los campos obligatorios', async () => {
     const errores = await validate(new CreatePuntoLimpioDto());
     expect(errores.map((error) => error.property).sort()).toEqual(
@@ -44,15 +56,14 @@ describe('CreatePuntoLimpioDto', () => {
 });
 
 describe('UpdatePuntoLimpioDto', () => {
-  it.each([
-    {},
-    { nombre: ' Nuevo nombre ' },
-    { lat: 0, long: 0 },
-  ])('acepta actualizaciones parciales: %j', async (cambio) => {
-    expect(
-      await validate(plainToInstance(UpdatePuntoLimpioDto, cambio)),
-    ).toEqual([]);
-  });
+  it.each([{}, { nombre: ' Nuevo nombre ' }, { lat: 0, long: 0 }])(
+    'acepta actualizaciones parciales: %j',
+    async (cambio) => {
+      expect(
+        await validate(plainToInstance(UpdatePuntoLimpioDto, cambio)),
+      ).toEqual([]);
+    },
+  );
 
   it.each(['nombre', 'tipoId', 'direccionId', 'lat', 'long'])(
     'rechaza null en %s',

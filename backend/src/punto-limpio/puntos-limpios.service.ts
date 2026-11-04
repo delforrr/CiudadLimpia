@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TipoPuntoLimpioService } from '../tipo-punto-limpio/tipo-punto-limpio.service';
+import { DireccionesService } from '../direccion/direcciones.service';
 import { CreatePuntoLimpioDto } from './dto/create-punto-limpio.dto';
 import { puntoLimpioSelect } from './puntos-limpios.select';
 import { UpdatePuntoLimpioDto } from './dto/update-punto-limpio.dto';
@@ -13,13 +13,31 @@ import { UpdatePuntoLimpioDto } from './dto/update-punto-limpio.dto';
 export class PuntosLimpiosService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly tipoPuntoLimpio: TipoPuntoLimpioService,
+    private readonly direcciones: DireccionesService,
   ) {}
 
-  async create(dto: CreatePuntoLimpioDto) {
+  async create({ direccionId, direccion, ...punto }: CreatePuntoLimpioDto) {
     try {
+      if (direccion) {
+        if (direccionId)
+          throw new BadRequestException(
+            'Enviá direccionId o direccion, solo uno',
+          );
+        return await this.prisma.$transaction(async (tx) => {
+          const { id } = await this.direcciones.resolveForPuntoLimpio(
+            tx,
+            direccion,
+          );
+          return tx.puntoLimpio.create({
+            data: { ...punto, direccionId: id },
+            select: puntoLimpioSelect,
+          });
+        });
+      }
+      if (!direccionId) throw new BadRequestException('Indicá una dirección');
+      await this.assertPublicAddress(direccionId);
       return await this.prisma.puntoLimpio.create({
-        data: dto,
+        data: { ...punto, direccionId },
         select: puntoLimpioSelect,
       });
     } catch (error: unknown) {
@@ -29,6 +47,7 @@ export class PuntosLimpiosService {
 
   async update(id: string, dto: UpdatePuntoLimpioDto) {
     try {
+      if (dto.direccionId) await this.assertPublicAddress(dto.direccionId);
       return await this.prisma.puntoLimpio.update({
         where: { id },
         data: dto,
@@ -61,6 +80,15 @@ export class PuntosLimpiosService {
     } catch (error: unknown) {
       this.rethrow(error);
     }
+  }
+
+  private async assertPublicAddress(id: string) {
+    const direccion = await this.prisma.direccion.findUnique({
+      where: { id, clienteId: null },
+      select: { id: true },
+    });
+    if (!direccion)
+      throw new BadRequestException('La dirección indicada no existe');
   }
 
   private rethrow(error: unknown): never {

@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PuntosLimpiosService } from './puntos-limpios.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TipoPuntoLimpioService } from '../tipo-punto-limpio/tipo-punto-limpio.service';
+import { DireccionesService } from '../direccion/direcciones.service';
 
 describe('PuntosLimpiosService', () => {
   let service: PuntosLimpiosService;
@@ -20,8 +20,16 @@ describe('PuntosLimpiosService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PuntosLimpiosService,
-        { provide: PrismaService, useValue: { puntoLimpio: { create } } },
-        { provide: TipoPuntoLimpioService, useValue: {} },
+        {
+          provide: PrismaService,
+          useValue: {
+            puntoLimpio: { create },
+            direccion: {
+              findUnique: jest.fn().mockResolvedValue({ id: dto.direccionId }),
+            },
+          },
+        },
+        { provide: DireccionesService, useValue: {} },
       ],
     }).compile();
 

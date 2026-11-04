@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
 import {
   IsLatitude,
   IsLongitude,
@@ -8,9 +8,14 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
+  IsObject,
+  ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 
-export class CreatePuntoLimpioDto {
+import { CreateDireccionDto } from '../../direccion/dto/direccion.dto';
+
+export class PuntoLimpioFieldsDto {
   @ApiProperty({ example: 'Parque Villegas', minLength: 1, maxLength: 100 })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
@@ -43,4 +48,29 @@ export class CreatePuntoLimpioDto {
   @IsNumber()
   @IsLongitude()
   long!: number;
+}
+
+export class CreatePuntoLimpioDto extends OmitType(PuntoLimpioFieldsDto, [
+  'direccionId',
+] as const) {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Dirección existente. Enviar solo este campo o direccion.',
+  })
+  @ValidateIf(
+    (dto: CreatePuntoLimpioDto) =>
+      dto.direccionId !== undefined || dto.direccion === undefined,
+  )
+  @IsUUID('4')
+  direccionId?: string;
+
+  @ApiPropertyOptional({
+    type: CreateDireccionDto,
+    description: 'Dirección a registrar. Enviar solo este campo o direccionId.',
+  })
+  @ValidateIf((dto: CreatePuntoLimpioDto) => dto.direccion !== undefined)
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CreateDireccionDto)
+  direccion?: CreateDireccionDto;
 }

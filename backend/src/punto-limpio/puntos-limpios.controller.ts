@@ -67,6 +67,8 @@ export class PuntosLimpiosController {
   })
   @ApiOperation({
     summary: 'Crear un punto limpio (ADMIN)',
+    description:
+      'Enviá direccionId para reutilizar una dirección o direccion con calle y altura para registrarla junto al punto limpio. Enviá solo una opción.',
   })
   @ApiCreatedResponse({ type: PuntoLimpioResponseDto })
   @ApiBadRequestResponse({
