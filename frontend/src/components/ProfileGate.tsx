@@ -7,7 +7,13 @@ export default function ProfileGate({ children }: Readonly<{ children: ReactNode
   const { pathname } = useLocation()
 
   if (checking) return <p role="status">Comprobando sesión…</p>
-  if (user && !user.cliente?.domicilios.length && pathname !== '/perfil') {
+  if (
+    user &&
+    user.role !== 'ADMIN' &&
+    !pathname.startsWith('/admin') &&
+    !user.cliente?.domicilios.length &&
+    pathname !== '/perfil'
+  ) {
     return <Navigate to="/perfil" replace />
   }
   return children

@@ -7,20 +7,29 @@ interface DomiciliosCardProps {
   onChange: (domicilios: Domicilio[]) => void;
   disabled?: boolean;
   errors?: string[];
+  title?: string;
+  emptyText?: string;
 }
 
-export default function DomiciliosCard({ domicilios, onChange, disabled = false, errors }: DomiciliosCardProps) {
+export default function DomiciliosCard({
+  domicilios,
+  onChange,
+  disabled = false,
+  errors,
+  title = 'Mis domicilios',
+  emptyText = 'No tenés domicilios registrados. Agregá al menos uno para continuar.',
+}: DomiciliosCardProps) {
   return (
-    <section className="perfil-domicilios-box" aria-label="Mis domicilios">
+    <section className="perfil-domicilios-box" aria-label={title}>
       <div className="perfil-domicilios-header">
-        <h3>Mis domicilios</h3>
+        <h3>{title}</h3>
         <Button type="button" disabled={disabled || domicilios.length >= 20}
           onClick={() => onChange([...domicilios, { direccion: '', etiqueta: '' }])}>
           Agregar domicilio
         </Button>
       </div>
       {errors && <Alert severity="error">{errors.join('. ')}</Alert>}
-      {domicilios.length === 0 && <p>No tenés domicilios registrados. Agregá al menos uno para continuar.</p>}
+      {domicilios.length === 0 && <p>{emptyText}</p>}
       {domicilios.map((domicilio, index) => (
         <div className="domicilio-item" key={index}>
           <TextField label="Dirección" required fullWidth disabled={disabled}

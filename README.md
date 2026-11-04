@@ -95,7 +95,9 @@ Esta obligación se valida en la API. Las cuentas antiguas sin domicilios pueden
 
 Los identificadores de `/users/:id` son UUID. Las escrituras requieren `Content-Type: application/json`, incluso DELETE sin cuerpo. Los errores son 400 (validación), 401 (sesión ausente o usuario eliminado), 403 (sin permisos), 404 (cuenta inexistente) y 409 (email duplicado). `/auth/all` permanece disponible para ADMIN. Los hashes nunca se incluyen en las respuestas. Cambiar la contraseña no revoca JWT emitidos: siguen válidos hasta vencer.
 
-El formulario de registro está en `/registro`, y el inicio de sesión en `/perfil`. Usan controles MUI y Zod para validar cada campo al salir de él y al enviar; el perfil también valida con Zod antes de guardar. Los domicilios se ingresan uno por línea; se validan nombres, email y los límites de las direcciones antes de guardar. La lógica vive en `useAuthForm` y `useProfileForm`. No se agregan pantallas de administración ni endpoints independientes para clientes o domicilios.
+El formulario de registro está en `/registro`, y el inicio de sesión en `/perfil`. Usan controles MUI y Zod para validar cada campo al salir de él y al enviar; el perfil también valida con Zod antes de guardar. Se validan nombres, email y los límites de las direcciones antes de guardar. La lógica vive en `useAuthForm` y `useProfileForm`.
+
+El apartado Usuarios de `/admin` permite crear, consultar, editar y eliminar cuentas mediante `/users`. El alta solicita nombre, apellido, email, contraseña con confirmación, rol y al menos un domicilio. La edición conserva el formulario existente; no muestra contraseñas. `useAdminUsers` administra el estado y `userService` centraliza las solicitudes. La búsqueda y el filtro por rol permiten encontrar cuentas; la eliminación pide confirmación. El panel impide eliminar la cuenta de la sesión o cambiar su propio rol.
 
 ## Swagger
 
