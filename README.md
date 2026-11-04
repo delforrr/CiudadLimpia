@@ -114,6 +114,21 @@ Para probar la autenticación, ejecutar `POST /auth/register` o `POST /auth/logi
 
 La integración usa [Nest Swagger](https://docs.nestjs.com/openapi/introduction) y documenta los dos mecanismos de autenticación como alternativas.
 
+## Geocodificación
+
+Desde Swagger, una sesión ADMIN puede probar
+`GET /geocodificacion/directa?calle=Villegas&altura=860` o
+`GET /geocodificacion/inversa?lat=-35.97&long=-62.73`.
+La búsqueda directa devuelve hasta tres ubicaciones aproximadas en la ciudad
+de Trenque Lauquen. Si la lista está vacía, se puede usar la dirección ingresada
+y elegir las coordenadas manualmente. La inversa conserva el pin consultado y
+puede sugerir solo la calle si falta la altura.
+
+Confirmá la calle, la altura y el pin antes de guardar el punto limpio.
+Al mostrar o redistribuir resultados, incluí la atribución «Servicio Georef –
+argentina.gob.ar/georef» e indicá si modificaste los datos. Consultá la
+[licencia y los límites de Georef](https://www.argentina.gob.ar/georef/condiciones-de-uso-y-licencia).
+
 ## Dependencias y verificación
 
 El backend usa Nest 12 y Prisma 7 estable. TypeScript permanece en 6.0 por los rangos soportados por Nest Swagger, typescript-eslint y ts-jest. Prisma requiere `@prisma/adapter-pg` y genera el cliente en `backend/src/generated/prisma` (ignorado por Git).

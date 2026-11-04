@@ -48,6 +48,8 @@ describe('AppController (e2e)', () => {
       '/direcciones',
       '/direcciones/puntos-limpios',
       '/direcciones/{id}',
+      '/geocodificacion/directa',
+      '/geocodificacion/inversa',
       '/health',
       '/puntos-limpios',
       '/puntos-limpios/{id}',
