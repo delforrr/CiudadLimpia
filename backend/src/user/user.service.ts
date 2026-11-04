@@ -8,7 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { publicUserSelect } from './user.select';
+import { publicUserSelect, toUserResponse } from './user.select';
 import { Role } from '../generated/prisma/enums';
 import type { Prisma } from '../generated/prisma/client';
 
@@ -19,7 +19,7 @@ export class UserService {
   async create(dto: CreateUserDto, role: Role) {
     const { password, cliente, ...account } = dto;
     try {
-      return await this.prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           ...account,
           role,
@@ -34,16 +34,18 @@ export class UserService {
         },
         select: publicUserSelect,
       });
+      return toUserResponse(user);
     } catch (error: unknown) {
       this.rethrow(error);
     }
   }
 
-  findAll() {
-    return this.prisma.user.findMany({
+  async findAll() {
+    const users = await this.prisma.user.findMany({
       select: publicUserSelect,
       orderBy: { id: 'asc' },
     });
+    return users.map(toUserResponse);
   }
 
   async findOne(id: string) {
@@ -52,7 +54,7 @@ export class UserService {
       select: publicUserSelect,
     });
     if (!user) throw new NotFoundException('Usuario no encontrado');
-    return user;
+    return toUserResponse(user);
   }
 
   async update(id: string, dto: UpdateUserDto) {
@@ -95,11 +97,12 @@ export class UserService {
           };
         }
       }
-      return await this.prisma.user.update({
+      const user = await this.prisma.user.update({
         where: { id },
         data,
         select: publicUserSelect,
       });
+      return toUserResponse(user);
     } catch (error: unknown) {
       this.rethrow(error);
     }

@@ -4,7 +4,11 @@ export class DireccionResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ example: 'Roca 50' })
+  @ApiProperty({
+    example: 'Roca 50',
+    description:
+      'Calle y altura para direcciones estructuradas, o texto libre para direcciones históricas.',
+  })
   direccion!: string;
 
   @ApiProperty({ nullable: true, type: String, example: 'Roca' })

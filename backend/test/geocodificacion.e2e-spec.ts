@@ -63,10 +63,14 @@ describe('Geocodificación (HTTP)', () => {
       lat: -35.97,
       long: -62.73,
     });
-    await asAdmin(directa).expect(200).expect({
-      fuente: 'Catálogo de Ciudad Limpia',
-      sugerencias: [{ calle: 'Villegas', altura: 555, lat: -35.97, long: -62.73 }],
-    });
+    await asAdmin(directa)
+      .expect(200)
+      .expect({
+        fuente: 'Catálogo de Ciudad Limpia',
+        sugerencias: [
+          { calle: 'Villegas', altura: 555, lat: -35.97, long: -62.73 },
+        ],
+      });
     expect(findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {

@@ -13,6 +13,14 @@ type DireccionRecord = Prisma.DireccionGetPayload<{
   select: typeof direccionSelect;
 }>;
 
-export function toDireccionResponse({ calle, ...direccion }: DireccionRecord) {
-  return { ...direccion, calle: calle?.calle ?? null };
+export function toDireccionResponse({
+  calle,
+  direccion,
+  ...registro
+}: DireccionRecord) {
+  return {
+    ...registro,
+    calle: calle?.calle ?? null,
+    direccion: direccion ?? `${calle?.calle} ${registro.altura}`,
+  };
 }

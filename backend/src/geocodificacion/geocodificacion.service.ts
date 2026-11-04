@@ -62,7 +62,14 @@ export class GeocodificacionService {
     });
     if (local?.calle && local.lat !== null && local.long !== null) {
       return {
-        sugerencias: [{ calle: local.calle.calle, altura, lat: local.lat, long: local.long }],
+        sugerencias: [
+          {
+            calle: local.calle.calle,
+            altura,
+            lat: local.lat,
+            long: local.long,
+          },
+        ],
         fuente: 'Catálogo de Ciudad Limpia',
       };
     }

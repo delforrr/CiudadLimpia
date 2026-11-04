@@ -42,19 +42,10 @@ export class CallesService {
 
   async update(id: string, calle: string) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const actualizada = await tx.calle.update({
-          where: { id },
-          data: { calle, clave: claveCalle(calle) },
-          select,
-        });
-        // El texto también se usa para buscar direcciones y leer domicilios históricos.
-        await tx.$executeRaw`
-          UPDATE "Direccion"
-          SET "direccion" = ${calle} || ' ' || "altura"
-          WHERE "calleId" = ${id} AND "altura" IS NOT NULL
-        `;
-        return actualizada;
+      return await this.prisma.calle.update({
+        where: { id },
+        data: { calle, clave: claveCalle(calle) },
+        select,
       });
     } catch (error: unknown) {
       this.rethrow(error);

@@ -87,8 +87,7 @@ export class CallesController {
   @Patch(':id')
   @ApiOperation({
     summary: 'Renombrar una calle (ADMIN)',
-    description:
-      'Actualiza el texto de las direcciones estructuradas vinculadas.',
+    description: 'Las direcciones vinculadas se muestran con el nuevo nombre.',
   })
   @ApiConsumes('application/json')
   @ApiOkResponse({ type: CalleResponseDto })

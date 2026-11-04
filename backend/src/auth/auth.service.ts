@@ -8,7 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { SigninRequestDto } from './dto/signin-request.dto';
-import { publicUserSelect } from '../user/user.select';
+import { publicUserSelect, toUserResponse } from '../user/user.select';
 import { UserService } from '../user/user.service';
 import { Role } from '../generated/prisma/enums';
 
@@ -53,12 +53,7 @@ export class AuthService {
     const matches = await bcrypt.compare(dto.password, hash);
     if (!user || !matches)
       throw new UnauthorizedException('Email o contraseña incorrectos');
-    return {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      cliente: user.cliente,
-    };
+    return toUserResponse(user);
   }
 
   createToken(id: string, remember: boolean) {
@@ -74,6 +69,6 @@ export class AuthService {
       select: publicUserSelect,
     });
     if (!user) throw new UnauthorizedException('Sesión inválida');
-    return user;
+    return toUserResponse(user);
   }
 }
