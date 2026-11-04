@@ -102,7 +102,11 @@ Esta obligación se valida en la API. Las cuentas antiguas sin domicilios pueden
 
 Los identificadores de `/users/:id` son UUID. Las escrituras requieren `Content-Type: application/json`, incluso DELETE sin cuerpo. Los errores son 400 (validación), 401 (sesión ausente o usuario eliminado), 403 (sin permisos), 404 (cuenta inexistente) y 409 (email duplicado). `/auth/all` se eliminó; el listado administrativo único es `GET /users`. Los hashes nunca se incluyen en las respuestas. Cambiar la contraseña no revoca JWT emitidos: siguen válidos hasta vencer.
 
-El formulario de registro está en `/registro`, y el inicio de sesión en `/perfil`. Usan controles MUI y Zod para validar cada campo al salir de él y al enviar; el perfil también valida con Zod antes de guardar. Los domicilios se ingresan uno por línea; se validan nombres, email y los límites de las direcciones antes de guardar. La lógica vive en `useAuthForm` y `useProfileForm`. No se agregan pantallas de administración ni endpoints independientes para clientes o domicilios.
+El formulario de registro está en `/registro`, y el inicio de sesión en `/perfil`. Usan controles MUI y Zod para validar cada campo al salir de él y al enviar; el perfil también valida con Zod antes de guardar. Los domicilios se ingresan uno por línea; se validan nombres, email y los límites de las direcciones antes de guardar. La lógica vive en `useAuthForm` y `useProfileForm`.
+
+## Puntos limpios y direcciones
+
+El listado y la consulta de puntos limpios son públicos. El alta, la edición y la baja requieren rol ADMIN y JSON. El alta recibe nombre, tipo, coordenadas y una de dos opciones de dirección, un `direccionId` existente o `direccion` con calle y altura. Para el autocompletado administrativo, consultar `GET /direcciones/puntos-limpios?buscar=Roca`. `GET /direcciones` incluye también domicilios de clientes y requiere rol ADMIN.
 
 ## Swagger
 
@@ -116,7 +120,7 @@ La integración usa [Nest Swagger](https://docs.nestjs.com/openapi/introduction)
 
 ## Dependencias y verificación
 
-El backend usa Nest 12, Prisma 7 y Zod 4.6.7. `StandardSchemaValidationPipe` valida los contratos de entrada y Swagger documenta directamente los mismos esquemas, sin DTOs con decoradores ni adaptadores adicionales. Los objetos de entrada son estrictos, incluidos los anidados: campos desconocidos producen 400 y `message` es una lista. PATCH permite omitir campos, pero rechaza `null` salvo en la etiqueta del domicilio. Los límites de texto cuentan caracteres Unicode y la contraseña conserva el límite adicional en bytes. TypeScript permanece en 6.0 por los rangos soportados por Nest Swagger, typescript-eslint y ts-jest. Prisma requiere `@prisma/adapter-pg` y genera el cliente en `backend/src/generated/prisma` (ignorado por Git).
+El backend usa Nest 12, Prisma 7 y Zod 4.6.7. Los contratos de cuentas usan Zod y los de puntos limpios, tipos y direcciones usan DTOs con decoradores. `StandardSchemaValidationPipe` valida las entradas de cuentas y Swagger documenta esos mismos esquemas. Los objetos de entrada son estrictos, incluidos los anidados: campos desconocidos producen 400 y `message` es una lista. PATCH permite omitir campos, pero rechaza `null` salvo en la etiqueta del domicilio. Los límites de texto cuentan caracteres Unicode y la contraseña conserva el límite adicional en bytes. TypeScript permanece en 6.0 por los rangos soportados por Nest Swagger, typescript-eslint y ts-jest. Prisma requiere `@prisma/adapter-pg` y genera el cliente en `backend/src/generated/prisma` (ignorado por Git).
 
 El override de `@istanbuljs/load-nyc-config > js-yaml` elimina la rama vulnerable de YAML 3. El consumidor utiliza `load`, que existe en YAML 4; las pruebas incluyen lectura de configuración YAML y cobertura para comprobar esta compatibilidad.
 
@@ -140,4 +144,4 @@ Referencias de migración: [Nest 12](https://docs.nestjs.com/migration-guide), [
 
 ### Pendiente de seguridad aceptado
 
-Al 28 de octubre de 2026, `npm audit` informa seis avisos low de desarrollo transitivos de Jest/ts-jest por [deepmerge, GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4), sin versión corregida publicada. Se acordó entregar el refactor con este pendiente documentado: `npm run audit` sigue estricto y devuelve un código de error mientras exista el aviso. No se degradó Jest ni se agregaron overrides para ocultarlo.
+El override de `jest-config > deepmerge` usa `@stackline/deepmerge@1.1.0` para corregir el aviso de esa dependencia de pruebas. `npm run audit` verifica los avisos vigentes.

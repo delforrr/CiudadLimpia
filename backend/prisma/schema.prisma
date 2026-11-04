@@ -5,8 +5,8 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -20,9 +20,9 @@ enum Role {
 }
 
 model User {
-  id           String @id @default(uuid())
-  email        String @unique
-  role         Role   @default(USER)
+  id           String   @id @default(uuid())
+  email        String   @unique
+  role         Role     @default(USER)
   passwordHash String
   cliente      Cliente?
 }
@@ -33,48 +33,66 @@ model Cliente {
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   name       String
   lastName   String
-  domicilios Domicilio[]
+  domicilios Direccion[]
 }
 
-model Domicilio {
-  id        String  @id @default(uuid())
-  clienteId String
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  direccion String
-  etiqueta  String? @db.VarChar(100)
+model Calle {
+  id          String      @id @default(uuid())
+  calle       String
+  clave       String      @unique
+  direcciones Direccion[]
+}
 
+model Direccion {
+  id            String        @id @default(uuid())
+  clienteId     String?
+  cliente       Cliente?      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  direccion     String
+  calleId       String?
+  calle         Calle?        @relation(fields: [calleId], references: [id], onDelete: Restrict)
+  altura        Int?
+  etiqueta      String?       @db.VarChar(100)
+  puntosLimpios PuntoLimpio[]
+
+  @@unique([calleId, altura])
   @@index([clienteId])
 }
 
-enum TipoPuntoLimpio {
-  PUNTO_LIMPIO
-  BOTELLERO
-  BOTELLERO_LATERO
+model TipoPuntoLimpio {
+  id            String                   @id @default(uuid())
+  nombre        String                   @unique
+  puntosLimpios PuntoLimpio[]
+  residuos      TipoPuntoLimpioResiduo[]
 }
-model PuntoLimpio {
-  id        String @id @default(uuid())
-  nombre    String
-  tipo      TipoPuntoLimpio
-  direccion String
-  lat       Float
-  long      Float
-  residuos PuntoLimpioResiduo[]
 
+model PuntoLimpio {
+  id          String          @id @default(uuid())
+  nombre      String
+  tipoId      String
+  tipo        TipoPuntoLimpio @relation(fields: [tipoId], references: [id])
+  direccionId String
+  direccion   Direccion       @relation(fields: [direccionId], references: [id])
+  lat         Float
+  long        Float
+
+  @@index([tipoId])
+  @@index([direccionId])
 }
 
 model Residuo {
-  id            String @id @default(uuid())
-  nombre        String @unique
-  puntosLimpios PuntoLimpioResiduo[]
+  id               String                   @id @default(uuid())
+  nombre           String                   @unique
+  tiposPuntoLimpio TipoPuntoLimpioResiduo[]
 }
-model PuntoLimpioResiduo {
-  puntoLimpioId String
-  residuoId     String
 
-  puntoLimpio PuntoLimpio @relation(fields: [puntoLimpioId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  residuo Residuo @relation(fields: [residuoId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+model TipoPuntoLimpioResiduo {
+  tipoPuntoLimpioId String
+  residuoId         String
 
-  @@id([puntoLimpioId, residuoId])
+  tipoPuntoLimpio TipoPuntoLimpio @relation(fields: [tipoPuntoLimpioId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  residuo         Residuo         @relation(fields: [residuoId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([tipoPuntoLimpioId, residuoId])
   @@index([residuoId])
-  @@map("_PuntoLimpioToResiduo")
+  @@map("_TipoPuntoLimpioToResiduo")
 }
