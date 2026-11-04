@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import CategoryIcon from '@mui/icons-material/Category';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import RouteIcon from '@mui/icons-material/Route';
 import PeopleIcon from '@mui/icons-material/People';
 import iconoCiudadLimpia from '../assets/icono-ciudad-limpia.png';
 import { AdminUsuarios } from '../components/AdminUsuarios';
 import { AdminChoferes } from '../components/AdminChoferes';
+import { AdminCamiones } from '../components/AdminCamiones';
+import { AdminPuntosLimpios } from '../components/AdminPuntosLimpios';
+import { AdminTiposPuntosLimpios } from '../components/AdminTiposPuntosLimpios';
 import { useAuthContext } from '../hooks/useAuthContext';
 import './AdminPage.css';
 
-type AdminTab = 'dashboard' | 'puntos' | 'recoleccion' | 'choferes' | 'usuarios';
+type AdminTab = 'dashboard' | 'puntos' | 'tipos' | 'recoleccion' | 'camiones' | 'choferes' | 'usuarios';
 
 const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
   dashboard: {
@@ -20,9 +25,17 @@ const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
     titulo: 'Puntos Limpios',
     descripcion: 'Gestión y estado de estaciones de reciclaje',
   },
+  tipos: {
+    titulo: 'Tipos de Puntos Limpios',
+    descripcion: 'Categorías disponibles y los materiales que recibe cada una',
+  },
   recoleccion: {
-    titulo: 'Recolección',
-    descripcion: 'Cronograma y recorridos de camiones',
+    titulo: 'Trayectos y Recolección',
+    descripcion: 'Cronograma y recorridos de camiones por zona',
+  },
+  camiones: {
+    titulo: 'Camiones',
+    descripcion: 'Gestión del parque automotor y unidades de recolección',
   },
   choferes: {
     titulo: 'Choferes',
@@ -90,11 +103,29 @@ export function AdminPage() {
 
             <button
               type="button"
+              className={`admin-nav-item ${activeTab === 'tipos' ? 'active' : ''}`}
+              onClick={() => setActiveTab('tipos')}
+            >
+              <span className="admin-nav-icon"><CategoryIcon fontSize="small" /></span>
+              <span>Tipos de Puntos</span>
+            </button>
+
+            <button
+              type="button"
               className={`admin-nav-item ${activeTab === 'recoleccion' ? 'active' : ''}`}
               onClick={() => setActiveTab('recoleccion')}
             >
+              <span className="admin-nav-icon"><RouteIcon fontSize="small" /></span>
+              <span>Trayectos</span>
+            </button>
+
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'camiones' ? 'active' : ''}`}
+              onClick={() => setActiveTab('camiones')}
+            >
               <span className="admin-nav-icon"><LocalShippingIcon fontSize="small" /></span>
-              <span>Recolección</span>
+              <span>Camiones</span>
             </button>
 
             <button
@@ -145,6 +176,12 @@ export function AdminPage() {
             <AdminUsuarios />
           ) : activeTab === 'choferes' ? (
             <AdminChoferes />
+          ) : activeTab === 'camiones' ? (
+            <AdminCamiones onNavigateToTrayectos={() => setActiveTab('recoleccion')} />
+          ) : activeTab === 'puntos' ? (
+            <AdminPuntosLimpios />
+          ) : activeTab === 'tipos' ? (
+            <AdminTiposPuntosLimpios />
           ) : (
             /* Contenedor esqueleto del panel */
             <section className="admin-empty-card">
