@@ -213,7 +213,7 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
     });
   });
 
-  it('administra el catalogo de direcciones sin incluir domicilios', async () => {
+  it('separa el listado general del catálogo para puntos limpios', async () => {
     const catalogo = () => request(app.getHttpServer());
     const auth = `Bearer ${adminToken}`;
     const ruta = `/direcciones/${body.direccionId}`;
@@ -238,8 +238,17 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
       .get('/direcciones')
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
+    await catalogo().get('/direcciones/puntos-limpios').expect(401);
     await catalogo()
-      .get('/direcciones?buscar=roca')
+      .get('/direcciones/puntos-limpios')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+    await catalogo().get('/direcciones').set('Authorization', auth).expect(200);
+    expect(db.direccion.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: {} }),
+    );
+    await catalogo()
+      .get('/direcciones/puntos-limpios?buscar=roca')
       .set('Authorization', auth)
       .expect(200)
       .expect([direccion]);

@@ -27,11 +27,12 @@ function toResponse({ calle, ...direccion }: DireccionRecord) {
 export class DireccionesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(buscar?: string) {
+  async findAll(buscar?: string, soloPuntosLimpios = false) {
+    const texto = typeof buscar === 'string' ? buscar.trim() : undefined;
     const direcciones = await this.prisma.direccion.findMany({
       where: {
-        clienteId: null,
-        ...(buscar && { direccion: { contains: buscar, mode: 'insensitive' } }),
+        ...(soloPuntosLimpios && { clienteId: null }),
+        ...(texto && { direccion: { contains: texto, mode: 'insensitive' } }),
       },
       select: direccionSelect,
       orderBy: [{ direccion: 'asc' }, { id: 'asc' }],
@@ -42,7 +43,7 @@ export class DireccionesService {
 
   async findOne(id: string) {
     const direccion = await this.prisma.direccion.findUnique({
-      where: { id, clienteId: null },
+      where: { id },
       select: direccionSelect,
     });
     if (!direccion) throw new NotFoundException('Direccion no encontrada');

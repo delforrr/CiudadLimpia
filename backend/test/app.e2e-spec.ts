@@ -46,6 +46,7 @@ describe('AppController (e2e)', () => {
       '/auth/me',
       '/auth/register',
       '/direcciones',
+      '/direcciones/puntos-limpios',
       '/direcciones/{id}',
       '/health',
       '/puntos-limpios',

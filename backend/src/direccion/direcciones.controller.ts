@@ -21,6 +21,7 @@ import {
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -49,6 +50,9 @@ export class DireccionesController {
   constructor(private readonly direcciones: DireccionesService) {}
 
   @Get()
+  @ApiOperation({
+    summary: 'Listar direcciones, incluidos domicilios de clientes (ADMIN)',
+  })
   @ApiQuery({
     name: 'buscar',
     required: false,
@@ -57,9 +61,22 @@ export class DireccionesController {
   })
   @ApiOkResponse({ type: DireccionResponseDto, isArray: true })
   findAll(@Query('buscar') buscar?: string) {
-    return this.direcciones.findAll(
-      typeof buscar === 'string' ? buscar.trim() : undefined,
-    );
+    return this.direcciones.findAll(buscar);
+  }
+
+  @Get('puntos-limpios')
+  @ApiOperation({
+    summary: 'Listar direcciones disponibles para puntos limpios (ADMIN)',
+  })
+  @ApiQuery({
+    name: 'buscar',
+    required: false,
+    type: String,
+    description: 'Búsqueda por texto. Hasta 20 resultados.',
+  })
+  @ApiOkResponse({ type: DireccionResponseDto, isArray: true })
+  findForPuntosLimpios(@Query('buscar') buscar?: string) {
+    return this.direcciones.findAll(buscar, true);
   }
 
   @Get(':id')
