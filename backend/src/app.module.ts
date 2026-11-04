@@ -1,12 +1,18 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { AuthModule } from './auth/auth.module';
-import { UserModule } from './user/user.module';
+import { AccountsModule } from './accounts/accounts.module';
+import { PuntosLimpiosModule } from './punto-limpio/puntos-limpios.module';
+
+import { TipoPuntoLimpioModule } from './tipo-punto-limpio/tipo-punto-limpio.module';
 
 @Module({
-  imports: [AuthModule, UserModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    AccountsModule,
+    PuntosLimpiosModule,
+    TipoPuntoLimpioModule,
+  ],
   controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

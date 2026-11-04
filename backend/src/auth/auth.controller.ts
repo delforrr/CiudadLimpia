@@ -21,11 +21,17 @@ import {
 } from '@nestjs/swagger';
 import type { CookieOptions, Response } from 'express';
 import { AuthService, sessionSeconds } from './auth.service';
-import { AuthGuard, type AuthRequest } from './auth.guard';
-import { LoginRequestDto } from './dto/login-request.dto';
-import { SigninRequestDto } from './dto/signin-request.dto';
+import { AuthGuard } from '@nestjs/passport';
+import type { AuthRequest } from './auth.guard';
+import { AuthAttemptsGuard } from './auth-attempts.guard';
+import {
+  loginSchema,
+  registerSchema,
+  type LoginRequest,
+  type RegisterRequest,
+} from './auth.schemas';
 import { AuthEndpointGuard } from './auth-endpoint.guard';
-import { UserResponseDto } from './dto/user-response.dto';
+import { publicUserSchema, type PublicUser } from '../accounts/account.schemas';
 
 const getCookieOptions = (): CookieOptions => ({
   httpOnly: true,
@@ -41,20 +47,21 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
+  @UseGuards(AuthAttemptsGuard)
   @ApiOperation({
     summary: 'Crear una cuenta e iniciar sesión',
     description:
-      'Crea una cookie session HttpOnly. La sesión dura una hora; rememberMe se ignora en registro.',
+      'Crea una cookie session HttpOnly. La sesión dura una hora. Recibe email, password y cliente anidado.',
   })
   @ApiConsumes('application/json')
   @ApiCreatedResponse({
-    type: UserResponseDto,
+    standardSchema: publicUserSchema,
     description:
       'Cuenta creada. La sesión se entrega en Set-Cookie, no en el JSON.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Datos inválidos o contraseñas diferentes.',
+    description: 'Datos inválidos.',
   })
   @ApiResponse({ status: 409, description: 'El email ya está registrado.' })
   @ApiResponse({
@@ -71,15 +78,16 @@ export class AuthController {
       'Más de diez intentos por IP en quince minutos. Retry-After indica los segundos de espera.',
   })
   async register(
-    @Body() dto: SigninRequestDto,
+    @Body({ schema: registerSchema }) dto: RegisterRequest,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<UserResponseDto> {
+  ): Promise<PublicUser> {
     const user = await this.auth.register(dto);
     await this.setSession(response, user.id, false);
     return user;
   }
 
   @Post('login')
+  @UseGuards(AuthAttemptsGuard)
   @HttpCode(200)
   @ApiOperation({
     summary: 'Iniciar sesión con email y contraseña',
@@ -88,7 +96,7 @@ export class AuthController {
   })
   @ApiConsumes('application/json')
   @ApiOkResponse({
-    type: UserResponseDto,
+    standardSchema: publicUserSchema,
     description:
       'Sesión iniciada mediante Set-Cookie. El JSON contiene únicamente el usuario.',
   })
@@ -108,31 +116,12 @@ export class AuthController {
       'Más de diez intentos por IP en quince minutos. Retry-After indica los segundos de espera.',
   })
   async login(
-    @Body() dto: LoginRequestDto,
+    @Body({ schema: loginSchema }) dto: LoginRequest,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<UserResponseDto> {
+  ): Promise<PublicUser> {
     const user = await this.auth.login(dto);
     await this.setSession(response, user.id, dto.rememberMe ?? false);
     return user;
-  }
-
-  @Get('all')
-  @ApiCookieAuth('session')
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Consultar todos los usuarios registrados',
-    description:
-      'Requiere rol ADMIN. Acepta la cookie session del navegador o un JWT existente mediante Authorization: Bearer.',
-  })
-  @ApiOkResponse({ type: UserResponseDto, isArray: true })
-  @ApiResponse({
-    status: 401,
-    description: 'Usuario no autorizado',
-  })
-  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
-  @UseGuards(AuthGuard)
-  all(@Req() request: AuthRequest): Promise<UserResponseDto[]> {
-    return this.auth.getAllUsers(request.user.id);
   }
 
   @Get('me')
@@ -143,13 +132,13 @@ export class AuthController {
     description:
       'Acepta la cookie session del navegador o un JWT existente mediante Authorization: Bearer. Cualquiera de los dos mecanismos es suficiente.',
   })
-  @ApiOkResponse({ type: UserResponseDto })
+  @ApiOkResponse({ standardSchema: publicUserSchema })
   @ApiResponse({
     status: 401,
     description: 'Sesión ausente, inválida, vencida o usuario eliminado.',
   })
-  @UseGuards(AuthGuard)
-  me(@Req() request: AuthRequest): Promise<UserResponseDto> {
+  @UseGuards(AuthGuard('jwt'))
+  me(@Req() request: AuthRequest): Promise<PublicUser> {
     return this.auth.getUser(request.user.id);
   }
 

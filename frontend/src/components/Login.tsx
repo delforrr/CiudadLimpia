@@ -310,7 +310,7 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
               className="login-truck-icon"
             />
           </div>
-          <p>{register ? 'Completá tus datos para crear tu cuenta' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
+          <p>{register ? 'Completá tus datos y al menos un domicilio' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
         </header>
 
         <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
@@ -335,6 +335,9 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                 error={Boolean(fieldErrors.lastName)} helperText={fieldErrors.lastName?.[0]}
                 slotProps={{ htmlInput: { maxLength: 100 } }}
               />
+              <DomiciliosCard domicilios={form.domicilios}
+                onChange={(domicilios) => updateField('domicilios', domicilios)}
+                disabled={pending} errors={fieldErrors.domicilios} />
             </>
           )}
           <TextField
@@ -357,7 +360,7 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
             onChange={(e) => updateField('password', e.target.value)}
             onBlur={() => validateField('password')}
             error={Boolean(fieldErrors.password)}
-            helperText={fieldErrors.password?.[0]}
+            helperText={fieldErrors.password?.[0] || (register ? 'Al menos 8 caracteres; hasta 72 bytes.' : '')}
             slotProps={{
               input: {
                 endAdornment: (

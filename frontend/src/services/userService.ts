@@ -2,11 +2,12 @@ import { httpRequest } from './http.ts'
 import type { Domicilio, User } from './authService.ts'
 
 export type ProfileUpdate = {
-  email: string
-  cliente: {
-    name: string
-    lastName: string
-    domicilios: Domicilio[]
+  email?: string
+  password?: string
+  cliente?: {
+    name?: string
+    lastName?: string
+    domicilios?: Domicilio[]
   }
 }
 
@@ -29,8 +30,8 @@ export const userService = {
       body: JSON.stringify(profile),
     }),
   list: () => httpRequest<User[]>('/users'),
-  create: ({ role, ...user }: AdminUserCreate) =>
-    httpRequest<User>(`/users?role=${encodeURIComponent(role)}`, {
+  create: (user: AdminUserCreate) =>
+    httpRequest<User>('/users', {
       method: 'POST',
       body: JSON.stringify(user),
     }),

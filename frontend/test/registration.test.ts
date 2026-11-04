@@ -33,11 +33,11 @@ function render(initialRegister = false, user: User | null = null) {
 
 test('opens registration with all fields required by the current API', () => {
   const html = render(true)
-  for (const label of ['Crear cuenta', 'Nombre', 'Apellido', 'Correo electrónico', 'Contraseña', 'Repetir contraseña']) {
+  for (const label of ['Crear cuenta', 'Nombre', 'Apellido', 'Mis domicilios', 'Dirección', 'Etiqueta (opcional)', 'Agregar domicilio', 'Correo electrónico', 'Contraseña', 'Repetir contraseña']) {
     assert.ok(html.includes(label), label)
   }
   assert.match(html, /autoComplete="new-password"/)
-  assert.doesNotMatch(html, /Recordarme|Ingresá tu nombre|Las contraseñas no coinciden|Mis domicilios|Dirección|Agregar domicilio/)
+  assert.doesNotMatch(html, /Recordarme|Ingresá tu nombre|Las contraseñas no coinciden/)
 })
 
 test('opens login separately without registration fields', () => {
@@ -61,16 +61,18 @@ test('displays saved address labels from the authenticated profile', () => {
 
 test('validates registration fields together and normalizes the backend payload', () => {
   const form = { name: ' Ana ', lastName: ' Pérez ', email: ' ANA@example.com ',
-    password: 'Clave!123', repeatedPassword: 'Clave!123', rememberMe: false }
+    domicilios: [{ direccion: ' San Martín 123 ', etiqueta: ' Casa ' }, { direccion: ' Belgrano 456 ' }], password: 'Clave!123',
+    repeatedPassword: 'Clave!123', rememberMe: false }
   assert.deepEqual(registerSchema.parse(form), {
     name: 'Ana', lastName: 'Pérez', email: 'ana@example.com',
-    password: 'Clave!123', repeatedPassword: 'Clave!123',
+    domicilios: [{ direccion: 'San Martín 123', etiqueta: 'Casa' }, { direccion: 'Belgrano 456' }],
+    password: 'Clave!123', repeatedPassword: 'Clave!123', rememberMe: false,
   })
   const invalid = registerSchema.safeParse({ ...form, name: ' ', lastName: ' ',
-    email: 'inválido', repeatedPassword: 'otra' })
+    domicilios: [], email: 'inválido', repeatedPassword: 'otra' })
   assert.equal(invalid.success, false)
   if (!invalid.success) {
     assert.deepEqual(invalid.error.issues.map(({ path }) => path[0]).sort(),
-      ['email', 'lastName', 'name', 'repeatedPassword'])
+      ['domicilios', 'email', 'lastName', 'name', 'repeatedPassword'])
   }
 })
