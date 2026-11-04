@@ -13,7 +13,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-import { CreateDireccionDto } from '../../direccion/dto/direccion.dto';
+import { CreateDireccionDto } from '../../direccion/dto/create-direccion.dto';
 
 export class PuntoLimpioFieldsDto {
   @ApiProperty({ example: 'Parque Villegas', minLength: 1, maxLength: 100 })

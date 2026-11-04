@@ -32,11 +32,9 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { Role } from '../generated/prisma/enums';
 import { DireccionesService } from './direcciones.service';
-import {
-  CreateDireccionDto,
-  DireccionResponseDto,
-  UpdateDireccionDto,
-} from './dto/direccion.dto';
+import { CreateDireccionDto } from './dto/create-direccion.dto';
+import { DireccionResponseDto } from './dto/direccion-response.dto';
+import { UpdateDireccionDto } from './dto/update-direccion.dto';
 
 @ApiTags('direcciones')
 @ApiCookieAuth('session')

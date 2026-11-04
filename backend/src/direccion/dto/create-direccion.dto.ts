@@ -1,4 +1,4 @@
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsInt,
@@ -26,22 +26,4 @@ export class CreateDireccionDto {
   @Min(1)
   @Max(2147483647)
   altura!: number;
-}
-
-export class UpdateDireccionDto extends PartialType(CreateDireccionDto, {
-  skipNullProperties: false,
-}) {}
-
-export class DireccionResponseDto {
-  @ApiProperty({ format: 'uuid' })
-  id!: string;
-
-  @ApiProperty({ example: 'Roca 50' })
-  direccion!: string;
-
-  @ApiProperty({ nullable: true, type: String, example: 'Roca' })
-  calle!: string | null;
-
-  @ApiProperty({ nullable: true, type: Number, example: 50 })
-  altura!: number | null;
 }

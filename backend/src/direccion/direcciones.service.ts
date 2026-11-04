@@ -6,22 +6,9 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateDireccionDto, UpdateDireccionDto } from './dto/direccion.dto';
-
-const direccionSelect = {
-  id: true,
-  direccion: true,
-  calle: { select: { calle: true } },
-  altura: true,
-} satisfies Prisma.DireccionSelect;
-
-type DireccionRecord = Prisma.DireccionGetPayload<{
-  select: typeof direccionSelect;
-}>;
-
-function toResponse({ calle, ...direccion }: DireccionRecord) {
-  return { ...direccion, calle: calle?.calle ?? null };
-}
+import { direccionSelect, toDireccionResponse } from './direcciones.select';
+import type { CreateDireccionDto } from './dto/create-direccion.dto';
+import type { UpdateDireccionDto } from './dto/update-direccion.dto';
 
 @Injectable()
 export class DireccionesService {
@@ -38,7 +25,7 @@ export class DireccionesService {
       orderBy: [{ direccion: 'asc' }, { id: 'asc' }],
       take: 20,
     });
-    return direcciones.map(toResponse);
+    return direcciones.map(toDireccionResponse);
   }
 
   async findOne(id: string) {
@@ -47,18 +34,18 @@ export class DireccionesService {
       select: direccionSelect,
     });
     if (!direccion) throw new NotFoundException('Direccion no encontrada');
-    return toResponse(direccion);
+    return toDireccionResponse(direccion);
   }
 
   async create(dto: CreateDireccionDto) {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        const data = await this.resolveData(tx, dto);
-        return toResponse(
+        const data = await this.buildDireccionData(tx, dto);
+        return toDireccionResponse(
           await tx.direccion.create({ data, select: direccionSelect }),
         );
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.rethrow(error);
     }
   }
@@ -67,7 +54,7 @@ export class DireccionesService {
     tx: Prisma.TransactionClient,
     dto: CreateDireccionDto,
   ) {
-    const data = await this.resolveData(tx, dto);
+    const data = await this.buildDireccionData(tx, dto);
     return tx.direccion.upsert({
       where: { calleId_altura: { calleId: data.calleId, altura: data.altura } },
       create: data,
@@ -85,15 +72,15 @@ export class DireccionesService {
         });
         if (!actual) throw new NotFoundException('Direccion no encontrada');
         if (dto.calle === undefined && dto.altura === undefined)
-          return toResponse(actual);
+          return toDireccionResponse(actual);
         const calle = dto.calle ?? actual.calle?.calle;
         const altura = dto.altura ?? actual.altura;
         if (calle === undefined || altura === null)
           throw new BadRequestException(
             'Indica calle y altura para completar la direccion',
           );
-        const data = await this.resolveData(tx, { calle, altura });
-        return toResponse(
+        const data = await this.buildDireccionData(tx, { calle, altura });
+        return toDireccionResponse(
           await tx.direccion.update({
             where: { id, clienteId: null },
             data,
@@ -101,7 +88,7 @@ export class DireccionesService {
           }),
         );
       });
-    } catch (error) {
+    } catch (error: unknown) {
       this.rethrow(error);
     }
   }
@@ -109,12 +96,12 @@ export class DireccionesService {
   async remove(id: string) {
     try {
       await this.prisma.direccion.delete({ where: { id, clienteId: null } });
-    } catch (error) {
+    } catch (error: unknown) {
       this.rethrow(error);
     }
   }
 
-  private async resolveData(
+  private async buildDireccionData(
     tx: Prisma.TransactionClient,
     dto: CreateDireccionDto,
   ) {
