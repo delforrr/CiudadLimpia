@@ -22,6 +22,7 @@ import {
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -47,6 +48,7 @@ export class CallesController {
   constructor(private readonly calles: CallesService) {}
 
   @Get()
+  @ApiOperation({ summary: 'Listar calles del catálogo (ADMIN)' })
   @ApiQuery({
     name: 'buscar',
     required: false,
@@ -59,6 +61,7 @@ export class CallesController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Consultar una calle por ID (ADMIN)' })
   @ApiOkResponse({ type: CalleResponseDto })
   @ApiBadRequestResponse()
   @ApiNotFoundResponse()
@@ -67,6 +70,11 @@ export class CallesController {
   }
 
   @Post()
+  @ApiOperation({
+    summary: 'Registrar una calle (ADMIN)',
+    description:
+      'El nombre debe ser único sin distinguir mayúsculas y minúsculas.',
+  })
   @ApiConsumes('application/json')
   @ApiCreatedResponse({ type: CalleResponseDto })
   @ApiBadRequestResponse()
@@ -77,6 +85,11 @@ export class CallesController {
   }
 
   @Patch(':id')
+  @ApiOperation({
+    summary: 'Renombrar una calle (ADMIN)',
+    description:
+      'Actualiza el texto de las direcciones estructuradas vinculadas.',
+  })
   @ApiConsumes('application/json')
   @ApiOkResponse({ type: CalleResponseDto })
   @ApiBadRequestResponse()
@@ -88,6 +101,9 @@ export class CallesController {
   }
 
   @Delete(':id')
+  @ApiOperation({
+    summary: 'Eliminar una calle sin direcciones vinculadas (ADMIN)',
+  })
   @HttpCode(204)
   @ApiConsumes('application/json')
   @ApiNoContentResponse()

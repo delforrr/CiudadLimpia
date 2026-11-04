@@ -1,5 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsInt,
   IsLatitude,
@@ -22,6 +21,8 @@ export class CreateDireccionDto extends CalleDto {
   @ApiPropertyOptional({
     type: Number,
     nullable: true,
+    minimum: -90,
+    maximum: 90,
     example: -35.97,
     description: 'Enviar junto con long.',
   })
@@ -33,6 +34,8 @@ export class CreateDireccionDto extends CalleDto {
   @ApiPropertyOptional({
     type: Number,
     nullable: true,
+    minimum: -180,
+    maximum: 180,
     example: -62.73,
     description: 'Enviar junto con lat.',
   })

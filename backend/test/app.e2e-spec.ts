@@ -74,6 +74,25 @@ describe('AppController (e2e)', () => {
       expect.arrayContaining([{ session: [] }, { bearer: [] }]),
     );
     expect(document.paths['/health'].get?.security).toBeUndefined();
+    const calle = document.paths['/calles/{id}'];
+    expect(calle.patch?.summary).toContain('Renombrar');
+    expect(calle.delete?.responses).toHaveProperty('409');
+    expect(calle.patch?.security).toEqual(
+      expect.arrayContaining([{ session: [] }, { bearer: [] }]),
+    );
+    expect(document.paths['/direcciones/{id}'].patch?.description).toContain(
+      'ambas nulas',
+    );
+    expect(document.components?.schemas?.CreateDireccionDto).toMatchObject({
+      required: ['calle', 'altura'],
+      properties: {
+        lat: { type: 'number', nullable: true, minimum: -90, maximum: 90 },
+        long: { type: 'number', nullable: true, minimum: -180, maximum: 180 },
+      },
+    });
+    expect(
+      document.paths['/geocodificacion/directa'].get?.description,
+    ).toContain('catálogo público');
     expect(document.paths['/tipos-punto-limpio'].get?.security).toBeUndefined();
     expect(
       document.paths['/tipos-punto-limpio'].post?.responses,

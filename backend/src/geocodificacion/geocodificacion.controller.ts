@@ -44,6 +44,8 @@ export class GeocodificacionController {
   @Get('directa')
   @ApiOperation({
     summary: 'Buscar hasta tres ubicaciones aproximadas por calle y altura',
+    description:
+      'Una coincidencia exacta con coordenadas en el catálogo público tiene prioridad. Si falta, se consulta Georef. Una lista vacía indica que no hay una ubicación sugerida.',
   })
   @ApiOkResponse({ type: GeocodificacionDirectaResponse })
   directa(@Query() query: GeocodificacionDirectaQuery) {
@@ -53,6 +55,8 @@ export class GeocodificacionController {
   @Get('inversa')
   @ApiOperation({
     summary: 'Sugerir una dirección para un pin en Trenque Lauquen',
+    description:
+      'Consulta Georef y devuelve las coordenadas del pin original. La sugerencia puede incluir solo la calle. Si falta una calle de la ciudad, direccionSugerida es null.',
   })
   @ApiOkResponse({ type: GeocodificacionInversaResponse })
   inversa(@Query() query: GeocodificacionInversaQuery) {

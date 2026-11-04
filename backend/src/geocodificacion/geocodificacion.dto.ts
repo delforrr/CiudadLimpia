@@ -53,7 +53,11 @@ export class GeocodificacionDirectaResponse {
   @ApiProperty({ type: [UbicacionSugeridaDto], maxItems: 3 })
   sugerencias!: UbicacionSugeridaDto[];
 
-  @ApiProperty({ example: GEOREF_FUENTE })
+  @ApiProperty({
+    example: GEOREF_FUENTE,
+    description:
+      'Fuente del resultado. Puede ser Catálogo de Ciudad Limpia o Servicio Georef – argentina.gob.ar/georef.',
+  })
   fuente!: string;
 }
 
