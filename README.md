@@ -98,6 +98,14 @@ El formulario de registro está en `/registro`, y el inicio de sesión en `/perf
 
 ## Swagger
 
+Los puntos limpios se consultan públicamente con `GET /puntos-limpios` y
+`GET /puntos-limpios/:id`. Crear (`POST`), actualizar parcialmente (`PATCH /:id`)
+y eliminar (`DELETE /:id`) requieren rol ADMIN y `Content-Type: application/json`,
+incluso al eliminar sin cuerpo. El alta recibe `nombre`, `tipoId`, `direccionId`,
+`lat` y `long`; el tipo y la dirección deben existir. Las respuestas incluyen
+esos campos y el `id`. Un punto inexistente devuelve 404 y un UUID o datos
+inválidos devuelven 400. Eliminar un punto conserva su tipo y su dirección.
+
 Con el backend iniciado, abrir [Swagger UI](http://localhost:3000/api/docs). El documento OpenAPI se publica en [JSON](http://localhost:3000/api/docs-json) y [YAML](http://localhost:3000/api/docs-yaml). Ajustar el puerto si se modifica `PORT`.
 
 La documentación incluye health, registro, login, sesión y logout, con ejemplos, límites de validación, códigos de error y el esquema del usuario público. Las contraseñas de los ejemplos son ficticias.
