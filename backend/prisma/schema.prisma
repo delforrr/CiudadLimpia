@@ -47,10 +47,12 @@ model Direccion {
   id            String        @id @default(uuid())
   clienteId     String?
   cliente       Cliente?      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  direccion     String
+  direccion     String?
   calleId       String?
   calle         Calle?        @relation(fields: [calleId], references: [id], onDelete: Restrict)
   altura        Int?
+  lat           Float?
+  long          Float?
   etiqueta      String?       @db.VarChar(100)
   puntosLimpios PuntoLimpio[]
 

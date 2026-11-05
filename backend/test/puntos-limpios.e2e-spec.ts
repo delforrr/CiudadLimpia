@@ -30,9 +30,9 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
     user: { findUnique: jest.fn() },
     $transaction: jest.fn(),
     calle: { upsert: jest.fn() },
+    $queryRaw: jest.fn(),
     direccion: {
       findUnique: jest.fn(),
-      findMany: jest.fn(),
       upsert: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -188,11 +188,12 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
       where: { clave: 'roca' },
       create: { clave: 'roca', calle: 'Roca' },
       update: { clave: 'roca' },
+      select: { id: true },
     });
     expect(db.direccion.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { calleId_altura: { calleId: missingId, altura: 50 } },
-        create: { calleId: missingId, altura: 50, direccion: 'Roca 50' },
+        create: { calleId: missingId, altura: 50 },
       }),
     );
     expect(db.puntoLimpio.create).toHaveBeenCalledWith({
@@ -218,14 +219,19 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
       direccion: 'Roca 50',
       ...entrada,
     };
-    const guardada = { ...direccion, calle: { calle: 'Roca' } };
-    db.direccion.findMany.mockResolvedValue([guardada]);
-    db.direccion.findUnique.mockResolvedValue(guardada);
+    const guardada = {
+      ...direccion,
+      direccion: null,
+      calle: { calle: 'Roca' },
+    };
+    db.$queryRaw.mockResolvedValue([direccion]);
+    db.direccion.findUnique
+      .mockResolvedValueOnce(guardada)
+      .mockResolvedValueOnce({ ...guardada, calleId: missingId });
     db.direccion.create.mockResolvedValue(guardada);
     db.direccion.update.mockResolvedValue({
       ...guardada,
       altura: 52,
-      direccion: 'Roca 52',
     });
 
     await catalogo().get('/direcciones').expect(401);
@@ -239,21 +245,15 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
     await catalogo().get('/direcciones').set('Authorization', auth).expect(200);
-    expect(db.direccion.findMany).toHaveBeenLastCalledWith(
-      expect.objectContaining({ where: {} }),
-    );
     await catalogo()
       .get('/direcciones/puntos-limpios?buscar=roca')
       .set('Authorization', auth)
       .expect(200)
       .expect([direccion]);
-    expect(db.direccion.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          clienteId: null,
-          direccion: { contains: 'roca', mode: 'insensitive' },
-        },
-      }),
+    expect(db.$queryRaw).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sql: 'WHERE d."clienteId" IS NULL' }),
+      expect.objectContaining({ values: ['roca'] }),
     );
     await catalogo()
       .get(ruta)

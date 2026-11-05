@@ -45,9 +45,13 @@ describe('Public API and documentation (HTTP)', () => {
       '/auth/logout',
       '/auth/me',
       '/auth/register',
+      '/calles',
+      '/calles/{id}',
       '/direcciones',
       '/direcciones/puntos-limpios',
       '/direcciones/{id}',
+      '/geocodificacion/directa',
+      '/geocodificacion/inversa',
       '/health',
       '/puntos-limpios',
       '/puntos-limpios/{id}',
@@ -101,6 +105,25 @@ describe('Public API and documentation (HTTP)', () => {
       ],
       false,
     );
+    const calle = document.paths['/calles/{id}'];
+    expect(calle.patch?.summary).toContain('Renombrar');
+    expect(calle.delete?.responses).toHaveProperty('409');
+    expect(calle.patch?.security).toEqual(
+      expect.arrayContaining([{ session: [] }, { bearer: [] }]),
+    );
+    expect(document.paths['/direcciones/{id}'].patch?.description).toContain(
+      'ambas nulas',
+    );
+    expect(document.components?.schemas?.CreateDireccionDto).toMatchObject({
+      required: ['calle', 'altura'],
+      properties: {
+        lat: { type: 'number', nullable: true, minimum: -90, maximum: 90 },
+        long: { type: 'number', nullable: true, minimum: -180, maximum: 180 },
+      },
+    });
+    expect(
+      document.paths['/geocodificacion/directa'].get?.description,
+    ).toContain('catálogo público');
     expect(register).toHaveProperty(
       [
         'requestBody',

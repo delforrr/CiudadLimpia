@@ -12,12 +12,11 @@ describe('DireccionesService', () => {
   const calleId = '00000000-0000-4000-8000-000000000002';
   const dto = { calle: 'Roca', altura: 50 };
   const respuesta = { id, direccion: 'Roca 50', calle: 'Roca', altura: 50 };
-  const registro = { ...respuesta, calle: { calle: 'Roca' } };
+  const registro = { ...respuesta, direccion: null, calle: { calle: 'Roca' } };
   const historica = { id, direccion: 'Roca 50', calle: null, altura: null };
 
   const db = {
     direccion: {
-      findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -27,6 +26,7 @@ describe('DireccionesService', () => {
   };
   const prisma = {
     ...db,
+    $queryRaw: jest.fn(),
     $transaction: (operation: (tx: typeof db) => Promise<unknown>) =>
       operation(db),
   };
@@ -45,7 +45,7 @@ describe('DireccionesService', () => {
   });
 
   it('devuelve direcciones históricas aunque no tengan calle ni altura estructuradas', async () => {
-    db.direccion.findMany.mockResolvedValue([historica]);
+    prisma.$queryRaw.mockResolvedValue([historica]);
 
     await expect(service.findAll()).resolves.toEqual([historica]);
   });
@@ -64,7 +64,7 @@ describe('DireccionesService', () => {
     await expect(service.create(dto)).resolves.toEqual(respuesta);
     expect(db.direccion.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { calleId, altura: 50, direccion: 'Roca 50' },
+        data: { calleId, altura: 50 },
       }),
     );
   });
@@ -76,23 +76,38 @@ describe('DireccionesService', () => {
   });
 
   it('mantiene la calle al editar solo la altura', async () => {
-    db.direccion.findUnique.mockResolvedValue(registro);
+    db.direccion.findUnique.mockResolvedValue({ ...registro, calleId });
     db.direccion.update.mockResolvedValue({
       ...registro,
       altura: 52,
-      direccion: 'Roca 52',
+      lat: null,
+      long: null,
     });
 
     await expect(service.update(id, { altura: 52 })).resolves.toEqual({
       ...respuesta,
       altura: 52,
       direccion: 'Roca 52',
+      lat: null,
+      long: null,
     });
     expect(db.direccion.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { calleId, altura: 52, direccion: 'Roca 52' },
+        data: { calleId, altura: 52, direccion: null, lat: null, long: null },
       }),
     );
+  });
+
+  it('muestra el nombre actual de la calle sin reescribir la dirección', async () => {
+    db.direccion.findUnique.mockResolvedValue({
+      ...registro,
+      calle: { calle: 'General Roca' },
+    });
+    await expect(service.findOne(id)).resolves.toEqual({
+      ...respuesta,
+      calle: 'General Roca',
+      direccion: 'General Roca 50',
+    });
   });
 
   it('exige calle y altura al completar una dirección histórica', async () => {
@@ -100,6 +115,18 @@ describe('DireccionesService', () => {
 
     await expect(service.update(id, { altura: 52 })).rejects.toBeInstanceOf(
       BadRequestException,
+    );
+  });
+
+  it('reemplaza el texto libre al estructurar una dirección histórica', async () => {
+    db.direccion.findUnique.mockResolvedValue({ ...historica, calleId: null });
+    db.direccion.update.mockResolvedValue(registro);
+
+    await expect(service.update(id, dto)).resolves.toEqual(respuesta);
+    expect(db.direccion.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { calleId, altura: 50, direccion: null, lat: null, long: null },
+      }),
     );
   });
 

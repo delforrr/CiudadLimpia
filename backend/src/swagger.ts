@@ -10,6 +10,10 @@ export function setupSwagger(app: INestApplication) {
     .setVersion('1.0')
     .addTag('auth', 'Registro, inicio y cierre de sesión')
     .addTag('health', 'Estado de la API')
+    .addTag('calles', 'Catálogo de calles de Trenque Lauquen (ADMIN)')
+    .addTag('direcciones', 'Direcciones y coordenadas de referencia (ADMIN)')
+    .addTag('geocodificacion', 'Búsqueda de direcciones y ubicaciones (ADMIN)')
+    .addTag('puntos-limpios', 'Puntos limpios y su ubicación física')
     .addTag(
       'tipos-punto-limpio',
       'Tipos de punto limpio y los residuos que aceptan',

@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiConsumes,
@@ -25,6 +26,7 @@ import {
   ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
 import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
 import { AuthGuard } from '@nestjs/passport';
@@ -55,7 +57,7 @@ export class DireccionesController {
     name: 'buscar',
     required: false,
     type: String,
-    description: 'Busqueda por texto. Hasta 20 resultados.',
+    description: 'Búsqueda por texto. Hasta 20 resultados.',
   })
   @ApiOkResponse({ type: DireccionResponseDto, isArray: true })
   findAll(@Query('buscar') buscar?: string) {
@@ -78,6 +80,8 @@ export class DireccionesController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Consultar una dirección por ID (ADMIN)' })
+  @ApiBadRequestResponse({ description: 'Identificador inválido.' })
   @ApiOkResponse({ type: DireccionResponseDto })
   @ApiNotFoundResponse()
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -85,18 +89,37 @@ export class DireccionesController {
   }
 
   @Post()
+  @ApiOperation({
+    summary: 'Registrar una dirección en el catálogo público (ADMIN)',
+    description:
+      'Podés omitir las coordenadas de referencia o enviar lat y long juntas. Estas coordenadas sirven para reutilizar la ubicación de la dirección.',
+  })
   @ApiConsumes('application/json')
   @ApiCreatedResponse({ type: DireccionResponseDto })
-  @ApiConflictResponse({ description: 'La direccion ya existe.' })
+  @ApiBadRequestResponse({
+    description: 'Datos inválidos o par de coordenadas incompleto.',
+  })
+  @ApiConflictResponse({ description: 'La dirección ya existe.' })
+  @ApiUnsupportedMediaTypeResponse()
   create(@Body() dto: CreateDireccionDto) {
     return this.direcciones.create(dto);
   }
 
   @Patch(':id')
+  @ApiOperation({
+    summary: 'Editar una dirección del catálogo público (ADMIN)',
+    description:
+      'Enviá lat y long juntas para actualizar la referencia, o ambas nulas para borrarla. Si cambia la calle o la altura y omitís el par, se elimina la referencia anterior.',
+  })
   @ApiConsumes('application/json')
   @ApiOkResponse({ type: DireccionResponseDto })
+  @ApiBadRequestResponse({
+    description:
+      'Identificador o datos inválidos, o par de coordenadas incompleto.',
+  })
   @ApiNotFoundResponse()
-  @ApiConflictResponse({ description: 'La direccion ya existe.' })
+  @ApiConflictResponse({ description: 'La dirección ya existe.' })
+  @ApiUnsupportedMediaTypeResponse()
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDireccionDto,
@@ -105,11 +128,16 @@ export class DireccionesController {
   }
 
   @Delete(':id')
+  @ApiOperation({
+    summary: 'Eliminar una dirección del catálogo público (ADMIN)',
+  })
   @HttpCode(204)
   @ApiConsumes('application/json')
   @ApiNoContentResponse()
+  @ApiBadRequestResponse({ description: 'Identificador inválido.' })
   @ApiNotFoundResponse()
-  @ApiConflictResponse({ description: 'La direccion esta en uso.' })
+  @ApiConflictResponse({ description: 'La dirección está en uso.' })
+  @ApiUnsupportedMediaTypeResponse()
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.direcciones.remove(id);
   }
