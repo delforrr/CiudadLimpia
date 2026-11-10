@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Alert } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CategoryIcon from '@mui/icons-material/Category';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -11,6 +12,7 @@ import { AdminChoferes } from '../components/AdminChoferes';
 import { AdminCamiones } from '../components/AdminCamiones';
 import { AdminPuntosLimpios } from '../components/AdminPuntosLimpios';
 import { AdminTiposPuntosLimpios } from '../components/AdminTiposPuntosLimpios';
+import { AdminTrayectos } from '../components/AdminTrayectos';
 import { useAuthContext } from '../hooks/useAuthContext';
 import './AdminPage.css';
 
@@ -30,8 +32,8 @@ const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
     descripcion: 'Categorías disponibles y los materiales que recibe cada una',
   },
   recoleccion: {
-    titulo: 'Trayectos y Recolección',
-    descripcion: 'Cronograma y recorridos de camiones por zona',
+    titulo: 'Trayectos de recolección',
+    descripcion: 'Recorridos de recolección domiciliaria',
   },
   camiones: {
     titulo: 'Camiones',
@@ -58,7 +60,7 @@ export function AdminPage() {
   const seccionActual = SECCIONES[activeTab];
 
   return (
-    <div className="admin-wrapper">
+    <div className={`admin-wrapper${activeTab === 'recoleccion' ? ' admin-wrapper-trayectos' : ''}`}>
       {/* Barra Lateral / Sidebar Desktop en verde #013A27 */}
       <aside className="admin-sidebar">
         <div>
@@ -182,6 +184,8 @@ export function AdminPage() {
             <AdminPuntosLimpios />
           ) : activeTab === 'tipos' ? (
             <AdminTiposPuntosLimpios />
+          ) : activeTab === 'recoleccion' ? (
+            user?.role === 'ADMIN' ? <AdminTrayectos /> : <Alert severity="warning">Iniciá sesión como administrador para gestionar trayectos.</Alert>
           ) : (
             /* Contenedor esqueleto del panel */
             <section className="admin-empty-card">

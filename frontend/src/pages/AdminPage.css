@@ -269,3 +269,34 @@
   color: #64748b;
   line-height: 1.5;
 }
+
+@media (max-width: 760px) {
+  .admin-wrapper-trayectos {
+    flex-direction: column;
+  }
+
+  .admin-wrapper-trayectos .admin-sidebar {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-wrapper-trayectos :is(.admin-sidebar-header, .admin-sidebar-footer) {
+    display: none;
+  }
+
+  .admin-wrapper-trayectos .admin-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .admin-wrapper-trayectos .admin-nav-item {
+    flex: 0 0 auto;
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .admin-wrapper-trayectos :is(.admin-topbar, .admin-body) {
+    padding: 0.75rem;
+  }
+}
