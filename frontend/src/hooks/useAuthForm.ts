@@ -2,6 +2,7 @@ import { useState, type SubmitEvent } from 'react'
 import { authService, type User } from '../services/authService'
 import { authSchema } from '../schemas/authSchema'
 import { registerSchema } from '../schemas/registerSchema'
+import { capitalizarInicial } from '../utils/capitalizarInicial'
 
 export function useAuthForm(onAuthenticated: (user: User) => void, register = false) {
   const [form, setForm] = useState({
@@ -33,7 +34,9 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
     field: K,
     value: (typeof form)[K],
   ) => {
-    setForm((previous) => ({ ...previous, [field]: value }))
+    const esNombre = field === 'name' || field === 'lastName'
+    const normalized = esNombre && typeof value === 'string' ? capitalizarInicial(value) : value
+    setForm((previous) => ({ ...previous, [field]: normalized }))
   }
 
   const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {

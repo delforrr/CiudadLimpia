@@ -1,12 +1,21 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { profileSchema } from '../src/schemas/profileSchema.ts'
+import { nuevoDomicilioSchema, profileSchema } from '../src/schemas/profileSchema.ts'
 import { registerSchema } from '../src/schemas/registerSchema.ts'
 
 const profile = { name: ' Ana ', lastName: ' Pérez ', email: ' ANA@example.com ',
-  domicilios: [{ direccion: ' San Martín 123 ', etiqueta: ' Casa ' }, { direccion: ' Belgrano 456 ' }] }
+  domicilios: [{ id: 'domicilio-1', direccion: ' San Martín 123 ', etiqueta: ' Casa ' }, { direccion: ' Belgrano 456 ' }] }
 
-test('normalizes the profile and preserves address labels for the API', () => {
+test('validates a new address before returning to the profile editor', () => {
+  assert.equal(nuevoDomicilioSchema.safeParse({ calle: ' ', altura: '456' }).success, false)
+  assert.equal(nuevoDomicilioSchema.safeParse({ calle: 'Belgrano', altura: 'abc' }).success, false)
+  assert.equal(nuevoDomicilioSchema.safeParse({ calle: 'a'.repeat(197), altura: '456' }).success, false)
+  assert.deepEqual(nuevoDomicilioSchema.parse({ calle: ' Belgrano ', altura: ' 456 ', etiqueta: ' Casa ' }), {
+    direccion: 'Belgrano 456', etiqueta: 'Casa',
+  })
+})
+
+test('normalizes the profile and omits form IDs from the API payload', () => {
   assert.deepEqual(profileSchema.parse(profile), {
     name: 'Ana', lastName: 'Pérez', email: 'ana@example.com',
     domicilios: [{ direccion: 'San Martín 123', etiqueta: 'Casa' }, { direccion: 'Belgrano 456' }],

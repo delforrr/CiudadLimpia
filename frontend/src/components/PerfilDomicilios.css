@@ -1,0 +1,63 @@
+.perfil-domicilios-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #1e6000;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.perfil-domicilios-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-inline-start: calc(20px + 0.4rem);
+}
+
+.perfil-domicilios-lista .detalle-valor {
+  font-weight: 400;
+}
+
+.perfil-domicilios-desplegable.MuiAccordion-root {
+  margin: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.perfil-domicilios-desplegable.MuiAccordion-root::before {
+  display: none;
+}
+
+.perfil-domicilios-resumen.MuiAccordionSummary-root {
+  padding: 0;
+  min-height: 36px;
+  color: #1e6000;
+}
+
+.perfil-domicilios-resumen .MuiAccordionSummary-content {
+  margin: 0;
+}
+
+.perfil-domicilios-resumen .MuiAccordionSummary-expandIconWrapper {
+  color: #1e6000;
+  transform: rotate(0deg);
+  transition: transform 180ms ease-out;
+}
+
+.perfil-domicilios-resumen .MuiAccordionSummary-expandIconWrapper.Mui-expanded {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .perfil-domicilios-resumen .MuiAccordionSummary-expandIconWrapper {
+    transition: none;
+  }
+}
+
+.perfil-domicilios-contenido.MuiAccordionDetails-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 0 0;
+}
+

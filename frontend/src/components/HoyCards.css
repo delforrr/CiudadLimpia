@@ -36,12 +36,75 @@
   letter-spacing: -0.02em;
 }
 
-.direccion-header {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+.direccion-header.MuiButton-root {
   color: #3b6033;
   font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: none;
+  text-align: left;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.direccion-header .MuiButton-endIcon {
+  transform: rotate(0deg);
+  transition: transform 180ms ease-out;
+}
+
+.direccion-header[aria-expanded="true"] .MuiButton-endIcon {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .direccion-header .MuiButton-endIcon {
+    transition: none;
+  }
+}
+
+.direccion-menu.MuiPaper-root {
+  min-width: min(220px, calc(100vw - 32px));
+  border: 1px solid #c5dcbf;
+  border-radius: 14px;
+  background-color: #f7fbf6;
+  box-shadow: 0 8px 24px #013a2720;
+}
+
+.direccion-menu-lista.MuiMenu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+}
+
+.direccion-opcion.MuiMenuItem-root {
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  color: #234e26;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.direccion-opcion.MuiMenuItem-root.Mui-selected {
+  background-color: #e1efdc;
+}
+
+.direccion-etiqueta {
+  color: #466644;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.domicilio-agregar.direccion-agregar.MuiMenuItem-root {
+  margin-top: 4px;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 

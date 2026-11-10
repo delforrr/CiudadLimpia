@@ -3,6 +3,11 @@ import {
   Alert,
   Button,
   Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   FormControlLabel,
   IconButton,
   InputAdornment,
@@ -14,11 +19,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAuthForm } from '../hooks/useAuthForm';
 import { useProfileForm } from '../hooks/useProfileForm';
+import { capitalizarInicial } from '../utils/capitalizarInicial';
 import DomiciliosCard from './DomiciliosCard';
+import PerfilDomicilios from './PerfilDomicilios';
+import PerfilNuevoDomicilio from './PerfilNuevoDomicilio';
 import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
-export default function Login({ initialRegister = false }: { initialRegister?: boolean }) {
+export default function Login({
+  initialRegister = false, nuevoDomicilioInicial = false,
+}: { initialRegister?: boolean; nuevoDomicilioInicial?: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeatedPassword, setShowRepeatedPassword] = useState(false);
   const { isAuthenticated, user, onAuthenticated, checking, logout, logoutError, loggingOut } = useAuthContext();
@@ -33,17 +43,25 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
     error: profileError, pending: savingProfile, fieldErrors: profileFieldErrors,
     iniciarEdicion: handleIniciarEdicion, guardar: handleGuardarCambios,
     cancelar: handleCancelarEdicion,
-  } = useProfileForm(user, onAuthenticated);
+    domiciliosExpandidos, setDomiciliosExpandidos,
+    domicilioAEliminar, solicitarEliminarDomicilio, cancelarEliminarDomicilio,
+    confirmarEliminarDomicilio,
+    domicilioNuevo, erroresDomicilioNuevo, iniciarDomicilioNuevo,
+    actualizarDomicilioNuevo, agregarDomicilioNuevo, cancelarDomicilioNuevo,
+  } = useProfileForm(user, onAuthenticated, nuevoDomicilioInicial);
 
   if (checking) return <p role="status">Comprobando sesión…</p>;
 
   // Si ya tiene sesión iniciada, mostrar su perfil o formulario de edición
   if (isAuthenticated) {
     const needsAddress = !user?.cliente?.domicilios.length;
+    const nombreCompleto = user?.cliente
+      ? `${capitalizarInicial(user.cliente.name)} ${capitalizarInicial(user.cliente.lastName)}`
+      : null;
 
     return (
       <div className="login-container">
-        <div className="login-card perfil-card-activo">
+        <div className={`login-card perfil-card-activo${editando ? ' perfil-card-editando' : ''}`}>
           <header className="login-header">
             <div className="perfil-avatar-circle" aria-hidden="true">
               <svg
@@ -51,7 +69,7 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                 height="28"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#1E6000"
+                stroke="currentColor"
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -60,15 +78,11 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                 <circle cx="12" cy="7" r="4" />
               </svg>
             </div>
-            <h2>{editando ? 'Editar mis datos' : 'Mi Perfil'}</h2>
-            <p>
-              {editando
-                ? 'Actualizá tu información personal y domicilio'
-                : <>Sesión activa para <strong>{user?.cliente ? `${user.cliente.name} ${user.cliente.lastName}` : user?.email}</strong></>}
-            </p>
+            <h2>{domicilioNuevo ? 'Nuevo domicilio' : editando ? 'Editar mis datos' : 'Mi Perfil'}</h2>
+            {!editando && <p>Sesión activa para <strong>{nombreCompleto ?? user?.email}</strong></p>}
           </header>
 
-          {needsAddress && (
+          {needsAddress && !domicilioNuevo && (
             <Alert severity="warning">Completá al menos un domicilio para continuar usando la aplicación.</Alert>
           )}
 
@@ -91,12 +105,22 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
             </div>
           )}
 
-          {editando ? (
+          {domicilioNuevo ? (
+            <PerfilNuevoDomicilio
+              domicilio={domicilioNuevo}
+              errores={erroresDomicilioNuevo}
+              onChange={actualizarDomicilioNuevo}
+              onSubmit={agregarDomicilioNuevo}
+              onCancel={cancelarDomicilioNuevo}
+            />
+          ) : editando ? (
             <form onSubmit={handleGuardarCambios} className="perfil-edit-form" aria-busy={savingProfile} noValidate>
               {profileError && <Alert severity="error">{profileError}</Alert>}
-              <div className="form-group">
+              <div className="perfil-edit-nombres">
                 <TextField
                   fullWidth
+                  size="small"
+                  color="success"
                   label="Nombre"
                   autoComplete="given-name"
                   slotProps={{ htmlInput: { maxLength: 100 } }}
@@ -110,11 +134,10 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                   placeholder="Tu nombre"
                   required
                 />
-              </div>
-
-              <div className="form-group">
                 <TextField
                   fullWidth
+                  size="small"
+                  color="success"
                   label="Apellido"
                   autoComplete="family-name"
                   slotProps={{ htmlInput: { maxLength: 100 } }}
@@ -130,13 +153,11 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                 />
               </div>
 
-              <DomiciliosCard domicilios={profile.domicilios}
-                onChange={(domicilios) => updateProfileField('domicilios', domicilios)}
-                disabled={savingProfile} errors={profileFieldErrors.domicilios} />
-
               <div className="form-group">
                 <TextField
                   fullWidth
+                  size="small"
+                  color="success"
                   label="Correo electrónico"
                   autoComplete="email"
                   slotProps={{ htmlInput: { maxLength: 254 } }}
@@ -151,6 +172,31 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                   required
                 />
               </div>
+
+              <DomiciliosCard domicilios={profile.domicilios} readOnly onAgregar={iniciarDomicilioNuevo}
+                expanded={domiciliosExpandidos} onExpandedChange={setDomiciliosExpandidos}
+                onChange={(domicilios) => updateProfileField('domicilios', domicilios)}
+                onEliminar={solicitarEliminarDomicilio}
+                disabled={savingProfile} errors={profileFieldErrors.domicilios} />
+
+              <Dialog open={Boolean(domicilioAEliminar)} onClose={cancelarEliminarDomicilio}
+                fullWidth maxWidth="xs" aria-labelledby="perfil-eliminar-domicilio-titulo"
+                aria-describedby="perfil-eliminar-domicilio-pregunta">
+                <DialogTitle id="perfil-eliminar-domicilio-titulo">Eliminar domicilio</DialogTitle>
+                <DialogContent>
+                  <DialogContentText id="perfil-eliminar-domicilio-pregunta">
+                    ¿Seguro que querés eliminar {domicilioAEliminar?.direccion || 'este domicilio'}?
+                  </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                  <Button type="button" autoFocus color="inherit" onClick={cancelarEliminarDomicilio}>
+                    Cancelar
+                  </Button>
+                  <Button type="button" color="error" variant="contained" onClick={confirmarEliminarDomicilio}>
+                    Eliminar
+                  </Button>
+                </DialogActions>
+              </Dialog>
 
               <div className="perfil-edit-acciones">
                 <Button type="submit" className="login-button btn-guardar-perfil" disabled={savingProfile}>
@@ -200,24 +246,11 @@ export default function Login({ initialRegister = false }: { initialRegister?: b
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
-                    <span className="detalle-valor">{user?.cliente ? `${user.cliente.name} ${user.cliente.lastName}` : 'Sin cliente asociado'}</span>
+                    <span className="detalle-valor">{nombreCompleto ?? 'Sin cliente asociado'}</span>
                   </div>
                 </div>
 
-                <section className="perfil-domicilios-box" aria-label="Mis domicilios">
-                  <div className="perfil-domicilios-header">
-                    <h3>Mis domicilios</h3>
-                    <Button type="button" disabled={(user?.cliente?.domicilios.length ?? 0) >= 20}
-                      onClick={() => handleIniciarEdicion(true)}>Agregar domicilio</Button>
-                  </div>
-                  {user?.cliente?.domicilios.map((domicilio) => (
-                    <div className="domicilio-item" key={domicilio.id}>
-                      <span className="detalle-valor">{domicilio.direccion}</span>
-                      {domicilio.etiqueta && <span>{domicilio.etiqueta}</span>}
-                    </div>
-                  ))}
-                  {needsAddress && <p>No tenés domicilios registrados.</p>}
-                </section>
+                <PerfilDomicilios domicilios={user?.cliente?.domicilios ?? []} />
 
                 <div className="perfil-detalle-item">
                   <span className="detalle-label">Correo registrado</span>

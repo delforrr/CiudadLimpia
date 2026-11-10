@@ -19,6 +19,24 @@
   color: #1e6000;
 }
 
+.domicilio-agregar.MuiButton-root {
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.domicilio-agregar:is(.MuiButton-root, .MuiMenuItem-root):not(.Mui-disabled) {
+  background-color: #013a27;
+  color: #fff;
+}
+
+.domicilio-agregar:is(.MuiButton-root, .MuiMenuItem-root):not(.Mui-disabled):is(:hover, .Mui-focusVisible) {
+  background-color: #02523a;
+}
+
 .domicilio-item {
   display: flex;
   flex-direction: column;

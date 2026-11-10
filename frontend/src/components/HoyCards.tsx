@@ -5,6 +5,7 @@ import camionRecolector from '../assets/camion-recolector.png';
 import residuosReciclables from '../assets/residuos-reciclables.png';
 import residuosNoReciclables from '../assets/residuos-no-reciclables.png';
 import truckIconImg from '../assets/icono-camion-hoy.png';
+import HoyDomicilio from './HoyDomicilio';
 import './HoyCards.css';
 
 export const HoyCards: React.FC = () => {
@@ -44,12 +45,7 @@ export const HoyCards: React.FC = () => {
           <div className="saludo-header">
             <h2 className="saludo-titulo">Hola, {user?.cliente?.name || user?.email}</h2>
 
-            <div className="direccion-header">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="icono-pin">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-              </svg>
-              <span>{user?.cliente?.domicilios.map(({ direccion }) => direccion).join(' · ') || 'Sin dirección vinculada'}</span>
-            </div>
+            {user && <HoyDomicilio key={user.id} user={user} />}
           </div>
 
         {/* Tarjeta de estado de recolección */}
