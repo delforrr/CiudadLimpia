@@ -35,6 +35,33 @@
 
 .trayectos-final {
   justify-content: flex-end;
+  padding-top: 0.75rem;
+  border-top: 1px solid #dce6df;
+}
+
+.trayectos-final p {
+  flex: 1 1 12rem;
+  font-size: 0.85rem;
+}
+
+.trayectos-agregar,
+.trayectos-trazado,
+.trayectos-vista-mapa {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.trayectos-agregar,
+.trayectos-trazado,
+.trayectos-vista-puntos {
+  padding: 0.85rem;
+  border: 1px solid #dce6df;
+  border-radius: 12px;
+  background: #f7faf8;
+}
+
+.trayectos-agregar .MuiTextField-root {
+  background: #fff;
 }
 
 .trayectos-campos,
@@ -114,13 +141,40 @@
 }
 
 .trayectos-puntos {
-  padding: 0.5rem 0 0 1.75rem;
+  list-style: none;
+  padding: 0.65rem 0 0;
 }
 
 .trayectos-puntos li {
-  padding: 0.35rem 0;
-  border-bottom: 1px solid #dce6df;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.6rem;
+  border: 1px solid #dce6df;
+  border-radius: 9px;
+  background: #fff;
   overflow-wrap: anywhere;
+}
+
+.trayectos-numero {
+  display: grid;
+  flex: 0 0 1.5rem;
+  place-items: center;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #013a27;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.trayectos-punto-datos {
+  min-width: 0;
+}
+
+.trayectos-panel .trayectos-sin-puntos {
+  margin-top: 0.65rem;
+  font-size: 0.85rem;
 }
 
 .trayectos-puntos small,
@@ -129,9 +183,12 @@
   font-size: 0.75rem;
 }
 
-.trayectos-panel .trayectos-ayuda {
-  margin-top: 0.35rem;
+.trayectos-panel :is(.trayectos-ayuda, .trayectos-leyenda) {
   font-size: 0.8rem;
+}
+
+.trayectos-panel .trayectos-leyenda {
+  color: #185da8;
 }
 
 .trayectos-revision {
