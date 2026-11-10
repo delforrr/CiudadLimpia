@@ -109,7 +109,7 @@ export class DireccionesController {
   @ApiOperation({
     summary: 'Editar una dirección del catálogo público (ADMIN)',
     description:
-      'Enviá lat y long juntas para actualizar la referencia, o ambas nulas para borrarla. Si cambia la calle o la altura y omitís el par, se elimina la referencia anterior.',
+      'Enviá lat y long juntas para actualizar la referencia. Una referencia sin altura ni texto histórico requiere coordenadas. Para las demás direcciones, enviá ambas nulas para borrarlas. Si cambia la calle o la altura y omitís el par, se elimina la referencia anterior.',
   })
   @ApiConsumes('application/json')
   @ApiOkResponse({ type: DireccionResponseDto })

@@ -37,7 +37,7 @@ import { GeocodificacionService } from './geocodificacion.service';
 @ApiGatewayTimeoutResponse({ description: 'Georef no respondió a tiempo.' })
 @Roles([Role.ADMIN])
 @UseGuards(AuthGuard('jwt'), RolesGuard)
-@Controller('geocodificacion')
+@Controller(['api/geocodificacion', 'geocodificacion'])
 export class GeocodificacionController {
   constructor(private readonly geocodificacion: GeocodificacionService) {}
 
@@ -45,7 +45,7 @@ export class GeocodificacionController {
   @ApiOperation({
     summary: 'Buscar hasta tres ubicaciones aproximadas por calle y altura',
     description:
-      'Una coincidencia exacta con coordenadas en el catálogo público tiene prioridad. Si falta, se consulta Georef. Una lista vacía indica que no hay una ubicación sugerida.',
+      'Una coincidencia exacta con coordenadas en el catálogo público tiene prioridad. Si falta, se consulta Georef. Una sugerencia con coordenadas puede tener altura null. Una lista vacía indica que no hay una ubicación sugerida.',
   })
   @ApiOkResponse({ type: GeocodificacionDirectaResponse })
   directa(@Query() query: GeocodificacionDirectaQuery) {

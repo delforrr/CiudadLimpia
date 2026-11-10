@@ -33,7 +33,11 @@ export class DireccionesService {
       SELECT *
       FROM (
         SELECT d."id", c."calle", d."altura", d."lat", d."long",
-               COALESCE(d."direccion", c."calle" || ' ' || d."altura") AS "direccion"
+               COALESCE(
+                 d."direccion",
+                 NULLIF(concat_ws(' ', c."calle", d."altura"), ''),
+                 concat_ws(', ', d."lat", d."long")
+               ) AS "direccion"
         FROM "Direccion" d
         LEFT JOIN "Calle" c ON c."id" = d."calleId"
         ${soloPuntosLimpios ? Prisma.sql`WHERE d."clienteId" IS NULL` : Prisma.empty}
@@ -85,6 +89,54 @@ export class DireccionesService {
     });
   }
 
+  async resolveForTrayecto(
+    tx: Prisma.TransactionClient,
+    {
+      lat,
+      long,
+      direccion,
+      direccionId,
+    }: {
+      lat: number;
+      long: number;
+      direccion?: { calle: string; altura?: number | null };
+      direccionId?: string;
+    },
+  ) {
+    if (direccionId) {
+      const publica = await tx.direccion.findUnique({
+        where: { id: direccionId, clienteId: null },
+        select: { id: true },
+      });
+      if (!publica)
+        throw new BadRequestException(
+          'La dirección pública indicada no existe',
+        );
+      return publica;
+    }
+
+    const calleId = direccion
+      ? await this.resolveCalleId(tx, direccion.calle)
+      : null;
+    const altura = direccion?.altura ?? null;
+    const data = { calleId, altura, lat, long };
+    if (calleId && altura !== null) {
+      return tx.direccion.upsert({
+        where: { calleId_altura: { calleId, altura } },
+        create: data,
+        update: { altura },
+        select: { id: true },
+      });
+    }
+
+    const existente = await tx.direccion.findFirst({
+      where: { ...data, clienteId: null, direccion: null },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    return existente ?? tx.direccion.create({ data, select: { id: true } });
+  }
+
   async update(id: string, dto: UpdateDireccionDto) {
     const ubicacion = coordenadas(dto);
     try {
@@ -115,6 +167,14 @@ export class DireccionesService {
           };
         } else if (dto.lat === undefined) {
           return toDireccionResponse(registro);
+        } else if (
+          dto.lat === null &&
+          registro.direccion === null &&
+          registro.altura === null
+        ) {
+          throw new BadRequestException(
+            'Una dirección sin altura requiere coordenadas',
+          );
         }
         return toDireccionResponse(
           await tx.direccion.update({

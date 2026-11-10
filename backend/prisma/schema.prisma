@@ -44,17 +44,18 @@ model Calle {
 }
 
 model Direccion {
-  id            String        @id @default(uuid())
-  clienteId     String?
-  cliente       Cliente?      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  direccion     String?
-  calleId       String?
-  calle         Calle?        @relation(fields: [calleId], references: [id], onDelete: Restrict)
-  altura        Int?
-  lat           Float?
-  long          Float?
-  etiqueta      String?       @db.VarChar(100)
-  puntosLimpios PuntoLimpio[]
+  id             String          @id @default(uuid())
+  clienteId      String?
+  cliente        Cliente?        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  direccion      String?
+  calleId        String?
+  calle          Calle?          @relation(fields: [calleId], references: [id], onDelete: Restrict)
+  altura         Int?
+  lat            Float?
+  long           Float?
+  etiqueta       String?         @db.VarChar(100)
+  puntosLimpios  PuntoLimpio[]
+  puntosTrayecto PuntoTrayecto[]
 
   @@unique([calleId, altura])
   @@index([clienteId])
@@ -97,4 +98,34 @@ model TipoPuntoLimpioResiduo {
   @@id([tipoPuntoLimpioId, residuoId])
   @@index([residuoId])
   @@map("_TipoPuntoLimpioToResiduo")
+}
+
+model Localidad {
+  id        String     @id
+  nombre    String
+  trayectos Trayecto[]
+}
+
+model Trayecto {
+  id          String          @id @default(uuid())
+  nombre      String
+  localidadId String
+  localidad   Localidad       @relation(fields: [localidadId], references: [id])
+  geometria   Json
+  puntos      PuntoTrayecto[]
+
+  @@index([localidadId])
+}
+
+model PuntoTrayecto {
+  trayectoId  String
+  trayecto    Trayecto  @relation(fields: [trayectoId], references: [id], onDelete: Cascade)
+  orden       Int
+  direccionId String
+  direccion   Direccion @relation(fields: [direccionId], references: [id])
+  lat         Float
+  long        Float
+
+  @@id([trayectoId, orden])
+  @@index([direccionId])
 }

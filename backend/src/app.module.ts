@@ -7,6 +7,7 @@ import { GeocodificacionModule } from './geocodificacion/geocodificacion.module'
 import { PuntosLimpiosModule } from './punto-limpio/puntos-limpios.module';
 
 import { TipoPuntoLimpioModule } from './tipo-punto-limpio/tipo-punto-limpio.module';
+import { TrayectosModule } from './trayecto/trayectos.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { TipoPuntoLimpioModule } from './tipo-punto-limpio/tipo-punto-limpio.mod
     GeocodificacionModule,
     PuntosLimpiosModule,
     TipoPuntoLimpioModule,
+    TrayectosModule,
   ],
   controllers: [AppController],
 })

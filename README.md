@@ -15,7 +15,7 @@ Usar Node.js 24.15+ (línea 24) o 26+ y npm 11.17.0.
 
 PostgreSQL escucha en `127.0.0.1:5432` y conserva los datos en el volumen `postgres_data`. Si cambiás `POSTGRES_PORT`, actualizá también el puerto de `DATABASE_URL`. `docker compose --env-file backend/.env stop` detiene la base sin borrar datos; `docker compose --env-file backend/.env down` conserva el volumen. Las variables `POSTGRES_*` inicializan una base nueva: cambiar la contraseña del `.env` no cambia la contraseña de una base ya creada. Para una base existente, actualizar sus credenciales mediante PostgreSQL y luego el `.env`.
 
-Vite envía `/auth` y `/users` a `http://localhost:3000`. En producción, servir frontend y API bajo el mismo origen y enrutar `/auth` y `/users` al backend; usar HTTPS y `NODE_ENV=production` para cookies Secure. Los scripts automáticos de dependencias están desactivados en `backend/.npmrc`; Prisma se genera con el comando explícito anterior.
+Vite envía `/auth`, `/users` y `/api` a `http://localhost:3000`. En producción, servir frontend y API bajo el mismo origen, enrutar esos prefijos al backend y usar HTTPS con `NODE_ENV=production` para cookies Secure. Los scripts automáticos de dependencias están desactivados en `backend/.npmrc`. Prisma se genera con el comando explícito anterior.
 
 `GET /health` es público y devuelve `{ "status": "ok" }` cuando la API está levantada; no comprueba PostgreSQL.
 
@@ -123,10 +123,12 @@ La integración usa [Nest Swagger](https://docs.nestjs.com/openapi/introduction)
 ## Geocodificación
 
 Desde Swagger, una sesión ADMIN puede probar
-`GET /geocodificacion/directa?calle=Villegas&altura=860` o
-`GET /geocodificacion/inversa?lat=-35.97&long=-62.73`.
+`GET /api/geocodificacion/directa?calle=Villegas&altura=860` o
+`GET /api/geocodificacion/inversa?lat=-35.97&long=-62.73`.
+Las rutas anteriores bajo `/geocodificacion` siguen disponibles en el backend.
 La búsqueda directa devuelve hasta tres ubicaciones aproximadas en la ciudad
-de Trenque Lauquen. Si la lista está vacía, se puede usar la dirección ingresada
+de Trenque Lauquen. Una sugerencia con coordenadas puede tener `altura: null`.
+Si la lista está vacía, se puede usar la dirección ingresada
 y elegir las coordenadas manualmente. La inversa conserva el pin consultado y
 puede sugerir solo la calle si falta la altura.
 
@@ -134,6 +136,29 @@ Confirmá la calle, la altura y el pin antes de guardar el punto limpio.
 Al mostrar o redistribuir resultados, incluí la atribución «Servicio Georef –
 argentina.gob.ar/georef» e indicá si modificaste los datos. Consultá la
 [licencia y los límites de Georef](https://www.argentina.gob.ar/georef/condiciones-de-uso-y-licencia).
+
+## Sugerencia de trayectos
+
+Desde Swagger, una sesión ADMIN puede ejecutar `POST /api/trayectos/sugerencia`
+con un JSON que incluya al menos dos coordenadas. El orden del arreglo define el
+recorrido. [Ejemplo y prueba local de Trayectos](docs/specs/trayectos/backend/prueba-local.md)
+
+El motor devuelve una línea GeoJSON con posiciones `[longitud, latitud]` y la
+atribución en `fuente`. La sugerencia se calcula para revisión y el trayecto se
+guarda cuando el operador confirma la línea mediante la operación de guardado.
+Si el motor no encuentra una conexión (422) o falla (502, 503 o 504), se puede
+seguir dibujando manualmente.
+
+`OSRM_BASE_URL` configura la URL base de un servidor OSRM para autos, incluida
+la ruta base si corresponde. En desarrollo, un valor vacío usa la demostración
+pública de FOSSGIS, limitada a una consulta por segundo por proceso. Para uso
+regular, configurar un servidor propio o contratado. En producción, una URL
+vacía deja la sugerencia sin configurar. Cada cálculo tiene un plazo de 5 segundos.
+[Política de FOSSGIS](https://routing.openstreetmap.de/about.html)
+
+Al mostrar la sugerencia, incluir la atribución de `fuente` y un enlace para
+corregir el mapa. [Atribución de OpenStreetMap](https://www.openstreetmap.org/copyright)
+[Corregir el mapa](https://www.openstreetmap.org/fixthemap)
 
 ## Dependencias y verificación
 
@@ -155,7 +180,7 @@ npm run audit
 
 En `frontend`: `npm test`, `npm run build` y `npm run lint`.
 
-Las pruebas HTTP sustituyen únicamente la persistencia por mocks por operación; ejecutan Nest, la configuración real de validación, bcrypt y JWT. No escriben en la base configurada ni demuestran transacciones reales de PostgreSQL. Un resultado de cero vulnerabilidades de npm audit corresponde al lockfile y a los avisos conocidos al momento de ejecutarlo; debe repetirse al actualizar dependencias.
+Las pruebas HTTP ejecutan Nest con su configuración real de validación. La mayoría usa persistencia simulada. La suite de Trayectos usa una base PostgreSQL de prueba para verificar transacciones cuando se define `TEST_DATABASE_URL`. Un resultado de cero vulnerabilidades de `npm audit` corresponde al lockfile y a los avisos vigentes al ejecutar la auditoría. [Comandos y casos de prueba de Trayectos](docs/specs/trayectos/backend/prueba-local.md)
 
 Referencias de migración: [Nest 12](https://docs.nestjs.com/migration-guide), [Prisma 7](https://www.prisma.io/docs/guides/upgrade-prisma-orm/v7).
 

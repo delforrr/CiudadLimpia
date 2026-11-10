@@ -41,6 +41,12 @@ describe('Public API and documentation (HTTP)', () => {
       .expect(200);
     const document = response.body as OpenAPIObject;
     expect(Object.keys(document.paths).sort()).toEqual([
+      '/api/geocodificacion/directa',
+      '/api/geocodificacion/inversa',
+      '/api/localidades',
+      '/api/trayectos',
+      '/api/trayectos/sugerencia',
+      '/api/trayectos/{id}',
       '/auth/login',
       '/auth/logout',
       '/auth/me',
@@ -215,6 +221,19 @@ describe('Public API and documentation (HTTP)', () => {
     expect(document.paths['/users/{id}'].patch?.responses).toHaveProperty(
       '415',
     );
+    const edicionTrayecto = document.paths['/api/trayectos/{id}'].patch;
+    expect(edicionTrayecto?.requestBody).toEqual(
+      document.paths['/api/trayectos'].post?.requestBody,
+    );
+    expect(Object.keys(edicionTrayecto?.responses ?? {}).sort()).toEqual([
+      '200',
+      '400',
+      '401',
+      '403',
+      '404',
+      '409',
+      '415',
+    ]);
     expect(document.paths['/users/{id}'].delete?.responses).toHaveProperty(
       '204',
     );

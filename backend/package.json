@@ -101,6 +101,8 @@
     },
     "@istanbuljs/load-nyc-config": {
       "js-yaml": "^4.3.2"
-    }
+    },
+    "glob": "^14.0.2",
+    "minimatch@>=7": "^11.0.1"
   }
 }

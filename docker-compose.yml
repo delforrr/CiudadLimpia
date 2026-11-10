@@ -27,6 +27,7 @@ services:
       PORT: 3000
       DATABASE_URL: ${DATABASE_URL_DOCKER:?Definir DATABASE_URL_DOCKER en .env}
       JWT_SECRET: ${JWT_SECRET:?Definir JWT_SECRET en .env}
+      OSRM_BASE_URL: ${OSRM_BASE_URL:-}
       TRUST_PROXY: '1'
     depends_on:
       postgres:

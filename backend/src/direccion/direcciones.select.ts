@@ -21,6 +21,12 @@ export function toDireccionResponse({
   return {
     ...registro,
     calle: calle?.calle ?? null,
-    direccion: direccion ?? `${calle?.calle} ${registro.altura}`,
+    direccion:
+      direccion ??
+      (calle
+        ? [calle.calle, registro.altura]
+            .filter((parte) => parte !== null)
+            .join(' ')
+        : `${registro.lat}, ${registro.long}`),
   };
 }

@@ -91,13 +91,13 @@ export class GeocodificacionService {
       if (objeto(direccion?.localidad_censal)?.id !== LOCALIDAD_CENSAL)
         continue;
       const calle = objeto(direccion?.calle)?.nombre;
-      const altura = objeto(direccion?.altura)?.valor;
+      const valorAltura = objeto(direccion?.altura)?.valor;
+      const altura = alturaValida(valorAltura) ? valorAltura : null;
       const ubicacion = objeto(direccion?.ubicacion);
       const lat = ubicacion?.lat;
       const long = ubicacion?.lon;
       if (
         !calleValida(calle) ||
-        !alturaValida(altura) ||
         !coordenadaValida(lat, 90) ||
         !coordenadaValida(long, 180)
       )

@@ -45,8 +45,8 @@ class UbicacionSugeridaDto extends GeocodificacionInversaQuery {
   @ApiProperty({ example: 'VILLEGAS' })
   calle!: string;
 
-  @ApiProperty({ example: 555 })
-  altura!: number;
+  @ApiProperty({ type: Number, nullable: true, example: 555 })
+  altura!: number | null;
 }
 
 export class GeocodificacionDirectaResponse {

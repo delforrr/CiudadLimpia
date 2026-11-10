@@ -4,7 +4,7 @@
 
 Exponer una sugerencia de recorrido vial para una secuencia de puntos.
 
-- [ ] Se verifica un caso conocido de Trenque Lauquen con el motor y perfil elegidos.
-- [ ] La API acepta puntos válidos de un administrador, respeta su orden y devuelve la línea sugerida para el editor.
-- [ ] Un fallo o ausencia de ruta produce una respuesta que permite seguir por la vía manual.
-- [ ] Calcular una sugerencia deja intacto el trayecto guardado. Las pruebas HTTP simulan éxito, ruta inexistente y fallo del motor. Swagger describe la operación.
+- [x] Se verifica un caso conocido de Trenque Lauquen con el motor y perfil elegidos.
+- [x] La API acepta puntos válidos de un administrador, respeta su orden y devuelve la línea sugerida para el editor.
+- [x] Un fallo o ausencia de ruta produce una respuesta que permite seguir por la vía manual.
+- [x] Calcular una sugerencia deja intacto el trayecto guardado. Las pruebas HTTP simulan éxito, ruta inexistente y fallo del motor. Swagger describe la operación.

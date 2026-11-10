@@ -14,8 +14,8 @@ describe('Geocodificación (HTTP)', () => {
   const findUnique = jest.fn();
   const findFirst = jest.fn();
   const fetchMock = jest.spyOn(globalThis, 'fetch');
-  const directa = '/geocodificacion/directa?calle=Villegas&altura=555';
-  const inversa = '/geocodificacion/inversa?lat=-35.97&long=-62.73';
+  const directa = '/api/geocodificacion/directa?calle=Villegas&altura=555';
+  const inversa = '/api/geocodificacion/inversa?lat=-35.97&long=-62.73';
   const fuente = 'Servicio Georef – argentina.gob.ar/georef';
 
   beforeAll(async () => {
@@ -49,7 +49,7 @@ describe('Geocodificación (HTTP)', () => {
   function asAdmin(path: string) {
     return request(app.getHttpServer())
       .get(path)
-      .set('Authorization', `Bearer ${admin}`);
+      .set('Cookie', `session=${admin}`);
   }
 
   it('reutiliza las coordenadas del catálogo de direcciones públicas', async () => {
@@ -114,6 +114,30 @@ describe('Geocodificación (HTTP)', () => {
         })),
       });
   });
+
+  it('devuelve una ubicación si Georef reconoce la calle sin altura', async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({
+        direcciones: [
+          {
+            localidad_censal: { id: '06826050' },
+            calle: { nombre: 'VILLEGAS' },
+            ubicacion: { lat: -35.97, lon: -62.73 },
+          },
+        ],
+      }),
+    );
+
+    await asAdmin(directa)
+      .expect(200)
+      .expect({
+        fuente,
+        sugerencias: [
+          { calle: 'VILLEGAS', altura: null, lat: -35.97, long: -62.73 },
+        ],
+      });
+  });
+
   it('devuelve una lista vacía si Georef solo reconoce la dirección', async () => {
     fetchMock.mockResolvedValue(
       Response.json({
@@ -160,21 +184,34 @@ describe('Geocodificación (HTTP)', () => {
     await request(app.getHttpServer()).get(path).expect(401);
     await request(app.getHttpServer())
       .get(path)
-      .set('Authorization', `Bearer ${user}`)
+      .set('Cookie', `session=${user}`)
       .expect(403);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it.each([
-    '/geocodificacion/directa?calle=Villegas&altura=0',
-    '/geocodificacion/directa?calle=Villegas&altura=2.5',
-    '/geocodificacion/inversa?lat=91&long=-62.73',
-    '/geocodificacion/inversa?lat=-35.97&long=181',
-    '/geocodificacion/inversa?lat=&long=-62.73',
+    '/api/geocodificacion/directa?calle=Villegas&altura=0',
+    '/api/geocodificacion/directa?calle=Villegas&altura=2.5',
+    '/api/geocodificacion/inversa?lat=91&long=-62.73',
+    '/api/geocodificacion/inversa?lat=-35.97&long=181',
+    '/api/geocodificacion/inversa?lat=&long=-62.73',
   ])('valida parámetros de %s', async (path) => {
     await asAdmin(path).expect(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it.each([directa, inversa])(
+    'conserva la ruta anterior de %s',
+    async (path) => {
+      fetchMock.mockResolvedValueOnce(
+        Response.json({ direcciones: [], ubicacion: {} }),
+      );
+      await request(app.getHttpServer())
+        .get(path.slice('/api'.length))
+        .set('Authorization', `Bearer ${admin}`)
+        .expect(200);
+    },
+  );
 
   it('distingue problemas de formato, cuota, conexión y timeout', async () => {
     fetchMock.mockResolvedValueOnce(new Response('inválido'));

@@ -7,7 +7,7 @@ export class DireccionResponseDto {
   @ApiProperty({
     example: 'Roca 50',
     description:
-      'Calle y altura para direcciones estructuradas, o texto libre para direcciones históricas.',
+      'Calle y altura disponible, coordenadas del pin o texto libre de una dirección histórica.',
   })
   direccion!: string;
 
