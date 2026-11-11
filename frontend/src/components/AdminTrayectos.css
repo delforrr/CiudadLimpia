@@ -141,7 +141,10 @@
 
 .trayectos-editor .trayectos-cabecera-lateral .trayectos-acciones {
   width: 100%;
-  justify-content: flex-end;
+}
+
+.trayectos-editor .trayectos-cabecera-lateral .MuiButton-contained {
+  margin-inline-start: auto;
 }
 
 .trayectos-panel .trayectos-nombre-recorrido {
