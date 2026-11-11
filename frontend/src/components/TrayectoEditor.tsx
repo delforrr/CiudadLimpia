@@ -171,29 +171,31 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
                 )}
                 <a className="trayectos-atribucion" href="https://www.argentina.gob.ar/georef">Servicio GeoRef</a>
               </section>
-              <section className="trayectos-trazado" aria-label="Trazado del recorrido">
-                <h4>Trazado del recorrido</h4>
-                <div className="trayectos-linea">
-                  <Chip size="small" label={borrador.lineaElegida ? 'Línea confirmada' : 'Línea manual'} />
-                  <Button variant="outlined" color="success" startIcon={<RouteOutlinedIcon />}
-                    disabled={!editor.tieneLinea || Boolean(pin) || guardando || sugerencia.cargando}
-                    onClick={() => void editor.calcular()}>
-                    {sugerencia.cargando ? 'Calculando…' : 'Sugerir recorrido por calles'}
-                  </Button>
-                  {(sugerencia.resultado || sugerencia.cargando) && (
-                    <Button color="success" disabled={guardando} onClick={() => editor.elegirLinea(false)}>Usar línea manual</Button>
+              {!borrador.lineaElegida && (
+                <section className="trayectos-trazado" aria-label="Trazado del recorrido">
+                  <h4>Trazado del recorrido</h4>
+                  <div className="trayectos-linea">
+                    <Chip size="small" label="Línea manual" />
+                    <Button variant="outlined" color="success" startIcon={<RouteOutlinedIcon />}
+                      disabled={!editor.tieneLinea || Boolean(pin) || guardando || sugerencia.cargando}
+                      onClick={() => void editor.calcular()}>
+                      {sugerencia.cargando ? 'Calculando…' : 'Sugerir recorrido por calles'}
+                    </Button>
+                    {(sugerencia.resultado || sugerencia.cargando) && (
+                      <Button color="success" disabled={guardando} onClick={() => editor.elegirLinea(false)}>Usar línea manual</Button>
+                    )}
+                  </div>
+                  {sugerencia.error && <Alert severity="warning">{sugerencia.error} Se conservó la línea actual.</Alert>}
+                  {sugerencia.resultado && (
+                    <Alert severity="info">
+                      Revisá el recorrido en el mapa antes de confirmarlo.
+                      <small className="trayectos-atribucion">{sugerencia.resultado.fuente}</small>
+                      <Button color="info" disabled={Boolean(pin)} onClick={() => editor.elegirLinea(true)}>Confirmar sugerencia</Button>
+                      <Button color="info" onClick={() => editor.descartarSugerencia()}>Conservar línea actual</Button>
+                    </Alert>
                   )}
-                </div>
-                {sugerencia.error && <Alert severity="warning">{sugerencia.error} Se conservó la línea actual.</Alert>}
-                {sugerencia.resultado && (
-                  <Alert severity="info">
-                    Revisá el recorrido en el mapa antes de confirmarlo.
-                    <small className="trayectos-atribucion">{sugerencia.resultado.fuente}</small>
-                    <Button color="info" disabled={Boolean(pin)} onClick={() => editor.elegirLinea(true)}>Confirmar sugerencia</Button>
-                    <Button color="info" onClick={() => editor.descartarSugerencia()}>Conservar línea actual</Button>
-                  </Alert>
-                )}
-              </section>
+                </section>
+              )}
               <Accordion className="trayectos-puntos-desplegable" disableGutters variant="outlined"
                 slotProps={{ transition: { unmountOnExit: true } }}>
                 <AccordionSummary id={`${idPuntos}-titulo`} aria-controls={`${idPuntos}-contenido`} expandIcon={<ExpandMoreIcon />}>
