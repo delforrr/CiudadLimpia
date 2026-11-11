@@ -26,11 +26,9 @@ type Props = {
 
 export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
   const editor = useTrayectoEditor(inicial, onGuardado);
-  const idBusqueda = useId();
   const idPuntos = useId();
   const opciones = useRef<HTMLElement>(null);
   const [panel, setPanel] = useState<'mapa' | 'opciones'>('mapa');
-  const [mostrarBusqueda, setMostrarBusqueda] = useState(false);
   const [editandoRecorrido, setEditandoRecorrido] = useState(!inicial.id);
   const { borrador, pin, inversa, busqueda, sugerencia, guardando } = editor;
   const mostrarDatos = !borrador.id || !editandoRecorrido;
@@ -134,50 +132,41 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
           {!borrador.localidadId && <Alert severity="warning">Trenque Lauquen no está disponible en el catálogo de localidades.</Alert>}
           {editandoRecorrido && (
             <>
-              <section className="trayectos-agregar" aria-label="Agregar puntos al recorrido">
-                <div className="trayectos-encabezado">
-                  <Button fullWidth color="success" size="small" startIcon={<SearchIcon />} endIcon={<ExpandMoreIcon />}
-                    aria-expanded={mostrarBusqueda} aria-controls={idBusqueda}
-                    onClick={() => setMostrarBusqueda((abierta) => !abierta)}>
-                    Buscar por dirección
+              <section className="trayectos-agregar" aria-label="Buscar por dirección">
+                <h4>Buscar por dirección</h4>
+                <form className="trayectos-busqueda" onSubmit={(event) => {
+                  event.preventDefault();
+                  void editor.buscarDireccion();
+                }}>
+                  <TextField label="Calle" size="small" value={editor.calle} disabled={guardando}
+                    slotProps={{ htmlInput: { maxLength: 180 } }}
+                    onChange={(event) => editor.actualizarBusqueda('calle', event.target.value)} />
+                  <TextField label="Altura" size="small" value={editor.altura} disabled={guardando}
+                    slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 10 } }}
+                    onChange={(event) => editor.actualizarBusqueda('altura', event.target.value)} />
+                  <Button type="submit" variant="outlined" color="success" startIcon={<SearchIcon />}
+                    disabled={guardando || busqueda.cargando}>
+                    {busqueda.cargando ? 'Buscando…' : 'Buscar dirección'}
                   </Button>
-                </div>
-                <div id={idBusqueda} className="trayectos-busqueda-contenido" hidden={!mostrarBusqueda}>
-                  <form className="trayectos-busqueda" onSubmit={(event) => {
-                    event.preventDefault();
-                    void editor.buscarDireccion();
-                  }}>
-                    <TextField label="Calle" size="small" value={editor.calle} disabled={guardando}
-                      slotProps={{ htmlInput: { maxLength: 180 } }}
-                      onChange={(event) => editor.actualizarBusqueda('calle', event.target.value)} />
-                    <TextField label="Altura" size="small" value={editor.altura} disabled={guardando}
-                      slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 10 } }}
-                      onChange={(event) => editor.actualizarBusqueda('altura', event.target.value)} />
-                    <Button type="submit" variant="outlined" color="success" startIcon={<SearchIcon />}
-                      disabled={guardando || busqueda.cargando}>
-                      {busqueda.cargando ? 'Buscando…' : 'Buscar dirección'}
-                    </Button>
-                  </form>
-                  {busqueda.error && <Alert severity="warning">{busqueda.error}</Alert>}
-                  {busqueda.resultado && (
-                    <div className="trayectos-resultados">
-                      {busqueda.resultado.sugerencias.length === 0 && <p>No encontramos ubicaciones. Podés marcar un pin en el mapa.</p>}
-                      {busqueda.resultado.sugerencias.map((ubicacion, indice) => (
-                        <Button key={indice} variant="outlined" color="success" disabled={guardando}
-                          onClick={() => {
-                            setPanel('mapa');
-                            setMostrarBusqueda(false);
-                            mostrarInicioOpciones();
-                            void editor.usarUbicacion(ubicacion);
-                          }}>
-                          {referenciaTexto(ubicacion)}
-                        </Button>
-                      ))}
-                      <small>{busqueda.resultado.fuente}</small>
-                    </div>
-                  )}
-                  <a className="trayectos-atribucion" href="https://www.argentina.gob.ar/georef">Servicio GeoRef</a>
-                </div>
+                </form>
+                {busqueda.error && <Alert severity="warning">{busqueda.error}</Alert>}
+                {busqueda.resultado && (
+                  <div className="trayectos-resultados">
+                    {busqueda.resultado.sugerencias.length === 0 && <p>No encontramos ubicaciones. Podés marcar un pin en el mapa.</p>}
+                    {busqueda.resultado.sugerencias.map((ubicacion, indice) => (
+                      <Button key={indice} variant="outlined" color="success" disabled={guardando}
+                        onClick={() => {
+                          setPanel('mapa');
+                          mostrarInicioOpciones();
+                          void editor.usarUbicacion(ubicacion);
+                        }}>
+                        {referenciaTexto(ubicacion)}
+                      </Button>
+                    ))}
+                    <small>{busqueda.resultado.fuente}</small>
+                  </div>
+                )}
+                <a className="trayectos-atribucion" href="https://www.argentina.gob.ar/georef">Servicio GeoRef</a>
               </section>
               <section className="trayectos-trazado" aria-label="Trazado del recorrido">
                 <h4>Trazado del recorrido</h4>

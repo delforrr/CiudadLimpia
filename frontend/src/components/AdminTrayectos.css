@@ -162,21 +162,6 @@
   padding: 0.5rem 0.65rem;
 }
 
-.trayectos-busqueda-contenido:not([hidden]) {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.trayectos-agregar button[aria-expanded="true"] .MuiButton-endIcon {
-  transform: rotate(180deg);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .trayectos-agregar button[aria-expanded] .MuiButton-endIcon {
-    transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
-  }
-}
-
 .trayectos-agregar,
 .trayectos-trazado {
   display: grid;

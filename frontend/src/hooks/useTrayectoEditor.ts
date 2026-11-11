@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { trayectosService, type Coordenadas, type Referencia, type SugerenciaTrayecto, type Trayecto, type UbicacionSugerida } from '../services/trayectosService';
 import { lineaManual, prepararTrayecto, tienePosicionesDistintas, type BorradorTrayecto, type PuntoEditor } from '../utils/trayectoEditor';
 
-type Pin = Coordenadas & { origen?: PuntoEditor; referencia?: Referencia; centrar: boolean };
+type Pin = Coordenadas & { origen?: PuntoEditor; referencia?: Referencia; centrar: boolean; desdeBusqueda?: boolean };
 type Consulta<T> = { cargando: boolean; error?: string; resultado?: T };
 
 const mensaje = (error: unknown) => error instanceof Error ? error.message : 'No se pudo completar la solicitud.';
@@ -51,7 +51,7 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     lat: punto.lat, long: punto.long, origen: punto, referencia: punto.referencia, centrar: true,
   });
   const usarUbicacion = ({ lat, long, calle, altura }: UbicacionSugerida) =>
-    revisarPin({ lat, long, origen: pin?.origen, referencia: { calle, altura }, centrar: true });
+    revisarPin({ lat, long, origen: pin?.origen, referencia: { calle, altura }, centrar: true, desdeBusqueda: true });
 
   const descartarPin = () => {
     solicitudPin.current?.abort();
@@ -78,6 +78,12 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     cambiarPuntos(origen
       ? borrador.puntos.map((anterior) => anterior.clave === origen.clave ? punto : anterior)
       : [...borrador.puntos, punto]);
+    if (pin.desdeBusqueda) {
+      solicitudBusqueda.current?.abort();
+      setCalle('');
+      setAltura('');
+      setBusqueda({ cargando: false });
+    }
     descartarPin();
   };
 
