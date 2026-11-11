@@ -28,7 +28,12 @@ export function TrayectoEditor({ inicial, localidades, onCancelar, onGuardado }:
 
   return (
     <Paper component="section" variant="outlined" className="trayectos-panel" aria-label="Editor de trayectos">
-      <h3>{borrador.id ? 'Editar trayecto' : 'Nuevo trayecto'}</h3>
+      <div className="trayectos-cabecera">
+        <div className="trayectos-identidad">
+          <span className="trayectos-icono"><RouteOutlinedIcon /></span>
+          <h3>{borrador.id ? 'Editar trayecto' : 'Nuevo trayecto'}</h3>
+        </div>
+      </div>
       <div className="trayectos-campos">
         <TextField label="Nombre del trayecto" required size="small" value={borrador.nombre}
           disabled={guardando} slotProps={{ htmlInput: { maxLength: 100 } }}
