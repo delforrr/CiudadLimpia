@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { trayectosService, type Coordenadas, type Referencia, type SugerenciaTrayecto, type Trayecto, type UbicacionSugerida } from '../services/trayectosService';
 import { lineaManual, prepararTrayecto, tienePosicionesDistintas, type BorradorTrayecto, type PuntoEditor } from '../utils/trayectoEditor';
 
-type Pin = Coordenadas & { origen?: PuntoEditor; referencia?: Referencia; centrar: boolean; desdeBusqueda?: boolean };
+type Pin = Coordenadas & { origen?: PuntoEditor; referencia?: Referencia };
 type Consulta<T> = { cargando: boolean; error?: string; resultado?: T };
 
 const mensaje = (error: unknown) => error instanceof Error ? error.message : 'No se pudo completar la solicitud.';
@@ -10,6 +10,7 @@ const mensaje = (error: unknown) => error instanceof Error ? error.message : 'No
 export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayecto: Trayecto) => void) {
   const [borrador, setBorrador] = useState(inicial);
   const [pin, setPin] = useState<Pin | null>(null);
+  const [centrarEn, setCentrarEn] = useState<Coordenadas | null>(null);
   const [referenciaElegida, setReferenciaElegida] = useState<'ninguna' | 'original' | 'georef'>('ninguna');
   const [inversa, setInversa] = useState<Consulta<Referencia | null>>({ cargando: false });
   const [busqueda, setBusqueda] = useState<Consulta<{ sugerencias: UbicacionSugerida[]; fuente: string }>>({ cargando: false });
@@ -46,12 +47,12 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     }
   };
 
-  const marcarEnMapa = (posicion: Coordenadas) => revisarPin({ ...pin, ...posicion, centrar: false });
-  const editarPunto = (punto: PuntoEditor) => revisarPin({
-    lat: punto.lat, long: punto.long, origen: punto, referencia: punto.referencia, centrar: true,
-  });
-  const usarUbicacion = ({ lat, long, calle, altura }: UbicacionSugerida) =>
-    revisarPin({ lat, long, origen: pin?.origen, referencia: { calle, altura }, centrar: true, desdeBusqueda: true });
+  const marcarEnMapa = (posicion: Coordenadas) => revisarPin({ ...pin, ...posicion });
+  const editarPunto = (punto: PuntoEditor) => {
+    const posicion = { lat: punto.lat, long: punto.long };
+    setCentrarEn(posicion);
+    return revisarPin({ ...posicion, origen: punto, referencia: punto.referencia });
+  };
 
   const descartarPin = () => {
     solicitudPin.current?.abort();
@@ -65,6 +66,24 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     setBorrador((previo) => ({ ...previo, puntos, lineaElegida: null }));
   };
 
+  const aplicarPunto = (datos: Omit<PuntoEditor, 'clave'>, origen?: PuntoEditor) => {
+    const punto = { ...datos, clave: origen?.clave ?? `nuevo-${++secuencia.current}` };
+    cambiarPuntos(origen
+      ? borrador.puntos.map((anterior) => anterior.clave === origen.clave ? punto : anterior)
+      : [...borrador.puntos, punto]);
+    descartarPin();
+  };
+
+  const usarUbicacion = ({ lat, long, calle, altura }: UbicacionSugerida) => {
+    const posicion = { lat, long };
+    aplicarPunto({ ...posicion, referencia: { calle, altura } }, pin?.origen);
+    setCentrarEn(posicion);
+    solicitudBusqueda.current?.abort();
+    setCalle('');
+    setAltura('');
+    setBusqueda({ cargando: false });
+  };
+
   const confirmarPin = () => {
     if (!pin) return;
     const { lat, long, origen } = pin;
@@ -74,17 +93,7 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     const mismaReferencia = referencia?.calle === origen?.referencia?.calle && referencia?.altura === origen?.referencia?.altura;
     const direccionId = referenciaElegida === 'original' && mismaReferencia && (mismaPosicion || referencia?.altura != null)
       ? origen?.direccionId : undefined;
-    const punto = { lat, long, clave: origen?.clave ?? `nuevo-${++secuencia.current}`, referencia, direccionId };
-    cambiarPuntos(origen
-      ? borrador.puntos.map((anterior) => anterior.clave === origen.clave ? punto : anterior)
-      : [...borrador.puntos, punto]);
-    if (pin.desdeBusqueda) {
-      solicitudBusqueda.current?.abort();
-      setCalle('');
-      setAltura('');
-      setBusqueda({ cargando: false });
-    }
-    descartarPin();
+    aplicarPunto({ lat, long, referencia, direccionId }, origen);
   };
 
   const actualizarBusqueda = (campo: 'calle' | 'altura', valor: string) => {
@@ -157,7 +166,7 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
   };
 
   return {
-    borrador, pin, inversa, referenciaElegida, setReferenciaElegida,
+    borrador, pin, centrarEn, inversa, referenciaElegida, setReferenciaElegida,
     marcarEnMapa, editarPunto, confirmarPin, descartarPin,
     quitarPunto: (clave: string) => cambiarPuntos(borrador.puntos.filter((punto) => punto.clave !== clave)),
     actualizarNombre: (nombre: string) => setBorrador((previo) => ({ ...previo, nombre })),

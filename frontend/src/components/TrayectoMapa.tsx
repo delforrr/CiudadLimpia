@@ -7,7 +7,8 @@ type Props = {
   puntos: Coordenadas[];
   linea: LineaTrayecto;
   sugerida?: LineaTrayecto;
-  pin?: (Coordenadas & { centrar: boolean }) | null;
+  pin?: Coordenadas | null;
+  centrarEn?: Coordenadas | null;
   onMarcar?: (posicion: Coordenadas) => void;
   onDescartarPin?: () => void;
 };
@@ -20,7 +21,7 @@ const zoomMaximo = 18;
 const posiciones = (linea: LineaTrayecto): [number, number][] =>
   linea.coordinates.map(([long, lat]) => [lat, long]);
 
-export function TrayectoMapa({ puntos, linea, sugerida, pin, onMarcar, onDescartarPin }: Props) {
+export function TrayectoMapa({ puntos, linea, sugerida, pin, centrarEn, onMarcar, onDescartarPin }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const [instancia, setInstancia] = useState<Mapa | null>(null);
   const [error, setError] = useState(false);
@@ -106,10 +107,10 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, onMarcar, onDescart
   }, [instancia, puntos, linea, sugerida, pin, interactivo, descartable]);
 
   useEffect(() => {
-    if (instancia && pin?.centrar) {
-      instancia.mapa.setView([pin.lat, pin.long], Math.max(16, instancia.mapa.getZoom()), { animate: false });
+    if (instancia && centrarEn) {
+      instancia.mapa.setView([centrarEn.lat, centrarEn.long], Math.max(16, instancia.mapa.getZoom()), { animate: false });
     }
-  }, [instancia, pin]);
+  }, [instancia, centrarEn]);
 
   return (
     <>

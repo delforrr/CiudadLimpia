@@ -46,6 +46,7 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
       <div className="trayectos-espacio-mapa" data-panel={panel}>
         <div className="trayectos-mapa-editor">
           <TrayectoMapa puntos={borrador.puntos} linea={editor.linea} sugerida={sugerencia.resultado?.geometria}
+            centrarEn={editor.centrarEn}
             onDescartarPin={pin && !pin.origen ? editor.descartarPin : undefined}
             pin={pin} onMarcar={guardando || !editandoRecorrido ? undefined : (posicion) => {
               if (!pin) mostrarInicioOpciones();
@@ -155,10 +156,12 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
                     {busqueda.resultado.sugerencias.length === 0 && <p>No encontramos ubicaciones. Podés marcar un pin en el mapa.</p>}
                     {busqueda.resultado.sugerencias.map((ubicacion, indice) => (
                       <Button key={indice} variant="outlined" color="success" disabled={guardando}
+                        startIcon={<AddLocationAltOutlinedIcon />}
+                        aria-label={`${pin?.origen ? 'Mover punto a' : 'Agregar punto en'} ${referenciaTexto(ubicacion)}`}
                         onClick={() => {
                           setPanel('mapa');
                           mostrarInicioOpciones();
-                          void editor.usarUbicacion(ubicacion);
+                          editor.usarUbicacion(ubicacion);
                         }}>
                         {referenciaTexto(ubicacion)}
                       </Button>
@@ -177,11 +180,11 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
                     onClick={() => void editor.calcular()}>
                     {sugerencia.cargando ? 'Calculando…' : 'Sugerir recorrido por calles'}
                   </Button>
-                  {(sugerencia.resultado || sugerencia.cargando || borrador.lineaElegida) && (
+                  {(sugerencia.resultado || sugerencia.cargando) && (
                     <Button color="success" disabled={guardando} onClick={() => editor.elegirLinea(false)}>Usar línea manual</Button>
                   )}
                 </div>
-                {sugerencia.error && <Alert severity="warning">{sugerencia.error} Podés conservar la línea actual o seguir en modo manual.</Alert>}
+                {sugerencia.error && <Alert severity="warning">{sugerencia.error} Se conservó la línea actual.</Alert>}
                 {sugerencia.resultado && (
                   <Alert severity="info">
                     Revisá el recorrido en el mapa antes de confirmarlo.
