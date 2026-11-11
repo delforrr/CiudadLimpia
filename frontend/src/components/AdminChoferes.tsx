@@ -134,24 +134,24 @@ export function AdminChoferes() {
 
   return (
     <section className="admin-drivers" aria-labelledby="admin-drivers-title">
-      <div className="admin-drivers-stats">
+      <div className="admin-drivers-stats admin-module-stats">
         {stats.map((stat) => (
-          <article className="admin-drivers-stat" key={stat.label}>
-            <span className="admin-drivers-stat-icon" aria-hidden="true">
+          <article className="admin-drivers-stat admin-module-stat" key={stat.label}>
+            <span className="admin-drivers-stat-icon admin-module-stat-icon" aria-hidden="true">
               {stat.icon}
             </span>
             <div>
-              <span className="admin-drivers-stat-label">{stat.label}</span>
-              <strong className="admin-drivers-stat-value">{stat.value}</strong>
+              <span className="admin-drivers-stat-label admin-module-stat-label">{stat.label}</span>
+              <strong className="admin-drivers-stat-value admin-module-stat-value">{stat.value}</strong>
             </div>
           </article>
         ))}
       </div>
 
-      <div className="admin-drivers-panel">
-        <div className="admin-drivers-toolbar">
+      <div className="admin-drivers-panel admin-module-panel">
+        <div className="admin-drivers-toolbar admin-module-toolbar">
           <TextField
-            className="admin-drivers-search"
+            className="admin-drivers-search admin-module-search"
             size="small"
             color="success"
             label="Buscar"
@@ -172,7 +172,7 @@ export function AdminChoferes() {
           <FormControl
             size="small"
             color="success"
-            className="admin-drivers-filter"
+            className="admin-drivers-filter admin-module-filter"
           >
             <InputLabel id="admin-drivers-status-filter">Estado</InputLabel>
             <Select
@@ -201,12 +201,12 @@ export function AdminChoferes() {
           </Button>
         </div>
 
-        <div className="admin-drivers-table-header">
+        <div className="admin-drivers-table-header admin-module-header">
           <div>
             <h3 id="admin-drivers-title">Listado de choferes</h3>
             <p>Gestión del personal de recolección y asignación de unidades.</p>
           </div>
-          <span className="admin-drivers-count">
+          <span className="admin-drivers-count admin-module-count">
             {drivers.filteredDrivers.length} de {drivers.drivers.length}
           </span>
         </div>
@@ -218,7 +218,7 @@ export function AdminChoferes() {
             ))}
           </div>
         ) : drivers.filteredDrivers.length === 0 ? (
-          <div className="admin-drivers-empty">
+          <div className="admin-drivers-empty admin-module-empty">
             <LocalShippingIcon
               className="admin-drivers-empty-icon"
               aria-hidden="true"
@@ -244,9 +244,9 @@ export function AdminChoferes() {
             )}
           </div>
         ) : (
-          <TableContainer>
+          <TableContainer className="admin-module-table-scroll" role="region" tabIndex={0} aria-labelledby="admin-drivers-title">
             <Table
-              className="admin-drivers-table"
+              className="admin-drivers-table admin-module-table"
               aria-label="Choferes registrados"
             >
               <TableHead>
@@ -319,7 +319,7 @@ export function AdminChoferes() {
                     </TableCell>
 
                     <TableCell align="right">
-                      <div className="admin-drivers-actions">
+                      <div className="admin-drivers-actions admin-module-actions">
                         <Tooltip title="Ver detalle">
                           <IconButton
                             size="small"
@@ -363,6 +363,7 @@ export function AdminChoferes() {
       </div>
 
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(detailDriver)}
         onClose={() => setDetailDriver(null)}
         fullWidth
@@ -462,6 +463,7 @@ export function AdminChoferes() {
       </Dialog>
 
       <Dialog
+        className="admin-module-dialog"
         open={isEditing}
         onClose={drivers.closeForm}
         fullWidth
@@ -604,6 +606,7 @@ export function AdminChoferes() {
       </Dialog>
 
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(drivers.pendingDelete)}
         onClose={drivers.cancelDelete}
         fullWidth

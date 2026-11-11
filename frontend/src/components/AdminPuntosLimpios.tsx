@@ -91,24 +91,24 @@ export function AdminPuntosLimpios() {
 
   return (
     <section className="admin-points" aria-labelledby="admin-points-title">
-      <div className="admin-points-stats">
+      <div className="admin-points-stats admin-module-stats">
         {stats.map((stat) => (
-          <article className="admin-points-stat" key={stat.label}>
-            <span className="admin-points-stat-icon" aria-hidden="true">
+          <article className="admin-points-stat admin-module-stat" key={stat.label}>
+            <span className="admin-points-stat-icon admin-module-stat-icon" aria-hidden="true">
               {stat.icon}
             </span>
             <div>
-              <span className="admin-points-stat-label">{stat.label}</span>
-              <strong className="admin-points-stat-value">{stat.value}</strong>
+              <span className="admin-points-stat-label admin-module-stat-label">{stat.label}</span>
+              <strong className="admin-points-stat-value admin-module-stat-value">{stat.value}</strong>
             </div>
           </article>
         ))}
       </div>
 
-      <div className="admin-points-panel">
-        <div className="admin-points-toolbar">
+      <div className="admin-points-panel admin-module-panel">
+        <div className="admin-points-toolbar admin-module-toolbar">
           <TextField
-            className="admin-points-search"
+            className="admin-points-search admin-module-search"
             size="small"
             color="success"
             label="Buscar"
@@ -129,7 +129,7 @@ export function AdminPuntosLimpios() {
           <FormControl
             size="small"
             color="success"
-            className="admin-points-filter"
+            className="admin-points-filter admin-module-filter"
           >
             <InputLabel id="admin-points-type-filter">Tipo</InputLabel>
             <Select
@@ -153,7 +153,7 @@ export function AdminPuntosLimpios() {
           <FormControl
             size="small"
             color="success"
-            className="admin-points-filter"
+            className="admin-points-filter admin-module-filter"
           >
             <InputLabel id="admin-points-status-filter">Estado</InputLabel>
             <Select
@@ -182,12 +182,12 @@ export function AdminPuntosLimpios() {
           </Button>
         </div>
 
-        <div className="admin-points-table-header">
+        <div className="admin-points-table-header admin-module-header">
           <div>
             <h3 id="admin-points-title">Puntos limpios registrados</h3>
             <p>Consultá, agregá y editá las estaciones de reciclaje.</p>
           </div>
-          <span className="admin-points-count">
+          <span className="admin-points-count admin-module-count">
             {puntos.filteredPuntos.length} de {puntos.puntos.length}
           </span>
         </div>
@@ -199,7 +199,7 @@ export function AdminPuntosLimpios() {
             ))}
           </div>
         ) : puntos.filteredPuntos.length === 0 ? (
-          <div className="admin-points-empty">
+          <div className="admin-points-empty admin-module-empty">
             <LocationOnIcon
               className="admin-points-empty-icon"
               aria-hidden="true"
@@ -225,9 +225,9 @@ export function AdminPuntosLimpios() {
             )}
           </div>
         ) : (
-          <TableContainer>
+          <TableContainer className="admin-module-table-scroll" role="region" tabIndex={0} aria-labelledby="admin-points-title">
             <Table
-              className="admin-points-table"
+              className="admin-points-table admin-module-table"
               aria-label="Puntos limpios registrados"
             >
               <TableHead>
@@ -315,7 +315,7 @@ export function AdminPuntosLimpios() {
                       </TableCell>
 
                       <TableCell align="right">
-                        <div className="admin-points-actions">
+                        <div className="admin-points-actions admin-module-actions">
                           <Tooltip title="Ver detalle">
                             <IconButton
                               size="small"
@@ -358,6 +358,7 @@ export function AdminPuntosLimpios() {
       </div>
 
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(detailPunto)}
         onClose={() => setDetailPunto(null)}
         fullWidth
@@ -443,6 +444,7 @@ export function AdminPuntosLimpios() {
       </Dialog>
 
       <Dialog
+        className="admin-module-dialog"
         open={isEditing}
         onClose={puntos.closeForm}
         fullWidth
@@ -608,6 +610,7 @@ export function AdminPuntosLimpios() {
       </Dialog>
 
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(puntos.pendingDelete)}
         onClose={puntos.cancelDelete}
         fullWidth

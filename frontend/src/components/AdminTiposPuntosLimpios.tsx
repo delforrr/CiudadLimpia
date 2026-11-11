@@ -70,24 +70,24 @@ export function AdminTiposPuntosLimpios() {
 
   return (
     <section className="admin-types" aria-labelledby="admin-types-title">
-      <div className="admin-types-stats">
+      <div className="admin-types-stats admin-module-stats">
         {stats.map((stat) => (
-          <article className="admin-types-stat" key={stat.label}>
-            <span className="admin-types-stat-icon" aria-hidden="true">
+          <article className="admin-types-stat admin-module-stat" key={stat.label}>
+            <span className="admin-types-stat-icon admin-module-stat-icon" aria-hidden="true">
               {stat.icon}
             </span>
             <div>
-              <span className="admin-types-stat-label">{stat.label}</span>
-              <strong className="admin-types-stat-value">{stat.value}</strong>
+              <span className="admin-types-stat-label admin-module-stat-label">{stat.label}</span>
+              <strong className="admin-types-stat-value admin-module-stat-value">{stat.value}</strong>
             </div>
           </article>
         ))}
       </div>
 
-      <div className="admin-types-panel">
-        <div className="admin-types-toolbar">
+      <div className="admin-types-panel admin-module-panel">
+        <div className="admin-types-toolbar admin-module-toolbar">
           <TextField
-            className="admin-types-search"
+            className="admin-types-search admin-module-search"
             size="small"
             color="success"
             label="Buscar"
@@ -116,18 +116,18 @@ export function AdminTiposPuntosLimpios() {
           </Button>
         </div>
 
-        <div className="admin-types-table-header">
+        <div className="admin-types-table-header admin-module-header">
           <div>
             <h3 id="admin-types-title">Tipos de puntos limpios</h3>
             <p>Categorías disponibles y los materiales que recibe cada una.</p>
           </div>
-          <span className="admin-types-count">
+          <span className="admin-types-count admin-module-count">
             {tipos.filteredTipos.length} de {tipos.tipos.length}
           </span>
         </div>
 
         {tipos.filteredTipos.length === 0 ? (
-          <div className="admin-types-empty">
+          <div className="admin-types-empty admin-module-empty">
             <CategoryIcon className="admin-types-empty-icon" aria-hidden="true" />
             <h4>
               {tipos.tipos.length === 0
@@ -150,9 +150,9 @@ export function AdminTiposPuntosLimpios() {
             )}
           </div>
         ) : (
-          <TableContainer>
+          <TableContainer className="admin-module-table-scroll" role="region" tabIndex={0} aria-labelledby="admin-types-title">
             <Table
-              className="admin-types-table"
+              className="admin-types-table admin-module-table"
               aria-label="Tipos de puntos limpios"
             >
               <TableHead>
@@ -224,7 +224,7 @@ export function AdminTiposPuntosLimpios() {
                       </TableCell>
 
                       <TableCell align="right">
-                        <div className="admin-types-actions">
+                        <div className="admin-types-actions admin-module-actions">
                           <Tooltip title="Ver detalle">
                             <IconButton
                               size="small"
@@ -267,6 +267,7 @@ export function AdminTiposPuntosLimpios() {
       </div>
 
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(detailTipo)}
         onClose={() => setDetailTipo(null)}
         fullWidth
@@ -343,6 +344,7 @@ export function AdminTiposPuntosLimpios() {
       </Dialog>
 
       <Dialog
+        className="admin-module-dialog"
         open={isEditing}
         onClose={tipos.closeForm}
         fullWidth
@@ -533,6 +535,7 @@ export function AdminTiposPuntosLimpios() {
       </Dialog>
 
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(tipos.pendingDelete)}
         onClose={tipos.cancelDelete}
         fullWidth

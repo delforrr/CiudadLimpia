@@ -494,25 +494,25 @@ export function AdminCamiones({ onNavigateToTrayectos }: AdminCamionesProps) {
   return (
     <section className="admin-trucks" aria-labelledby="admin-trucks-title">
       {/* Tarjetas de estadísticas / resumen */}
-      <div className="admin-trucks-stats">
+      <div className="admin-trucks-stats admin-module-stats">
         {stats.map((stat) => (
-          <article className="admin-trucks-stat" key={stat.label}>
-            <span className="admin-trucks-stat-icon" aria-hidden="true">
+          <article className="admin-trucks-stat admin-module-stat" key={stat.label}>
+            <span className="admin-trucks-stat-icon admin-module-stat-icon" aria-hidden="true">
               {stat.icon}
             </span>
             <div>
-              <span className="admin-trucks-stat-label">{stat.label}</span>
-              <strong className="admin-trucks-stat-value">{stat.value}</strong>
+              <span className="admin-trucks-stat-label admin-module-stat-label">{stat.label}</span>
+              <strong className="admin-trucks-stat-value admin-module-stat-value">{stat.value}</strong>
             </div>
           </article>
         ))}
       </div>
 
       {/* Panel principal de Camiones */}
-      <div className="admin-trucks-panel">
-        <div className="admin-trucks-toolbar">
+      <div className="admin-trucks-panel admin-module-panel">
+        <div className="admin-trucks-toolbar admin-module-toolbar">
           <TextField
-            className="admin-trucks-search"
+            className="admin-trucks-search admin-module-search"
             size="small"
             color="success"
             label="Buscar"
@@ -533,7 +533,7 @@ export function AdminCamiones({ onNavigateToTrayectos }: AdminCamionesProps) {
           <FormControl
             size="small"
             color="success"
-            className="admin-trucks-filter"
+            className="admin-trucks-filter admin-module-filter"
           >
             <InputLabel id="admin-trucks-status-filter">Estado</InputLabel>
             <Select
@@ -708,6 +708,7 @@ export function AdminCamiones({ onNavigateToTrayectos }: AdminCamionesProps) {
 
       {/* Modal Ficha Detalle: datos generales y sus trayectos asociados */}
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(detailTruck)}
         onClose={() => setDetailTruck(null)}
         fullWidth
@@ -878,6 +879,7 @@ export function AdminCamiones({ onNavigateToTrayectos }: AdminCamionesProps) {
 
       {/* Modal Agregar / Editar Camión */}
       <Dialog
+        className="admin-module-dialog"
         open={isFormOpen}
         onClose={handleCloseForm}
         fullWidth
@@ -1027,6 +1029,7 @@ export function AdminCamiones({ onNavigateToTrayectos }: AdminCamionesProps) {
 
       {/* Modal Confirmación de Eliminación */}
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(pendingDeleteTruck)}
         onClose={() => setPendingDeleteTruck(null)}
         maxWidth="xs"

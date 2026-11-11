@@ -1,6 +1,6 @@
 .trayectos-panel.MuiPaper-root {
-  --trayectos-verde: #013a27;
-  --trayectos-borde: #dce6df;
+  --trayectos-verde: var(--admin-verde, #013a27);
+  --trayectos-borde: var(--admin-borde, #dce6df);
   display: flex;
   flex-direction: column;
   gap: 1rem;

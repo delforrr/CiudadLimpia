@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Alert } from '@mui/material';
+import { Alert, ButtonBase, MenuItem, Select } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CategoryIcon from '@mui/icons-material/Category';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import RouteIcon from '@mui/icons-material/Route';
 import PeopleIcon from '@mui/icons-material/People';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import iconoCiudadLimpia from '../assets/icono-ciudad-limpia.png';
 import { AdminUsuarios } from '../components/AdminUsuarios';
 import { AdminChoferes } from '../components/AdminChoferes';
@@ -16,6 +17,7 @@ import { AdminTrayectos } from '../components/AdminTrayectos';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAdminTrayectos } from '../hooks/useAdminTrayectos';
 import './AdminPage.css';
+import './AdminModules.css';
 
 type AdminTab = 'dashboard' | 'puntos' | 'tipos' | 'recoleccion' | 'camiones' | 'choferes' | 'usuarios';
 
@@ -50,6 +52,16 @@ const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
   },
 };
 
+const NAVEGACION = [
+  { id: 'dashboard', nombre: 'Panel de Control', icono: DashboardIcon },
+  { id: 'puntos', nombre: 'Puntos Limpios', icono: LocationOnIcon },
+  { id: 'tipos', nombre: 'Tipos de Puntos', icono: CategoryIcon },
+  { id: 'recoleccion', nombre: 'Trayectos', icono: RouteIcon },
+  { id: 'camiones', nombre: 'Camiones', icono: LocalShippingIcon },
+  { id: 'choferes', nombre: 'Choferes', icono: PeopleIcon },
+  { id: 'usuarios', nombre: 'Usuarios', icono: PeopleIcon },
+] as const;
+
 export function AdminPage() {
   const { user } = useAuthContext();
   const trayectos = useAdminTrayectos(user?.role === 'ADMIN');
@@ -62,7 +74,7 @@ export function AdminPage() {
   const seccionActual = SECCIONES[activeTab];
 
   return (
-    <div className={`admin-wrapper${activeTab === 'recoleccion' ? ' admin-wrapper-trayectos' : ''}`}>
+    <div className="admin-wrapper">
       {/* Barra Lateral / Sidebar Desktop en verde #013A27 */}
       <aside className="admin-sidebar">
         <div>
@@ -87,71 +99,25 @@ export function AdminPage() {
           </div>
 
           <nav className="admin-nav" aria-label="Navegación del panel">
-            <button
-              type="button"
-              className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dashboard')}
-            >
-              <span className="admin-nav-icon"><DashboardIcon fontSize="small" /></span>
-              <span>Panel de Control</span>
-            </button>
-
-            <button
-              type="button"
-              className={`admin-nav-item ${activeTab === 'puntos' ? 'active' : ''}`}
-              onClick={() => setActiveTab('puntos')}
-            >
-              <span className="admin-nav-icon"><LocationOnIcon fontSize="small" /></span>
-              <span>Puntos Limpios</span>
-            </button>
-
-            <button
-              type="button"
-              className={`admin-nav-item ${activeTab === 'tipos' ? 'active' : ''}`}
-              onClick={() => setActiveTab('tipos')}
-            >
-              <span className="admin-nav-icon"><CategoryIcon fontSize="small" /></span>
-              <span>Tipos de Puntos</span>
-            </button>
-
-            <button
-              type="button"
-              className={`admin-nav-item ${activeTab === 'recoleccion' ? 'active' : ''}`}
-              onClick={() => setActiveTab('recoleccion')}
-            >
-              <span className="admin-nav-icon"><RouteIcon fontSize="small" /></span>
-              <span>Trayectos</span>
-            </button>
-
-            <button
-              type="button"
-              className={`admin-nav-item ${activeTab === 'camiones' ? 'active' : ''}`}
-              onClick={() => setActiveTab('camiones')}
-            >
-              <span className="admin-nav-icon"><LocalShippingIcon fontSize="small" /></span>
-              <span>Camiones</span>
-            </button>
-
-            <button
-              type="button"
-              className={`admin-nav-item ${activeTab === 'choferes' ? 'active' : ''}`}
-              onClick={() => setActiveTab('choferes')}
-            >
-              <span className="admin-nav-icon">
-                <span className="admin-nav-chofer-icon" aria-hidden="true" />
-              </span>
-              <span>Choferes</span>
-            </button>
-
-            <button
-              type="button"
-              className={`admin-nav-item ${activeTab === 'usuarios' ? 'active' : ''}`}
-              onClick={() => setActiveTab('usuarios')}
-            >
-              <span className="admin-nav-icon"><PeopleIcon fontSize="small" /></span>
-              <span>Usuarios</span>
-            </button>
+            {NAVEGACION.map(({ id, nombre, icono: Icono }) => (
+              <ButtonBase key={id} className={`admin-nav-item${activeTab === id ? ' active' : ''}`}
+                aria-current={activeTab === id ? 'page' : undefined} onClick={() => setActiveTab(id)}>
+                <span className="admin-nav-icon">
+                  {id === 'choferes' ? <span className="admin-nav-chofer-icon" aria-hidden="true" /> : <Icono fontSize="small" />}
+                </span>
+                <span>{nombre}</span>
+              </ButtonBase>
+            ))}
           </nav>
+
+          <div className="admin-nav-movil">
+            <img src={iconoCiudadLimpia} alt="Ciudad Limpia" />
+            <Select size="small" value={activeTab}
+              inputProps={{ 'aria-label': 'Sección del panel' }}
+              onChange={(event) => setActiveTab(event.target.value as AdminTab)}>
+              {NAVEGACION.map(({ id, nombre }) => <MenuItem key={id} value={id}>{nombre}</MenuItem>)}
+            </Select>
+          </div>
         </div>
 
         {/* Footer del sidebar con usuario */}
@@ -189,19 +155,21 @@ export function AdminPage() {
           ) : activeTab === 'recoleccion' ? (
             user?.role === 'ADMIN' ? <AdminTrayectos admin={trayectos} /> : <Alert severity="warning">Iniciá sesión como administrador para gestionar trayectos.</Alert>
           ) : (
-            /* Contenedor esqueleto del panel */
-            <section className="admin-empty-card">
-              <div className="admin-empty-content">
-                <img
-                  src={iconoCiudadLimpia}
-                  alt="Ciudad Limpia"
-                  className="admin-empty-logo"
-                  onError={(e) => {
-                    e.currentTarget.src = '/icono-ciudad-limpia.png';
-                  }}
-                />
-                <h3>{seccionActual.titulo}</h3>
-                <p>Esqueleto base listo para incorporar los módulos de gestión y control.</p>
+            <section className="admin-dashboard" aria-labelledby="admin-dashboard-title">
+              <h3 id="admin-dashboard-title">Accesos directos</h3>
+              <div className="admin-dashboard-grid">
+                {NAVEGACION.filter(({ id }) => id !== 'dashboard').map(({ id, nombre, icono: Icono }) => (
+                  <ButtonBase key={id} className="admin-dashboard-card" onClick={() => setActiveTab(id)}>
+                    <span className="admin-dashboard-icono">
+                      {id === 'choferes' ? <span className="admin-nav-chofer-icon" aria-hidden="true" /> : <Icono />}
+                    </span>
+                    <span className="admin-dashboard-texto">
+                      <strong>{nombre}</strong>
+                      <span>{SECCIONES[id].descripcion}</span>
+                    </span>
+                    <ArrowForwardIcon className="admin-dashboard-flecha" fontSize="small" />
+                  </ButtonBase>
+                ))}
               </div>
             </section>
           )}

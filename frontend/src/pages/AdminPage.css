@@ -5,11 +5,13 @@
    ========================================================= */
 
 .admin-wrapper {
+  --admin-verde: #013a27;
+  --admin-borde: #dce6df;
   display: flex;
   width: 100%;
   height: 100vh;
   height: 100dvh;
-  background-color: #f8fafc;
+  background-color: #f5f8f6;
   color: #1e293b;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   overflow: hidden;
@@ -24,9 +26,14 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 3px 0 16px rgba(0, 0, 0, 0.18);
+  box-shadow: 3px 0 16px rgb(1 58 39 / 13%);
   z-index: 10;
   color: #ffffff;
+}
+
+.admin-sidebar > div:first-child {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .admin-sidebar-header {
@@ -87,9 +94,10 @@
   overflow-y: auto;
 }
 
-.admin-nav-item {
+.admin-nav .admin-nav-item.MuiButtonBase-root {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.75rem;
   width: 100%;
   padding: 0.7rem 0.95rem;
@@ -98,18 +106,19 @@
   background: transparent;
   color: rgba(255, 255, 255, 0.75);
   font-size: 0.9rem;
+  font-family: inherit;
   font-weight: 600;
   cursor: pointer;
   text-align: left;
-  transition: all 0.15s ease;
+  transition: background-color 140ms ease, color 140ms ease;
 }
 
-.admin-nav-item:hover {
+.admin-nav .admin-nav-item.MuiButtonBase-root:hover {
   background-color: rgba(255, 255, 255, 0.08);
   color: #ffffff;
 }
 
-.admin-nav-item.active {
+.admin-nav .admin-nav-item.MuiButtonBase-root.active {
   background-color: rgba(255, 255, 255, 0.15);
   color: #ffffff;
   font-weight: 700;
@@ -124,6 +133,10 @@
   align-items: center;
   justify-content: center;
   color: inherit;
+}
+
+.admin-nav-movil {
+  display: none;
 }
 
 .admin-nav-chofer-icon {
@@ -149,6 +162,7 @@
 }
 
 .admin-avatar {
+  flex-shrink: 0;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -196,8 +210,8 @@
 /* Topbar */
 .admin-topbar {
   background-color: #ffffff;
-  border-bottom: 2px solid #013A27;
-  padding: 1.1rem 2rem;
+  border-bottom: 1px solid var(--admin-borde);
+  padding: 1rem clamp(1rem, 2.8vw, 2rem);
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -205,8 +219,9 @@
 
 .admin-topbar-title h2 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
   font-weight: 700;
+  letter-spacing: -0.025em;
   color: #013A27;
 }
 
@@ -218,7 +233,7 @@
 
 /* Contenedor del contenido interno */
 .admin-body {
-  padding: 2rem;
+  padding: clamp(1rem, 2.8vw, 2rem);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -242,76 +257,118 @@
   padding: clamp(0.5rem, 1.5vw, 1.25rem);
 }
 
-/* Tarjeta vacía / Esqueleto pelado */
-.admin-empty-card {
-  flex: 1;
-  min-height: 400px;
-  background-color: #ffffff;
-  border: 1px dashed #cbd5e1;
-  border-radius: 12px;
-  display: flex;
+.admin-dashboard h3 {
+  margin: 0 0 0.85rem;
+  font-size: 1.05rem;
+  color: var(--admin-verde);
+}
+
+.admin-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.75rem;
+}
+
+.admin-dashboard .admin-dashboard-card.MuiButtonBase-root {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
-  padding: 3rem 2rem;
+  gap: 0.7rem;
+  padding: clamp(0.75rem, 2vw, 1rem);
+  border: 1px solid var(--admin-borde);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--admin-verde);
+  font-family: inherit;
+  text-align: left;
+  transition: background-color 140ms ease, border-color 140ms ease;
 }
 
-.admin-empty-content {
-  text-align: center;
-  max-width: 440px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.admin-dashboard-icono {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: #e7f2ea;
 }
 
-.admin-empty-logo {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  margin-bottom: 1.25rem;
-  opacity: 0.9;
+.admin-dashboard-texto {
+  display: grid;
+  gap: 0.25rem;
+  overflow-wrap: anywhere;
 }
 
-.admin-empty-content h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #013A27;
+.admin-dashboard-texto > span {
+  color: #496355;
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
-.admin-empty-content p {
-  margin: 0.5rem 0 0;
-  font-size: 0.88rem;
-  color: #64748b;
-  line-height: 1.5;
+.admin-dashboard-flecha {
+  color: #46735d;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .admin-dashboard .admin-dashboard-card.MuiButtonBase-root:hover {
+    background: #f3f8f4;
+    border-color: #a6c6b1;
+  }
+}
+
+.admin-wrapper .MuiButtonBase-root.Mui-focusVisible {
+  outline: 2px solid #21744f;
+  outline-offset: 2px;
+}
+
+.admin-nav .admin-nav-item.Mui-focusVisible {
+  outline-color: #b5dfba;
+  outline-offset: -2px;
 }
 
 @media (max-width: 760px) {
-  .admin-wrapper-trayectos {
+  .admin-wrapper {
     flex-direction: column;
   }
 
-  .admin-wrapper-trayectos .admin-sidebar {
+  .admin-sidebar {
     width: 100%;
     min-width: 0;
+    flex-shrink: 0;
   }
 
-  .admin-wrapper-trayectos :is(.admin-sidebar-header, .admin-sidebar-footer) {
+  .admin-sidebar > div:first-child {
+    overflow: visible;
+  }
+
+  .admin-sidebar :is(.admin-sidebar-header, .admin-sidebar-footer, .admin-nav) {
     display: none;
   }
 
-  .admin-wrapper-trayectos .admin-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 0.35rem 0.5rem;
+  .admin-nav-movil {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.5rem 0.75rem;
   }
 
-  .admin-wrapper-trayectos .admin-nav-item {
-    flex: 0 0 auto;
-    width: auto;
-    white-space: nowrap;
+  .admin-nav-movil img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
   }
 
-  .admin-wrapper-trayectos :is(.admin-topbar, .admin-body) {
+  .admin-nav-movil .MuiOutlinedInput-root {
+    flex: 1;
+    min-width: 0;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--admin-verde);
+    font-family: inherit;
+    font-weight: 650;
+  }
+
+  .admin-wrapper :is(.admin-topbar, .admin-body) {
     padding: 0.75rem;
   }
 }

@@ -82,24 +82,24 @@ export function AdminUsuarios() {
 
   return (
     <section className="admin-users" aria-labelledby="admin-users-title">
-      <div className="admin-users-stats">
+      <div className="admin-users-stats admin-module-stats">
         {stats.map((stat) => (
-          <article className="admin-users-stat" key={stat.label}>
-            <span className="admin-users-stat-icon" aria-hidden="true">
+          <article className="admin-users-stat admin-module-stat" key={stat.label}>
+            <span className="admin-users-stat-icon admin-module-stat-icon" aria-hidden="true">
               {stat.icon}
             </span>
             <div>
-              <span className="admin-users-stat-label">{stat.label}</span>
-              <strong className="admin-users-stat-value">{stat.value}</strong>
+              <span className="admin-users-stat-label admin-module-stat-label">{stat.label}</span>
+              <strong className="admin-users-stat-value admin-module-stat-value">{stat.value}</strong>
             </div>
           </article>
         ))}
       </div>
 
-      <div className="admin-users-panel">
-        <div className="admin-users-toolbar">
+      <div className="admin-users-panel admin-module-panel">
+        <div className="admin-users-toolbar admin-module-toolbar">
           <TextField
-            className="admin-users-search"
+            className="admin-users-search admin-module-search"
             size="small"
             color="success"
             label="Buscar"
@@ -117,7 +117,7 @@ export function AdminUsuarios() {
             }}
           />
 
-          <FormControl size="small" color="success" className="admin-users-filter">
+          <FormControl size="small" color="success" className="admin-users-filter admin-module-filter">
             <InputLabel id="admin-users-role-filter">Rol</InputLabel>
             <Select
               labelId="admin-users-role-filter"
@@ -156,12 +156,12 @@ export function AdminUsuarios() {
           </Button>
         </div>
 
-        <div className="admin-users-table-header">
+        <div className="admin-users-table-header admin-module-header">
           <div>
             <h3 id="admin-users-title">Padrón de usuarios</h3>
             <p>Agregá, consultá, editá y eliminá las cuentas registradas.</p>
           </div>
-          <span className="admin-users-count">
+          <span className="admin-users-count admin-module-count">
             {admin.filteredUsers.length} de {admin.users.length}
           </span>
         </div>
@@ -190,7 +190,7 @@ export function AdminUsuarios() {
             ))}
           </div>
         ) : admin.filteredUsers.length === 0 ? (
-          <div className="admin-users-empty">
+          <div className="admin-users-empty admin-module-empty">
             <PeopleIcon className="admin-users-empty-icon" aria-hidden="true" />
             <h4>
               {admin.users.length === 0
@@ -207,8 +207,8 @@ export function AdminUsuarios() {
             )}
           </div>
         ) : (
-          <TableContainer>
-            <Table className="admin-users-table" aria-label="Usuarios registrados">
+          <TableContainer className="admin-module-table-scroll" role="region" tabIndex={0} aria-labelledby="admin-users-title">
+            <Table className="admin-users-table admin-module-table" aria-label="Usuarios registrados">
               <TableHead>
                 <TableRow>
                   <TableCell>Usuario</TableCell>
@@ -278,7 +278,7 @@ export function AdminUsuarios() {
                       </TableCell>
 
                       <TableCell align="right">
-                        <div className="admin-users-actions">
+                        <div className="admin-users-actions admin-module-actions">
                           <Tooltip title="Ver detalle">
                             <IconButton
                               size="small"
@@ -330,6 +330,7 @@ export function AdminUsuarios() {
       </div>
 
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(detailUser)}
         onClose={() => setDetailUser(null)}
         fullWidth
@@ -397,6 +398,7 @@ export function AdminUsuarios() {
       </Dialog>
 
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(admin.editing) || admin.isCreating}
         onClose={admin.closeEdit}
         fullWidth
@@ -554,6 +556,7 @@ export function AdminUsuarios() {
       </Dialog>
 
       <Dialog
+        className="admin-module-dialog"
         open={Boolean(admin.pendingDelete)}
         onClose={admin.cancelDelete}
         fullWidth
