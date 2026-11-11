@@ -139,6 +139,11 @@
   width: 100%;
 }
 
+.trayectos-editor .trayectos-cabecera-lateral .trayectos-acciones {
+  width: 100%;
+  justify-content: flex-end;
+}
+
 .trayectos-panel .trayectos-nombre-recorrido {
   padding-inline: 0.2rem;
   color: var(--trayectos-verde);
