@@ -227,6 +227,21 @@
   box-sizing: border-box;
 }
 
+.admin-main-content:has(.trayectos-espacio-mapa) {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.admin-main-content:has(.trayectos-espacio-mapa) .admin-topbar {
+  display: none;
+}
+
+.admin-body:has(> :is(.trayectos-editor, .trayectos-detalle)) {
+  min-height: 0;
+  max-width: none;
+  padding: clamp(0.5rem, 1.5vw, 1.25rem);
+}
+
 /* Tarjeta vacía / Esqueleto pelado */
 .admin-empty-card {
   flex: 1;

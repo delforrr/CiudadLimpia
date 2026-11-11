@@ -81,14 +81,6 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     descartarPin();
   };
 
-  const moverEnLista = (indice: number, desplazamiento: number) => {
-    const destino = indice + desplazamiento;
-    if (destino < 0 || destino >= borrador.puntos.length) return;
-    const puntos = [...borrador.puntos];
-    [puntos[indice], puntos[destino]] = [puntos[destino], puntos[indice]];
-    cambiarPuntos(puntos);
-  };
-
   const actualizarBusqueda = (campo: 'calle' | 'altura', valor: string) => {
     solicitudBusqueda.current?.abort();
     setBusqueda({ cargando: false });
@@ -160,10 +152,9 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
 
   return {
     borrador, pin, inversa, referenciaElegida, setReferenciaElegida,
-    marcarEnMapa, editarPunto, confirmarPin, descartarPin, moverEnLista,
+    marcarEnMapa, editarPunto, confirmarPin, descartarPin,
     quitarPunto: (clave: string) => cambiarPuntos(borrador.puntos.filter((punto) => punto.clave !== clave)),
-    actualizarCampo: (campo: 'nombre' | 'localidadId', valor: string) =>
-      setBorrador((previo) => ({ ...previo, [campo]: valor })),
+    actualizarNombre: (nombre: string) => setBorrador((previo) => ({ ...previo, nombre })),
     calle, altura, busqueda, actualizarBusqueda, buscarDireccion, usarUbicacion,
     tieneLinea, linea, sugerencia, calcular, elegirLinea, descartarSugerencia, guardar, guardando, error,
   };

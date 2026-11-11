@@ -4,7 +4,9 @@ import { abrirBorrador, type BorradorTrayecto } from '../utils/trayectoEditor';
 
 type Vista = { tipo: 'lista' } | { tipo: 'detalle'; trayecto: Trayecto } | { tipo: 'editor'; borrador: BorradorTrayecto };
 
-export function useAdminTrayectos() {
+const idTrenqueLauquen = '06826050';
+
+export function useAdminTrayectos(habilitado: boolean) {
   const [trayectos, setTrayectos] = useState<Trayecto[]>([]);
   const [localidades, setLocalidades] = useState<Localidad[]>([]);
   const [vista, setVista] = useState<Vista>({ tipo: 'lista' });
@@ -13,8 +15,11 @@ export function useAdminTrayectos() {
   const [aviso, setAviso] = useState('');
   const [intento, setIntento] = useState(0);
   const solicitudActiva = useRef<AbortController | null>(null);
+  const localidadFija = localidades.find(({ id }) => id === idTrenqueLauquen);
 
   useEffect(() => {
+    if (!habilitado) return;
+
     const solicitud = new AbortController();
     const { signal } = solicitud;
     void Promise.all([trayectosService.listar(signal), trayectosService.localidades(signal)])
@@ -30,7 +35,7 @@ export function useAdminTrayectos() {
         if (!signal.aborted) setCargando(false);
       });
     return () => solicitud.abort();
-  }, [intento]);
+  }, [habilitado, intento]);
 
   useEffect(() => () => solicitudActiva.current?.abort(), []);
 
@@ -44,7 +49,9 @@ export function useAdminTrayectos() {
     try {
       const trayecto = await trayectosService.consultar(id, solicitud.signal);
       if (solicitud.signal.aborted) return;
-      setVista(editar ? { tipo: 'editor', borrador: abrirBorrador(trayecto) } : { tipo: 'detalle', trayecto });
+      setVista(editar
+        ? { tipo: 'editor', borrador: { ...abrirBorrador(trayecto), localidadId: localidadFija?.id ?? '' } }
+        : { tipo: 'detalle', trayecto });
     } catch (error) {
       if (!solicitud.signal.aborted) {
         setError(error instanceof Error ? error.message : 'No se pudo consultar la API.');
@@ -55,7 +62,7 @@ export function useAdminTrayectos() {
   };
 
   return {
-    trayectos, localidades, vista, cargando, error, aviso, abrir,
+    trayectos, localidades, localidadFija, vista, cargando, error, aviso, abrir,
     cargar: () => {
       setCargando(true);
       setError('');
@@ -63,7 +70,7 @@ export function useAdminTrayectos() {
     },
     nuevo: () => setVista({
       tipo: 'editor', borrador: {
-        nombre: '', localidadId: localidades.length === 1 ? localidades[0].id : '', puntos: [], lineaElegida: null,
+        nombre: '', localidadId: localidadFija?.id ?? '', puntos: [], lineaElegida: null,
       },
     }),
     volver: () => {

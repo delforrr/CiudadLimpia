@@ -108,7 +108,7 @@
   background: #12543b;
 }
 
-.trayectos-panel :is(.MuiButton-root, .MuiToggleButton-root).Mui-focusVisible {
+.trayectos-panel :is(.MuiButton-root, .MuiToggleButton-root, .MuiIconButton-root).Mui-focusVisible {
   outline: 2px solid #21744f;
   outline-offset: 2px;
 }
@@ -123,20 +123,54 @@
   }
 }
 
-.trayectos-final {
-  justify-content: flex-end;
-  padding-top: 0.75rem;
-  border-top: 1px solid #dce6df;
+:is(.trayectos-editor, .trayectos-detalle).MuiPaper-root {
+  flex: 1;
+  min-height: 0;
+  gap: 0.65rem;
+  padding: clamp(0.7rem, 1.5vw, 1rem);
 }
 
-.trayectos-final p {
-  flex: 1 1 12rem;
-  font-size: 0.85rem;
+.trayectos-cabecera-lateral {
+  padding: 0.55rem 0.7rem;
+  background: #edf5ef;
+}
+
+.trayectos-cabecera-lateral .trayectos-identidad {
+  width: 100%;
+}
+
+.trayectos-panel .trayectos-nombre-recorrido {
+  padding-inline: 0.2rem;
+  color: var(--trayectos-verde);
+  font-weight: 700;
+}
+
+.trayectos-error-guardado {
+  flex: 0 0 100%;
+}
+
+.trayectos-editor .trayectos-agregar,
+.trayectos-editor .trayectos-trazado {
+  padding: 0.5rem 0.65rem;
+}
+
+.trayectos-busqueda-contenido:not([hidden]) {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.trayectos-agregar button[aria-expanded="true"] .MuiButton-endIcon {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .trayectos-agregar button[aria-expanded] .MuiButton-endIcon {
+    transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
 }
 
 .trayectos-agregar,
-.trayectos-trazado,
-.trayectos-vista-mapa {
+.trayectos-trazado {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.65rem;
@@ -155,22 +189,122 @@
   background: #fff;
 }
 
-.trayectos-campos,
 .trayectos-busqueda {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 0.75rem;
 }
 
-.trayectos-busqueda {
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+.trayectos-espacio-mapa {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 19rem);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
 }
 
-.trayectos-vistas {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  align-items: start;
-  gap: 1rem;
+.trayectos-mapa-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.trayectos-mapa-pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.65rem;
+}
+
+.trayectos-opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: 0.35rem;
+  scrollbar-width: thin;
+  overflow-wrap: anywhere;
+}
+
+.trayectos-opciones > * {
+  flex-shrink: 0;
+}
+
+.trayectos-puntos-desplegable.MuiAccordion-root {
+  margin: 0;
+  border-color: var(--trayectos-borde);
+  border-radius: 12px;
+  background: #f7faf8;
+}
+
+.trayectos-puntos-desplegable.MuiAccordion-root::before {
+  display: none;
+}
+
+.trayectos-puntos-desplegable .MuiAccordionSummary-content {
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--trayectos-verde);
+  font-weight: 700;
+}
+
+.trayectos-puntos-desplegable .MuiAccordionDetails-root {
+  padding: 0 0.55rem 0.55rem;
+}
+
+.trayectos-puntos-desplegable .trayectos-puntos {
+  gap: 0.3rem;
+  padding: 0;
+}
+
+.trayectos-puntos-desplegable .trayectos-puntos li {
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.35rem;
+}
+
+.trayectos-puntos-desplegable .trayectos-numero {
+  flex-basis: 1.25rem;
+  height: 1.25rem;
+}
+
+.trayectos-puntos-desplegable .trayectos-punto-datos {
+  flex: 1;
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.trayectos-puntos-desplegable .trayectos-punto-datos small {
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trayectos-punto-acciones {
+  display: flex;
+  flex: none;
+}
+
+.trayectos-punto-acciones .MuiIconButton-root {
+  width: 32px;
+  height: 32px;
+}
+
+.trayectos-opciones:focus-visible {
+  outline: 2px solid #21744f;
+  outline-offset: -2px;
+}
+
+.trayectos-opciones .trayectos-busqueda > button {
+  grid-column: 1 / -1;
+}
+
+.trayectos-revisar-movil.MuiButton-root {
+  display: none;
 }
 
 .trayectos-alternar.MuiToggleButtonGroup-root {
@@ -185,6 +319,12 @@
   border: 1px solid #ccdcd1;
   border-radius: 12px;
   background: #edf3ee;
+}
+
+:is(.trayectos-editor, .trayectos-detalle) .trayecto-mapa {
+  flex: 1;
+  height: auto;
+  min-height: 0;
 }
 
 .trayecto-marcador {
@@ -324,8 +464,8 @@
   background: #f3f8fc;
 }
 
-@media (max-width: 1020px) {
-  .trayectos-vistas {
+@media (max-width: 900px) {
+  .trayectos-espacio-mapa {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -334,22 +474,31 @@
     align-self: flex-start;
   }
 
-  .trayectos-vistas[data-panel="mapa"] .trayectos-vista-puntos,
-  .trayectos-vistas[data-panel="puntos"] .trayectos-vista-mapa {
+  .trayectos-espacio-mapa[data-panel="mapa"] .trayectos-opciones,
+  .trayectos-espacio-mapa[data-panel="opciones"] .trayectos-mapa-editor {
     display: none;
+  }
+
+  .trayectos-revisar-movil.MuiButton-root {
+    display: inline-flex;
   }
 }
 
 @media (max-width: 540px) {
-  .trayectos-campos {
-    grid-template-columns: minmax(0, 1fr);
+  .trayectos-cabecera-lateral {
+    gap: 0.35rem;
   }
 
-  .trayectos-busqueda {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  .trayectos-cabecera-lateral .trayectos-icono {
+    display: none;
   }
 
-  .trayectos-busqueda > button {
-    grid-column: 1 / -1;
+  .trayectos-cabecera-lateral h3 {
+    font-size: 1rem;
+  }
+
+  .trayectos-cabecera-lateral .MuiButton-root {
+    padding-inline: 0.55rem;
+    font-size: 0.8rem;
   }
 }

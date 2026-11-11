@@ -14,6 +14,7 @@ import { AdminPuntosLimpios } from '../components/AdminPuntosLimpios';
 import { AdminTiposPuntosLimpios } from '../components/AdminTiposPuntosLimpios';
 import { AdminTrayectos } from '../components/AdminTrayectos';
 import { useAuthContext } from '../hooks/useAuthContext';
+import { useAdminTrayectos } from '../hooks/useAdminTrayectos';
 import './AdminPage.css';
 
 type AdminTab = 'dashboard' | 'puntos' | 'tipos' | 'recoleccion' | 'camiones' | 'choferes' | 'usuarios';
@@ -51,6 +52,7 @@ const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
 
 export function AdminPage() {
   const { user } = useAuthContext();
+  const trayectos = useAdminTrayectos(user?.role === 'ADMIN');
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
 
   const adminName = user?.cliente
@@ -185,7 +187,7 @@ export function AdminPage() {
           ) : activeTab === 'tipos' ? (
             <AdminTiposPuntosLimpios />
           ) : activeTab === 'recoleccion' ? (
-            user?.role === 'ADMIN' ? <AdminTrayectos /> : <Alert severity="warning">Iniciá sesión como administrador para gestionar trayectos.</Alert>
+            user?.role === 'ADMIN' ? <AdminTrayectos admin={trayectos} /> : <Alert severity="warning">Iniciá sesión como administrador para gestionar trayectos.</Alert>
           ) : (
             /* Contenedor esqueleto del panel */
             <section className="admin-empty-card">

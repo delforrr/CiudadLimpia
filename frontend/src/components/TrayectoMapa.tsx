@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import type { LayerGroup, Map as LeafletMap } from 'leaflet';
+import type { LatLngTuple, LayerGroup, Map as LeafletMap } from 'leaflet';
 import type { Coordenadas, LineaTrayecto } from '../services/trayectosService';
 import 'leaflet/dist/leaflet.css';
 
@@ -9,22 +9,36 @@ type Props = {
   sugerida?: LineaTrayecto;
   pin?: (Coordenadas & { centrar: boolean }) | null;
   onMarcar?: (posicion: Coordenadas) => void;
+  onDescartarPin?: () => void;
 };
 
 type Mapa = { L: typeof import('leaflet'); mapa: LeafletMap; capa: LayerGroup };
 const centro: [number, number] = [-35.973, -62.734];
+const limitesTrenqueLauquen: [LatLngTuple, LatLngTuple] = [[-36.04, -62.82], [-35.90, -62.64]];
+const zoomMinimo = 12;
+const zoomMaximo = 18;
 const posiciones = (linea: LineaTrayecto): [number, number][] =>
   linea.coordinates.map(([long, lat]) => [lat, long]);
 
-export function TrayectoMapa({ puntos, linea, sugerida, pin, onMarcar }: Props) {
+export function TrayectoMapa({ puntos, linea, sugerida, pin, onMarcar, onDescartarPin }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const [instancia, setInstancia] = useState<Mapa | null>(null);
   const [error, setError] = useState(false);
   const interactivo = Boolean(onMarcar);
+  const descartable = Boolean(onDescartarPin);
   const marcar = useEffectEvent((lat: number, long: number) => onMarcar?.({ lat, long }));
-  const encuadrar = useEffectEvent((mapa: LeafletMap) => {
+  const descartarPin = useEffectEvent(() => onDescartarPin?.());
+  const encuadrar = useEffectEvent((mapa: LeafletMap, L: Mapa['L']) => {
+    const limites = L.latLngBounds(limitesTrenqueLauquen);
+    puntos.forEach(({ lat, long }) => limites.extend([lat, long]));
+    // Los recorridos guardados fuera del área inicial también se pueden consultar.
     if (linea.coordinates.length >= 2) {
-      mapa.fitBounds(posiciones(linea), { padding: [30, 30], maxZoom: 17, animate: false });
+      const recorrido = L.latLngBounds(posiciones(linea));
+      limites.extend(recorrido);
+      mapa.setMaxBounds(limites);
+      mapa.fitBounds(recorrido, { padding: [24, 24], maxZoom: 17, animate: false });
+    } else {
+      mapa.setMaxBounds(limites);
     }
   });
 
@@ -38,7 +52,10 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, onMarcar }: Props) 
     void import('leaflet').then((modulo) => {
       if (desmontado) return;
       const L = modulo.default ?? modulo;
-      const mapaCreado = L.map(nodo, { center: centro, zoom: 14, zoomAnimation: false });
+      const mapaCreado = L.map(nodo, {
+        center: centro, zoom: 14, minZoom: zoomMinimo, maxZoom: zoomMaximo,
+        maxBoundsViscosity: 1, zoomAnimation: false, scrollWheelZoom: false, bounceAtZoomLimits: false,
+      });
       mapa = mapaCreado;
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -48,7 +65,7 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, onMarcar }: Props) 
         marcar(lat, lng);
       });
       const capa = L.layerGroup().addTo(mapaCreado);
-      encuadrar(mapaCreado);
+      encuadrar(mapaCreado, L);
       observador = new ResizeObserver(() => mapaCreado.invalidateSize({ pan: false }));
       observador.observe(nodo);
       setInstancia({ L, mapa: mapaCreado, capa });
@@ -79,13 +96,14 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, onMarcar }: Props) 
     if (pin) {
       L.marker([pin.lat, pin.long], {
         icon: L.divIcon({ className: 'trayecto-marcador trayecto-marcador-pendiente', html: '+', iconSize: [32, 32] }),
-        title: 'Pin por confirmar', draggable: interactivo,
+        title: descartable ? 'Pin por confirmar. Tocá para descartar.' : 'Pin por confirmar',
+        draggable: interactivo,
       }).on('dragend', ({ target }) => {
         const { lat, lng } = instancia.mapa.wrapLatLng((target as import('leaflet').Marker).getLatLng());
         marcar(lat, lng);
-      }).addTo(capa);
+      }).on('click', descartarPin).addTo(capa);
     }
-  }, [instancia, puntos, linea, sugerida, pin, interactivo]);
+  }, [instancia, puntos, linea, sugerida, pin, interactivo, descartable]);
 
   useEffect(() => {
     if (instancia && pin?.centrar) {
