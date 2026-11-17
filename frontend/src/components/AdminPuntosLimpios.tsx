@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import {
   Alert,
   Button,
@@ -48,6 +48,7 @@ import {
 } from '../utils/puntosLimpiosFormat'
 import './AdminPuntosLimpios.css'
 import { puntoLimpioIconSrc } from '../utils/puntosLimpiosLogos'
+const MapaUbicacionPunto = lazy(() => import('./MapaUbicacionPunto').then((module) => ({ default: module.MapaUbicacionPunto })))
 
 const TIPO_ICONS = [
   <RecyclingIcon key="punto-limpio" />,
@@ -568,20 +569,30 @@ export function AdminPuntosLimpios() {
             )}
 
             <TextField
-              className="admin-points-form-full"
-              label="Dirección"
+              label="Calle"
               required
               color="success"
-              placeholder="Pasteur n.º 1200"
+              placeholder="Pasteur"
               slotProps={{ htmlInput: { maxLength: 200 } }}
               disabled={puntos.saving}
               error={Boolean(puntos.fieldErrors.direccion)}
               helperText={puntos.fieldErrors.direccion?.[0]}
-              value={puntos.form.direccion}
+              value={puntos.calle}
               onChange={(event) =>
-                puntos.updateField('direccion', event.target.value)
+                puntos.actualizarDireccion(event.target.value, puntos.altura)
               }
             />
+            <TextField label="Altura" required color="success" placeholder="1200"
+              value={puntos.altura} disabled={puntos.saving}
+              slotProps={{ htmlInput: { inputMode: 'numeric', pattern: '[0-9]*' } }}
+              onChange={(event) => puntos.actualizarDireccion(puntos.calle, event.target.value)}
+              onBlur={() => void puntos.buscarDireccion()} />
+            {puntos.mostrarMapa && puntos.calle.trim() && /^\d+$/.test(puntos.altura) && <div className="admin-points-form-full">
+              <p>Marcá la ubicación en el mapa. Podés arrastrar el punto para ajustarlo.</p>
+              <Suspense fallback={<p>Cargando mapa…</p>}>
+                <MapaUbicacionPunto ubicacion={puntos.ubicacion} onChange={puntos.setUbicacion} />
+              </Suspense>
+            </div>}
           </form>
         </DialogContent>
         <DialogActions>

@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react'
 import { z } from 'zod'
+import { trayectosService } from '../services/trayectosService'
 import { puntoLimpioSchema } from '../schemas/puntoLimpioSchema.ts'
 import {
   findTipoPunto,
@@ -53,6 +54,11 @@ export function usePuntosLimpios() {
   >({})
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [ubicacion, setUbicacion] = useState<{ lat: number; lng: number } | null>(null)
+  const [mostrarMapa, setMostrarMapa] = useState(false)
+  const [calle, setCalle] = useState('')
+  const [altura, setAltura] = useState('')
+  const busquedaDireccion = useRef<AbortController | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PuntoLimpioAdmin | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState('')
@@ -93,6 +99,11 @@ export function usePuntosLimpios() {
   }, [puntos, tipos])
 
   const openCreate = useCallback(() => {
+    busquedaDireccion.current?.abort()
+    setUbicacion(null)
+    setMostrarMapa(false)
+    setCalle('')
+    setAltura('')
     setEditing(null)
     setIsCreating(true)
     setForm({
@@ -106,6 +117,12 @@ export function usePuntosLimpios() {
   }, [])
 
   const startEdit = useCallback((punto: PuntoLimpioAdmin) => {
+    busquedaDireccion.current?.abort()
+    setUbicacion(punto.lat !== undefined && punto.lng !== undefined ? { lat: punto.lat, lng: punto.lng } : null)
+    setMostrarMapa(true)
+    const partes = punto.direccion.match(/^(.*?)\s+(\d+)$/)
+    setCalle(partes?.[1] ?? punto.direccion)
+    setAltura(partes?.[2] ?? '')
     setIsCreating(false)
     setEditing(punto)
     setForm({
@@ -120,6 +137,7 @@ export function usePuntosLimpios() {
 
   const closeForm = useCallback(() => {
     if (saving) return
+    busquedaDireccion.current?.abort()
     setEditing(null)
     setIsCreating(false)
     setFormError('')
@@ -146,6 +164,14 @@ export function usePuntosLimpios() {
               .fieldErrors as Partial<Record<keyof PuntoLimpioForm, string[]>>),
       )
       if (!validation.success) return
+      if (!editing && (!calle.trim() || !/^\d+$/.test(altura))) {
+        setFormError('Ingresá la calle y la altura.')
+        return
+      }
+      if (!editing && !ubicacion) {
+        setFormError('Marcá la ubicación del punto en el mapa.')
+        return
+      }
 
       const data = validation.data
       setSaving(true)
@@ -156,6 +182,8 @@ export function usePuntosLimpios() {
           tipoId: data.tipoId,
           direccion: data.direccion,
           estado: editing ? data.estado : 'ACTIVO',
+          lat: ubicacion?.lat,
+          lng: ubicacion?.lng,
         }
 
         setPuntos((previous) => {
@@ -181,7 +209,7 @@ export function usePuntosLimpios() {
         setSaving(false)
       }
     },
-    [editing, form, saving],
+    [editing, form, saving, ubicacion, calle, altura],
   )
 
   const requestDelete = useCallback((punto: PuntoLimpioAdmin) => {
@@ -233,6 +261,38 @@ export function usePuntosLimpios() {
     formError,
     saving,
     updateField,
+    ubicacion,
+    setUbicacion: (nuevaUbicacion: { lat: number; lng: number }) => {
+      busquedaDireccion.current?.abort()
+      setUbicacion(nuevaUbicacion)
+    },
+    mostrarMapa,
+    setMostrarMapa,
+    calle,
+    altura,
+    actualizarDireccion: (nuevaCalle: string, nuevaAltura: string) => {
+      busquedaDireccion.current?.abort()
+      setMostrarMapa(false)
+      setUbicacion(null)
+      setCalle(nuevaCalle)
+      setAltura(nuevaAltura)
+      setForm((previous) => ({ ...previous, direccion: [nuevaCalle.trim(), nuevaAltura.trim()].filter(Boolean).join(' ') }))
+    },
+    buscarDireccion: async () => {
+      if (!calle.trim() || !/^\d+$/.test(altura)) return
+      busquedaDireccion.current?.abort()
+      const solicitud = new AbortController()
+      busquedaDireccion.current = solicitud
+      setMostrarMapa(true)
+      try {
+        const resultado = await trayectosService.buscar(calle.trim(), Number(altura), solicitud.signal)
+        if (solicitud.signal.aborted) return
+        const coincidencia = resultado.sugerencias.find((sugerencia) => sugerencia.altura === Number(altura))
+        if (coincidencia) setUbicacion({ lat: coincidencia.lat, lng: coincidencia.long })
+      } catch {
+        // El mapa permite marcar la ubicación aunque la búsqueda no encuentre la dirección.
+      }
+    },
     save,
     pendingDelete,
     requestDelete,

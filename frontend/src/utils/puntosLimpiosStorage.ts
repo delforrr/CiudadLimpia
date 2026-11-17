@@ -197,6 +197,8 @@ export function loadPuntos(tipos: TipoPuntoLimpio[]): PuntoLimpioAdmin[] {
               ? punto.direccion.trim()
               : '',
           estado: punto.estado === 'INACTIVO' ? 'INACTIVO' : 'ACTIVO',
+          lat: typeof punto.lat === 'number' && Number.isFinite(punto.lat) ? punto.lat : undefined,
+          lng: typeof punto.lng === 'number' && Number.isFinite(punto.lng) ? punto.lng : undefined,
         } as PuntoLimpioAdmin
       })
       .filter((punto) => punto.id && punto.nombre)

@@ -14,6 +14,8 @@ export interface PuntoLimpioAdmin {
   tipoId: string
   direccion: string
   estado: EstadoPuntoLimpio
+  lat?: number
+  lng?: number
 }
 
 export const ESTADO_PUNTO_LIMPIO_LABELS: Record<EstadoPuntoLimpio, string> = {
