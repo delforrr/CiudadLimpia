@@ -43,9 +43,9 @@ test('renders the trucks module with class diagram fields, buttons and sample da
   assert.match(html, /Año/)
   assert.match(html, /Conductor/)
 
-  // Verifica que en los encabezados de la tabla NO dice Zona ni Trayecto
   assert.doesNotMatch(html, /<th[^>]*>Zona[^<]*<\/th>/i)
-  assert.doesNotMatch(html, /<th[^>]*>Trayecto<\/th>/i)
+  assert.match(html, /<th[^>]*>Trayectos<\/th>/i)
+  assert.match(html, /aria-label="Asignar trayectos a Camión 01"/)
 
   // Datos alineados con el diagrama
   assert.match(html, /Camión 01/)
@@ -66,4 +66,36 @@ test('renders the trucks module with class diagram fields, buttons and sample da
   assert.match(html, /aria-label="Editar Camión 01"/)
   assert.match(html, /aria-label="Eliminar Camión 01"/)
   assert.doesNotMatch(html, /Esqueleto base/)
+})
+
+test('shows the number of assigned routes instead of the assign shortcut', () => {
+  const clave = 'ciudad-limpia:camiones'
+  const unidades = [1, 2].map((cantidad) => ({
+    id: String(cantidad),
+    code: `Unidad ${cantidad}`,
+    plate: 'AE 123 CD',
+    brand: 'Iveco',
+    model: 'Tector',
+    year: 2022,
+    assignedDriver: 'Sin asignar',
+    status: 'OPERATIVO',
+    trayectos: Array.from({ length: cantidad }, (_, indice) => ({
+      id: `ruta-${indice}`, name: `Ruta ${indice}`,
+    })),
+  }))
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: { getItem: (key: string) => key === clave ? JSON.stringify(unidades) : null },
+  })
+
+  try {
+    const html = renderToStaticMarkup(createElement(AdminCamiones))
+    assert.match(html, />1 trayecto<\/span>/)
+    assert.match(html, />2 trayectos<\/span>/)
+    assert.doesNotMatch(html, /aria-label="Asignar trayectos a Unidad/)
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
 })

@@ -219,6 +219,7 @@ export function AdminCamiones({
 
   // Modales
   const [detailTruck, setDetailTruck] = useState<Truck | null>(null)
+  const [abrirSelectorTrayectos, setAbrirSelectorTrayectos] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTruck, setEditingTruck] = useState<Truck | null>(null)
   const [pendingDeleteTruck, setPendingDeleteTruck] = useState<Truck | null>(null)
@@ -592,6 +593,7 @@ export function AdminCamiones({
                   <TableCell>Modelo</TableCell>
                   <TableCell>Año</TableCell>
                   <TableCell>Conductor</TableCell>
+                  <TableCell>Trayectos</TableCell>
                   <TableCell>Estado</TableCell>
                   <TableCell align="right">Acciones</TableCell>
                 </TableRow>
@@ -641,6 +643,22 @@ export function AdminCamiones({
                       )}
                     </TableCell>
                     <TableCell>
+                      {truck.trayectos.length === 0 ? (
+                        <Button size="small" variant="outlined" color="success" startIcon={<AddIcon />}
+                          className="admin-trucks-assign-btn" aria-label={`Asignar trayectos a ${truck.code}`}
+                          onClick={() => {
+                            setAbrirSelectorTrayectos(true)
+                            setDetailTruck(truck)
+                          }}>
+                          Asignar
+                        </Button>
+                      ) : (
+                        <span className="admin-trucks-cell-text">
+                          {truck.trayectos.length === 1 ? '1 trayecto' : `${truck.trayectos.length} trayectos`}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Chip
                         size="small"
                         label={STATUS_LABELS[truck.status]}
@@ -653,7 +671,10 @@ export function AdminCamiones({
                           <IconButton
                             size="small"
                             aria-label={`Ver detalle de ${truck.code}`}
-                            onClick={() => setDetailTruck(truck)}
+                            onClick={() => {
+                              setAbrirSelectorTrayectos(false)
+                              setDetailTruck(truck)
+                            }}
                           >
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
@@ -795,6 +816,8 @@ export function AdminCamiones({
                   <FormControl className="admin-trucks-trayectos-select" fullWidth size="small" color="success" disabled={cargandoTrayectos}>
                     <InputLabel id="camion-trayectos-label">Asignar trayectos</InputLabel>
                     <Select<string[]> multiple labelId="camion-trayectos-label" label="Asignar trayectos"
+                      defaultOpen={abrirSelectorTrayectos && !cargandoTrayectos}
+                      onClose={() => setAbrirSelectorTrayectos(false)}
                       value={detailTruck.trayectos.map(({ id }) => id)}
                       onChange={({ target: { value } }) =>
                         asignarTrayectos(detailTruck, typeof value === 'string' ? value.split(',') : value)}
