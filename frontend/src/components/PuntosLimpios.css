@@ -141,6 +141,7 @@
 
 /* LEYENDA Y FILTROS INTERACTIVOS FIJOS SIN SCROLL */
 .mapa-tarjeta-leyenda {
+  scroll-margin-bottom: 90px;
   display: grid;
   grid-template-columns: 1.15fr 0.85fr 1.35fr;
   gap: 4px;

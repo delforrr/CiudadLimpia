@@ -38,6 +38,7 @@ export const PuntosLimpios: React.FC = () => {
   const [mapaAbierto, setMapaAbierto] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const leyendaRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
@@ -208,7 +209,13 @@ export const PuntosLimpios: React.FC = () => {
           )}
         </div>
 
-        <Collapse in={mapaAbierto} id="mapa-puntos-desplegable" onEntered={() => mapRef.current?.invalidateSize()}>
+        <Collapse in={mapaAbierto} id="mapa-puntos-desplegable" onEntered={() => {
+          mapRef.current?.invalidateSize();
+          leyendaRef.current?.scrollIntoView({
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+            block: 'end',
+          });
+        }}>
         <div className="mapa-tarjeta-body">
           <div
             ref={mapContainerRef}
@@ -217,7 +224,7 @@ export const PuntosLimpios: React.FC = () => {
         </div>
 
         {/* Leyenda y Filtros interactivos: Tocar para filtrar */}
-        <div className="mapa-tarjeta-leyenda">
+        <div ref={leyendaRef} className="mapa-tarjeta-leyenda">
           {tipos.map((tipo) => (
             <button key={tipo.id} type="button"
               className={`leyenda-filtro-btn ${filtroActivo !== 'todos' && filtroActivo !== tipo.id ? 'inactivo' : ''}`}
