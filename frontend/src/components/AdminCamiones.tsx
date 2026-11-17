@@ -4,12 +4,14 @@ import {
   Button,
   Checkbox,
   Chip,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   FormHelperText,
   IconButton,
   InputAdornment,
@@ -40,7 +42,8 @@ import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined
 import RouteIcon from '@mui/icons-material/Route'
 import SearchIcon from '@mui/icons-material/Search'
 import VisibilityIcon from '@mui/icons-material/Visibility'
-import type { Trayecto as TrayectoGuardado } from '../services/trayectosService'
+import type { Localidad, Trayecto as TrayectoGuardado } from '../services/trayectosService'
+import { DetalleTrayecto } from './AdminTrayectos'
 import './AdminCamiones.css'
 
 export type TruckStatus = 'OPERATIVO' | 'MANTENIMIENTO' | 'INACTIVO'
@@ -66,7 +69,8 @@ export interface Truck {
 
 export interface AdminCamionesProps {
   onNavigateToTrayectos?: (truck?: Truck) => void
-  trayectosDisponibles?: Pick<TrayectoGuardado, 'id' | 'nombre'>[]
+  trayectosDisponibles?: TrayectoGuardado[]
+  localidades?: Localidad[]
   cargandoTrayectos?: boolean
   errorTrayectos?: string
   recargarTrayectos?: () => void
@@ -211,7 +215,7 @@ const DEFAULT_FORM: TruckFormState = {
 }
 
 export function AdminCamiones({
-  onNavigateToTrayectos, trayectosDisponibles = [], cargandoTrayectos, errorTrayectos, recargarTrayectos,
+  onNavigateToTrayectos, trayectosDisponibles = [], localidades = [], cargandoTrayectos, errorTrayectos, recargarTrayectos,
 }: AdminCamionesProps) {
   const [trucks, setTrucks] = useState<Truck[]>(loadTrucks)
   const [search, setSearch] = useState('')
@@ -220,6 +224,7 @@ export function AdminCamiones({
   // Modales
   const [detailTruck, setDetailTruck] = useState<Truck | null>(null)
   const [abrirSelectorTrayectos, setAbrirSelectorTrayectos] = useState(false)
+  const [trayectoPrevia, setTrayectoPrevia] = useState<TrayectoGuardado | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTruck, setEditingTruck] = useState<Truck | null>(null)
   const [pendingDeleteTruck, setPendingDeleteTruck] = useState<Truck | null>(null)
@@ -236,7 +241,9 @@ export function AdminCamiones({
   // Feedback
   const [notice, setNotice] = useState('')
   const opcionesTrayectos = new Map(detailTruck?.trayectos.map(({ id, name }) => [id, name]))
-  for (const { id, nombre } of trayectosDisponibles) opcionesTrayectos.set(id, nombre)
+  const catalogoTrayectos = new Map(trayectosDisponibles.map((trayecto) => [trayecto.id, trayecto]))
+  for (const { id, nombre } of catalogoTrayectos.values()) opcionesTrayectos.set(id, nombre)
+  const idsAsignados = detailTruck?.trayectos.map(({ id }) => id) ?? []
 
   const asignarTrayectos = (truck: Truck, ids: string[]) => {
     const trayectos = ids.map((id) => ({ id, name: opcionesTrayectos.get(id) ?? id }))
@@ -813,24 +820,37 @@ export function AdminCamiones({
                   <p>Creá un recorrido en Trayectos para poder asignarlo.</p>
                 ) : null}
                 {opcionesTrayectos.size > 0 && (
-                  <FormControl className="admin-trucks-trayectos-select" fullWidth size="small" color="success" disabled={cargandoTrayectos}>
-                    <InputLabel id="camion-trayectos-label">Asignar trayectos</InputLabel>
-                    <Select<string[]> multiple labelId="camion-trayectos-label" label="Asignar trayectos"
-                      defaultOpen={abrirSelectorTrayectos && !cargandoTrayectos}
-                      onClose={() => setAbrirSelectorTrayectos(false)}
-                      value={detailTruck.trayectos.map(({ id }) => id)}
-                      onChange={({ target: { value } }) =>
-                        asignarTrayectos(detailTruck, typeof value === 'string' ? value.split(',') : value)}
-                      renderValue={(ids) => ids.map((id) => opcionesTrayectos.get(id)).join(', ')}>
-                      {[...opcionesTrayectos].map(([id, nombre]) => (
-                        <MenuItem key={id} value={id}>
-                          <Checkbox color="success" size="small" tabIndex={-1} aria-hidden="true"
-                            checked={detailTruck.trayectos.some((trayecto) => trayecto.id === id)} />
-                          {nombre}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <>
+                    {!abrirSelectorTrayectos && idsAsignados.length > 0 && (
+                      <p className="admin-trucks-trayectos-nombres">
+                        {idsAsignados.map((id) => opcionesTrayectos.get(id)).join(', ')}
+                      </p>
+                    )}
+                    <Button size="small" variant="outlined" color="success" startIcon={<RouteIcon />}
+                      aria-expanded={abrirSelectorTrayectos} aria-controls="camion-opciones-trayectos"
+                      onClick={() => setAbrirSelectorTrayectos((abierto) => !abierto)}>
+                      Asignar trayectos
+                    </Button>
+                    <Collapse in={abrirSelectorTrayectos} id="camion-opciones-trayectos">
+                      <ul className="admin-trucks-trayectos-opciones">
+                        {[...opcionesTrayectos].map(([id, nombre]) => {
+                          const disponible = catalogoTrayectos.get(id)
+                          return (
+                            <li key={id}>
+                              <FormControlLabel label={nombre} disabled={cargandoTrayectos}
+                                control={<Checkbox color="success" size="small" checked={idsAsignados.includes(id)}
+                                  onChange={(_, checked) => asignarTrayectos(detailTruck,
+                                    checked ? [...idsAsignados, id] : idsAsignados.filter((asignado) => asignado !== id))} />} />
+                              {disponible && <Button size="small" color="success" startIcon={<VisibilityIcon />}
+                                aria-label={`Ver detalle de ${nombre}`} onClick={() => setTrayectoPrevia(disponible)}>
+                                Ver detalle
+                              </Button>}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </Collapse>
+                  </>
                 )}
               </div>
             </>
@@ -861,6 +881,20 @@ export function AdminCamiones({
           >
             Ir a Trayectos
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog className="admin-module-dialog" open={Boolean(trayectoPrevia)} fullWidth maxWidth="lg"
+        slotProps={{ paper: { 'aria-label': 'Vista previa del trayecto' } }}
+        onClose={() => setTrayectoPrevia(null)}>
+        {trayectoPrevia && (
+          <DialogContent className="admin-trucks-trayecto-previa">
+            <DetalleTrayecto trayecto={trayectoPrevia} localidad={localidades.find(({ id }) =>
+              id === trayectoPrevia.localidadId)?.nombre ?? trayectoPrevia.localidadId} />
+          </DialogContent>
+        )}
+        <DialogActions>
+          <Button color="success" onClick={() => setTrayectoPrevia(null)}>Volver a la ficha</Button>
         </DialogActions>
       </Dialog>
 

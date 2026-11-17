@@ -80,14 +80,14 @@ export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTra
   );
 }
 
-function DetalleTrayecto({ trayecto, localidad, cargando, aviso, error, volver, editar }: {
+export function DetalleTrayecto({ trayecto, localidad, cargando = false, aviso, error, volver, editar }: {
   trayecto: Trayecto;
   localidad: string;
-  cargando: boolean;
-  aviso: string;
-  error: string;
-  volver: () => void;
-  editar: () => void;
+  cargando?: boolean;
+  aviso?: string;
+  error?: string;
+  volver?: () => void;
+  editar?: () => void;
 }) {
   const [panel, setPanel] = useState<'mapa' | 'opciones'>('mapa');
 
@@ -111,12 +111,12 @@ function DetalleTrayecto({ trayecto, localidad, cargando, aviso, error, volver, 
                 <p className="trayectos-localidad"><PlaceOutlinedIcon />{localidad}</p>
               </div>
             </div>
-            <div className="trayectos-acciones">
-              <Button size="small" color="success" startIcon={<ArrowBackIcon />} disabled={cargando}
-                onClick={volver}>Volver al listado</Button>
-              <Button size="small" variant="outlined" color="success" startIcon={<EditOutlinedIcon />} disabled={cargando}
-                onClick={editar}>Editar trayecto</Button>
-            </div>
+            {(volver || editar) && <div className="trayectos-acciones">
+              {volver && <Button size="small" color="success" startIcon={<ArrowBackIcon />} disabled={cargando}
+                onClick={volver}>Volver al listado</Button>}
+              {editar && <Button size="small" variant="outlined" color="success" startIcon={<EditOutlinedIcon />} disabled={cargando}
+                onClick={editar}>Editar trayecto</Button>}
+            </div>}
           </div>
           {aviso && <Alert severity="success">{aviso}</Alert>}
           {error && <Alert severity="error">{error}</Alert>}

@@ -382,9 +382,46 @@
   color: #013a27;
 }
 
-.admin-trucks-trayectos-select .MuiSelect-select {
-  white-space: normal;
+.admin-trucks-trayectos-nombres {
+  margin: 0 0 0.65rem;
   overflow-wrap: anywhere;
+}
+
+.admin-trucks-trayectos-opciones {
+  display: grid;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+}
+
+.admin-trucks-trayectos-opciones li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid #dce6df;
+  border-radius: 9px;
+}
+
+.admin-trucks-trayectos-opciones .MuiFormControlLabel-root {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-trucks-trayecto-previa.MuiDialogContent-root {
+  display: flex;
+  flex: 0 1 auto;
+  min-height: 0;
+  height: min(68dvh, 640px);
+  padding: 0.75rem;
+}
+
+.admin-trucks-trayecto-previa .trayectos-detalle {
+  min-width: 0;
 }
 
 /* ===================== FORMULARIO ===================== */
