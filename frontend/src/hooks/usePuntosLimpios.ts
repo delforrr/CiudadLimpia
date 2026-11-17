@@ -55,7 +55,6 @@ export function usePuntosLimpios() {
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const [ubicacion, setUbicacion] = useState<{ lat: number; lng: number } | null>(null)
-  const [mostrarMapa, setMostrarMapa] = useState(false)
   const [calle, setCalle] = useState('')
   const [altura, setAltura] = useState('')
   const busquedaDireccion = useRef<AbortController | null>(null)
@@ -101,7 +100,6 @@ export function usePuntosLimpios() {
   const openCreate = useCallback(() => {
     busquedaDireccion.current?.abort()
     setUbicacion(null)
-    setMostrarMapa(false)
     setCalle('')
     setAltura('')
     setEditing(null)
@@ -119,7 +117,6 @@ export function usePuntosLimpios() {
   const startEdit = useCallback((punto: PuntoLimpioAdmin) => {
     busquedaDireccion.current?.abort()
     setUbicacion(punto.lat !== undefined && punto.lng !== undefined ? { lat: punto.lat, lng: punto.lng } : null)
-    setMostrarMapa(true)
     const partes = punto.direccion.match(/^(.*?)\s+(\d+)$/)
     setCalle(partes?.[1] ?? punto.direccion)
     setAltura(partes?.[2] ?? '')
@@ -266,13 +263,10 @@ export function usePuntosLimpios() {
       busquedaDireccion.current?.abort()
       setUbicacion(nuevaUbicacion)
     },
-    mostrarMapa,
-    setMostrarMapa,
     calle,
     altura,
     actualizarDireccion: (nuevaCalle: string, nuevaAltura: string) => {
       busquedaDireccion.current?.abort()
-      setMostrarMapa(false)
       setUbicacion(null)
       setCalle(nuevaCalle)
       setAltura(nuevaAltura)
@@ -283,7 +277,6 @@ export function usePuntosLimpios() {
       busquedaDireccion.current?.abort()
       const solicitud = new AbortController()
       busquedaDireccion.current = solicitud
-      setMostrarMapa(true)
       try {
         const resultado = await trayectosService.buscar(calle.trim(), Number(altura), solicitud.signal)
         if (solicitud.signal.aborted) return

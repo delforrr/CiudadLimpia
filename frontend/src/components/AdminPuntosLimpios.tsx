@@ -60,6 +60,7 @@ const TIPO_ICONS = [
 export function AdminPuntosLimpios() {
   const puntos = usePuntosLimpios()
   const [detailPunto, setDetailPunto] = useState<PuntoLimpioAdmin | null>(null)
+  const [mapaAbierto, setMapaAbierto] = useState(false)
   const isEditing = Boolean(puntos.editing) || puntos.isCreating
 
   const detailTipoIndex = detailPunto
@@ -564,14 +565,17 @@ export function AdminPuntosLimpios() {
               value={puntos.altura} disabled={puntos.saving}
               slotProps={{ htmlInput: { inputMode: 'numeric', pattern: '[0-9]*' } }}
               onChange={(event) => puntos.actualizarDireccion(puntos.calle, event.target.value)}
-              onBlur={() => void puntos.buscarDireccion()} />
-            {puntos.mostrarMapa && puntos.calle.trim() && /^\d+$/.test(puntos.altura) && <div className="admin-points-form-full">
-              <p>Marcá la ubicación en el mapa. Podés arrastrar el punto para ajustarlo.</p>
-              <Suspense fallback={<p>Cargando mapa…</p>}>
-                <MapaUbicacionPunto ubicacion={puntos.ubicacion} onChange={puntos.setUbicacion}
-                  icono={formTipo?.logo ? puntoLimpioIconSrc(formTipo.logo, formTipo.colorFondo) : undefined} />
-              </Suspense>
-            </div>}
+            />
+            <div className="admin-points-form-full">
+              <Button variant="outlined" color="success" startIcon={<LocationOnIcon />}
+                disabled={!puntos.calle.trim() || !/^\d+$/.test(puntos.altura) || puntos.saving}
+                onClick={() => {
+                  setMapaAbierto(true)
+                  if (!puntos.ubicacion) void puntos.buscarDireccion()
+                }}>
+                Ver mapa
+              </Button>
+            </div>
           </form>
         </DialogContent>
         <DialogActions>
@@ -596,6 +600,21 @@ export function AdminPuntosLimpios() {
                 ? 'Guardar cambios'
                 : 'Agregar punto limpio'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={mapaAbierto && isEditing} onClose={() => setMapaAbierto(false)}
+        fullWidth maxWidth="sm" aria-labelledby="admin-points-map-title">
+        <DialogTitle id="admin-points-map-title">Ubicación del punto limpio</DialogTitle>
+        <DialogContent>
+          <p>Marcá la ubicación en el mapa. Podés arrastrar el punto para ajustarlo.</p>
+          <Suspense fallback={<p>Cargando mapa…</p>}>
+            <MapaUbicacionPunto ubicacion={puntos.ubicacion} onChange={puntos.setUbicacion}
+              icono={formTipo?.logo ? puntoLimpioIconSrc(formTipo.logo, formTipo.colorFondo) : undefined} />
+          </Suspense>
+        </DialogContent>
+        <DialogActions>
+          <Button color="success" variant="contained" onClick={() => setMapaAbierto(false)}>Listo</Button>
         </DialogActions>
       </Dialog>
 
