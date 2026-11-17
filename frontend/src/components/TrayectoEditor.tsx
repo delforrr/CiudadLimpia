@@ -52,7 +52,7 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
             onDescartarPin={pin ? editor.descartarPin : undefined}
             onEditarPunto={editandoRecorrido && !guardando && !pin ? (indice) => {
               mostrarInicioOpciones();
-              void editor.editarPunto(borrador.puntos[indice], false);
+              void editor.editarPunto(borrador.puntos[indice]);
             } : undefined}
             pin={pin} onMarcar={guardando || !editandoRecorrido ? undefined : (posicion) => {
               if (!pin) mostrarInicioOpciones();
