@@ -546,28 +546,6 @@ export function AdminPuntosLimpios() {
               </FormControl>
             )}
 
-            {formTipo && (
-              <div className="admin-points-form-full admin-points-form-materials">
-                <span className="admin-points-form-materials-label">
-                  Materiales del tipo
-                </span>
-                <div className="admin-points-materials">
-                  {formTipo.materiales.map((material) => (
-                    <Chip
-                      key={material}
-                      size="small"
-                      label={material}
-                      className="admin-points-material"
-                    />
-                  ))}
-                </div>
-                <small>
-                  Se asignan automáticamente según el tipo. Podés administrarlos
-                  desde “Tipos de Puntos Limpios”.
-                </small>
-              </div>
-            )}
-
             <TextField
               label="Calle"
               required
