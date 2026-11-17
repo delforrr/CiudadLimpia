@@ -6,6 +6,8 @@
   border: 1px solid #cbded0;
   border-radius: 12px;
   background: #edf3ee;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .admin-points-new-pin .teardrop-pin-body {

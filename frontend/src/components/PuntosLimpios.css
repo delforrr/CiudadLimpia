@@ -124,9 +124,19 @@
 
 .leaflet-card-canvas {
   width: 100% !important;
-  height: 200px !important;
-  max-height: 210px !important;
+  height: 290px !important;
   display: block;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.mapa-flecha,
+.mapa-flecha-abierta {
+  transition: transform 0.2s ease;
+}
+
+.mapa-flecha-abierta {
+  transform: rotate(180deg);
 }
 
 /* LEYENDA Y FILTROS INTERACTIVOS FIJOS SIN SCROLL */
@@ -320,7 +330,7 @@
 .modern-leaflet-popup .leaflet-popup-content {
   margin: 0 !important;
   line-height: 1.4;
-  width: 255px !important;
+  width: min(255px, calc(100vw - 100px)) !important;
 }
 
 /* Punta/flecha inferior con bordecito blanco */
@@ -368,10 +378,10 @@
 
 /* Cabecera limpia SIN bloque de color superior */
 .modern-popup-header-clean {
-  padding: 12px 14px 4px;
+  padding: 10px 38px 2px 12px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   background-color: #ffffff;
 }
@@ -425,11 +435,18 @@
 
 /* Cuerpo del Popup */
 .modern-popup-body {
-  padding: 4px 14px 14px;
+  padding: 4px 12px 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   background-color: #ffffff;
+}
+
+.modern-leaflet-popup .modern-popup-body p {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .modern-popup-title {

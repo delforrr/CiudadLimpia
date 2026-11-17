@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { PUNTOS_DATA } from '../utils/puntosLimpiosMapa'
+import { useMapaPuntosLimpios } from '../hooks/useMapaPuntosLimpios'
 import { usePuntosLimpiosMapIcons } from '../hooks/usePuntosLimpiosMapIcons'
 import './PuntosLimpios.css'
 import './MapaUbicacionPunto.css'
@@ -15,6 +15,7 @@ export function MapaUbicacionPunto({ ubicacion, onChange, icono, bloqueado = fal
   bloqueado?: boolean
 }) {
   const iconos = usePuntosLimpiosMapIcons()
+  const { puntos } = useMapaPuntosLimpios()
   const contenedor = useRef<HTMLDivElement>(null)
   const mapa = useRef<L.Map | null>(null)
   const marcador = useRef<L.Marker | null>(null)
@@ -44,17 +45,17 @@ export function MapaUbicacionPunto({ ubicacion, onChange, icono, bloqueado = fal
   useEffect(() => {
     if (!mapa.current) return
     const capa = L.layerGroup().addTo(mapa.current)
-    PUNTOS_DATA.forEach((punto) => {
+    puntos.forEach((punto) => {
       const icon = L.divIcon({
         className: 'custom-teardrop-wrapper',
-        html: `<div class="teardrop-pin-container"><div class="teardrop-pin-body"><img src="${iconos[punto.tipo]}" alt="" class="teardrop-icon-white" /></div><div class="teardrop-shadow"></div></div>`,
+        html: `<div class="teardrop-pin-container"><div class="teardrop-pin-body"><img src="${punto.tipo.icono}" alt="" class="teardrop-icon-white" /></div><div class="teardrop-shadow"></div></div>`,
         iconSize: [36, 48], iconAnchor: [18, 46],
       })
       L.marker([punto.lat, punto.lng], { icon, title: punto.nombre })
         .bindTooltip(punto.nombre).addTo(capa)
     })
     return () => { capa.remove() }
-  }, [iconos])
+  }, [puntos])
 
   useEffect(() => {
     const instancia = mapa.current

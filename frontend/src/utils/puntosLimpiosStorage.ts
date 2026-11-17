@@ -139,7 +139,7 @@ export function loadTipos(): TipoPuntoLimpio[] {
             return itemResult
           })
           .filter((tipo): tipo is TipoPuntoLimpio => tipo !== null)
-        if (tipos.length > 0) return tipos
+        return tipos
       }
     }
 
@@ -170,7 +170,7 @@ export function loadPuntos(tipos: TipoPuntoLimpio[]): PuntoLimpioAdmin[] {
     const raw = localStorage.getItem(PUNTOS_STORAGE_KEY)
     if (!raw) return SEED_PUNTOS
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed) || parsed.length === 0) return SEED_PUNTOS
+    if (!Array.isArray(parsed)) return SEED_PUNTOS
 
     const ids = new Set(tipos.map((tipo) => tipo.id))
     const fallbackId = tipos[0]?.id ?? 'PUNTO_LIMPIO'

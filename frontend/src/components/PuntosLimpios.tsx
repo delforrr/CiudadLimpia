@@ -1,12 +1,13 @@
-import { PUNTOS_DATA } from '../utils/puntosLimpiosMapa';
 import React, { useState, useEffect, useRef } from 'react';
+import { Button, Collapse } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import fotoPunto1 from '../assets/punto-limpio-1.jpg';
 import fotoPunto2 from '../assets/punto-limpio-2.jpg';
 import fotoPunto3 from '../assets/punto-limpio-3.jpg';
 import figuraPuntosLimpios from '../assets/figura-puntos-limpios.png';
-import { usePuntosLimpiosMapIcons } from '../hooks/usePuntosLimpiosMapIcons';
+import { useMapaPuntosLimpios } from '../hooks/useMapaPuntosLimpios';
 import './PuntosLimpios.css';
 
 export type TipoPunto = 'punto-limpio' | 'botellero' | 'botellero-latero';
@@ -23,30 +24,6 @@ export interface PuntoLimpio {
 
 export type TipoFiltro = 'todos' | TipoPunto;
 
-const CATEGORIAS_INFO: Record<
-  TipoPunto,
-  { label: string; singularLabel: string; pinClass: string; headerClass: string }
-> = {
-  'punto-limpio': {
-    label: 'Puntos Limpios',
-    singularLabel: 'Punto Limpio',
-    pinClass: 'pin-punto-limpio',
-    headerClass: 'header--punto-limpio',
-  },
-  'botellero': {
-    label: 'Botelleros',
-    singularLabel: 'Botelleros',
-    pinClass: 'pin-botellero',
-    headerClass: 'header--botellero',
-  },
-  'botellero-latero': {
-    label: 'Botelleros y lateros',
-    singularLabel: 'Botelleros y Lateros',
-    pinClass: 'pin-botellero-latero',
-    headerClass: 'header--botellero-latero',
-  },
-};
-
 const FOTOS_CARRUSEL = [
   { id: '1', src: fotoPunto1, alt: 'Punto Limpio - Módulo de separación y botellero' },
   { id: '2', src: fotoPunto2, alt: 'Punto Limpio - Supermercado con contenedores de reciclaje' },
@@ -54,19 +31,17 @@ const FOTOS_CARRUSEL = [
 ];
 
 export const PuntosLimpios: React.FC = () => {
-  const categoryIcons = usePuntosLimpiosMapIcons();
+  const { puntos, tipos } = useMapaPuntosLimpios();
   const [fotoActiva, setFotoActiva] = useState(0);
-  const [filtroActivo, setFiltroActivo] = useState<TipoFiltro>('todos');
+  const [filtroActivo, setFiltroActivo] = useState<string>('todos');
   const [mapReady, setMapReady] = useState(false);
+  const [mapaAbierto, setMapaAbierto] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
   // Conteo de ubicaciones por categoría
-  const countPuntosLimpios = PUNTOS_DATA.filter((p) => p.tipo === 'punto-limpio').length;
-  const countBotelleros = PUNTOS_DATA.filter((p) => p.tipo === 'botellero').length;
-  const countBotellerosLateros = PUNTOS_DATA.filter((p) => p.tipo === 'botellero-latero').length;
 
   // Rotación automática de fotos cada 3 segundos
   useEffect(() => {
@@ -143,81 +118,45 @@ export const PuntosLimpios: React.FC = () => {
     if (!map || !markersLayer || !mapReady) return;
 
     const puntosAMostrar = filtroActivo === 'todos'
-      ? PUNTOS_DATA
-      : PUNTOS_DATA.filter((p) => p.tipo === filtroActivo);
+      ? puntos
+      : puntos.filter((punto) => punto.tipo.id === filtroActivo);
 
     markersLayer.clearLayers();
 
-    // Cada pin comparte el SVG elegido en administración, con su fondo de color.
-    const createMarkerIcon = (tipo: TipoPunto) => {
-      const config = CATEGORIAS_INFO[tipo];
-
-      return L.divIcon({
-        className: 'custom-teardrop-wrapper',
-        html: `
-          <div class="teardrop-pin-container">
-            <div class="teardrop-pin-body">
-              <img src="${categoryIcons[tipo]}" alt="${config.singularLabel}" class="teardrop-icon-white" />
-            </div>
-            <div class="teardrop-shadow"></div>
-          </div>
-        `,
-        iconSize: [36, 48],
-        iconAnchor: [18, 46],
-        popupAnchor: [0, -44],
-      });
-    };
-
     puntosAMostrar.forEach((punto) => {
-      const config = CATEGORIAS_INFO[punto.tipo];
-      const marker = L.marker([punto.lat, punto.lng], {
-        icon: createMarkerIcon(punto.tipo),
-        title: punto.nombre,
+      const icon = L.divIcon({
+        className: 'custom-teardrop-wrapper',
+        html: `<div class="teardrop-pin-container"><div class="teardrop-pin-body"><img src="${punto.tipo.icono}" alt="" class="teardrop-icon-white" /></div><div class="teardrop-shadow"></div></div>`,
+        iconSize: [36, 48], iconAnchor: [18, 46], popupAnchor: [0, -44],
       });
-
-      // La ficha conserva el mismo ícono y fondo que el marcador.
-      const popupHtml = `
-        <div class="modern-popup-card">
-          <div class="modern-popup-header-clean">
-            <div class="popup-categoria-item">
-              <img src="${categoryIcons[punto.tipo]}" alt="${config.singularLabel}" class="popup-categoria-logo" />
-              <span class="popup-categoria-texto cat-texto--${punto.tipo}">${config.singularLabel}</span>
-            </div>
-          </div>
-
-          <!-- Cuerpo del popup con nombre, dirección y materiales -->
-          <div class="modern-popup-body">
-            <h4 class="modern-popup-title">${punto.nombre}</h4>
-
-            <div class="modern-popup-item">
-              <svg class="modern-popup-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                <circle cx="12" cy="9" r="2.5"/>
-              </svg>
-              <span class="modern-popup-direccion">${punto.direccion}</span>
-            </div>
-
-            <div class="modern-popup-materiales">
-              <span class="materiales-titulo">Recibe:</span>
-              <div class="materiales-pills">
-                ${punto.materiales
-                  .map((m) => `<span class="mat-pill">✓ ${m}</span>`)
-                  .join('')}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      marker.bindPopup(popupHtml, {
-        className: 'modern-leaflet-popup',
-        maxWidth: 270,
-        closeButton: true,
-      });
-
-      marker.addTo(markersLayer);
+      const contenido = document.createElement('div');
+      contenido.className = 'modern-popup-card';
+      const encabezado = document.createElement('div');
+      encabezado.className = 'modern-popup-header-clean';
+      const iconoTipo = document.createElement('img');
+      iconoTipo.className = 'popup-categoria-logo';
+      iconoTipo.src = punto.tipo.icono;
+      iconoTipo.alt = '';
+      const nombreTipo = document.createElement('span');
+      nombreTipo.className = 'popup-categoria-texto';
+      nombreTipo.textContent = punto.tipo.nombre;
+      encabezado.append(iconoTipo, nombreTipo);
+      const cuerpo = document.createElement('div');
+      cuerpo.className = 'modern-popup-body';
+      const titulo = document.createElement('h4');
+      titulo.className = 'modern-popup-title';
+      titulo.textContent = punto.nombre;
+      const direccion = document.createElement('p');
+      direccion.className = 'modern-popup-direccion';
+      direccion.textContent = punto.direccion;
+      const materiales = document.createElement('p');
+      materiales.textContent = `Recibe: ${punto.tipo.materiales.join(', ')}`;
+      cuerpo.append(titulo, direccion, materiales);
+      contenido.append(encabezado, cuerpo);
+      L.marker([punto.lat, punto.lng], { icon, title: punto.nombre })
+        .bindPopup(contenido, { className: 'modern-leaflet-popup', maxWidth: 260, maxHeight: 180, autoPanPadding: [12, 12] })
+        .addTo(markersLayer);
     });
-
     // Ajuste de cámara según el filtro
     if (filtroActivo !== 'todos' && puntosAMostrar.length > 0) {
       const bounds = L.latLngBounds(puntosAMostrar.map((p) => [p.lat, p.lng]));
@@ -225,7 +164,7 @@ export const PuntosLimpios: React.FC = () => {
     } else if (filtroActivo === 'todos') {
       map.flyTo([-35.973, -62.734], 13, { duration: 0.6 });
     }
-  }, [mapReady, filtroActivo, categoryIcons]);
+  }, [mapReady, filtroActivo, puntos]);
 
   return (
     <div className="puntos-page-container">
@@ -252,6 +191,11 @@ export const PuntosLimpios: React.FC = () => {
             </span>
             <h3 className="mapa-tarjeta-titulo">Puntos Limpios</h3>
           </div>
+          <Button color="success" size="small" aria-expanded={mapaAbierto}
+            aria-controls="mapa-puntos-desplegable" onClick={() => setMapaAbierto((abierto) => !abierto)}
+            endIcon={<ExpandMoreIcon className={mapaAbierto ? 'mapa-flecha-abierta' : 'mapa-flecha'} />}>
+            {mapaAbierto ? 'Ocultar mapa' : 'Ver mapa'}
+          </Button>
           {filtroActivo !== 'todos' && (
             <button
               type="button"
@@ -264,6 +208,7 @@ export const PuntosLimpios: React.FC = () => {
           )}
         </div>
 
+        <Collapse in={mapaAbierto} id="mapa-puntos-desplegable" onEntered={() => mapRef.current?.invalidateSize()}>
         <div className="mapa-tarjeta-body">
           <div
             ref={mapContainerRef}
@@ -273,72 +218,21 @@ export const PuntosLimpios: React.FC = () => {
 
         {/* Leyenda y Filtros interactivos: Tocar para filtrar */}
         <div className="mapa-tarjeta-leyenda">
-          <button
-            type="button"
-            className={`leyenda-filtro-btn ${
-              filtroActivo === 'punto-limpio'
-                ? 'activo-punto-limpio'
-                : filtroActivo !== 'todos'
-                ? 'inactivo'
-                : ''
-            }`}
-            onClick={() =>
-              setFiltroActivo((prev) => (prev === 'punto-limpio' ? 'todos' : 'punto-limpio'))
-            }
-            title="Tocar para filtrar por Puntos Limpios"
-          >
-            <div className="leyenda-pin-badge">
-              <img src={categoryIcons['punto-limpio']} alt="Puntos Limpios" className="leyenda-icon-white" />
-            </div>
-            <span className="leyenda-btn-texto">
-              Puntos Limpios <span className="leyenda-btn-badge">({countPuntosLimpios})</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`leyenda-filtro-btn ${
-              filtroActivo === 'botellero'
-                ? 'activo-botellero'
-                : filtroActivo !== 'todos'
-                ? 'inactivo'
-                : ''
-            }`}
-            onClick={() =>
-              setFiltroActivo((prev) => (prev === 'botellero' ? 'todos' : 'botellero'))
-            }
-            title="Tocar para filtrar por Botelleros"
-          >
-            <div className="leyenda-pin-badge">
-              <img src={categoryIcons.botellero} alt="Botelleros" className="leyenda-icon-white" />
-            </div>
-            <span className="leyenda-btn-texto">
-              Botelleros <span className="leyenda-btn-badge">({countBotelleros})</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`leyenda-filtro-btn ${
-              filtroActivo === 'botellero-latero'
-                ? 'activo-botellero-latero'
-                : filtroActivo !== 'todos'
-                ? 'inactivo'
-                : ''
-            }`}
-            onClick={() =>
-              setFiltroActivo((prev) => (prev === 'botellero-latero' ? 'todos' : 'botellero-latero'))
-            }
-            title="Tocar para filtrar por Botelleros y lateros"
-          >
-            <div className="leyenda-pin-badge">
-              <img src={categoryIcons['botellero-latero']} alt="Botelleros y lateros" className="leyenda-icon-white" />
-            </div>
-            <span className="leyenda-btn-texto">
-              Botelleros y lateros <span className="leyenda-btn-badge">({countBotellerosLateros})</span>
-            </span>
-          </button>
+          {tipos.map((tipo) => (
+            <button key={tipo.id} type="button"
+              className={`leyenda-filtro-btn ${filtroActivo !== 'todos' && filtroActivo !== tipo.id ? 'inactivo' : ''}`}
+              aria-pressed={filtroActivo === tipo.id}
+              onClick={() => setFiltroActivo((actual) => actual === tipo.id ? 'todos' : tipo.id)}>
+              <div className="leyenda-pin-badge">
+                <img src={tipo.icono} alt="" className="leyenda-icon-white" />
+              </div>
+              <span className="leyenda-btn-texto">
+                {tipo.nombre} <span className="leyenda-btn-badge">({puntos.filter((punto) => punto.tipo.id === tipo.id).length})</span>
+              </span>
+            </button>
+          ))}
         </div>
+        </Collapse>
       </section>
 
       {/* Sección informativa sobre qué son los Puntos Limpios */}
