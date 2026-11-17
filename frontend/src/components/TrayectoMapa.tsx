@@ -8,9 +8,11 @@ type Props = {
   linea: LineaTrayecto;
   sugerida?: LineaTrayecto;
   pin?: Coordenadas | null;
+  indicePin?: number;
   centrarEn?: Coordenadas | null;
   onMarcar?: (posicion: Coordenadas) => void;
   onDescartarPin?: () => void;
+  onEditarPunto?: (indice: number) => void;
 };
 
 type Mapa = { L: typeof import('leaflet'); mapa: LeafletMap; capa: LayerGroup };
@@ -21,14 +23,16 @@ const zoomMaximo = 18;
 const posiciones = (linea: LineaTrayecto): [number, number][] =>
   linea.coordinates.map(([long, lat]) => [lat, long]);
 
-export function TrayectoMapa({ puntos, linea, sugerida, pin, centrarEn, onMarcar, onDescartarPin }: Props) {
+export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const [instancia, setInstancia] = useState<Mapa | null>(null);
   const [error, setError] = useState(false);
   const interactivo = Boolean(onMarcar);
   const descartable = Boolean(onDescartarPin);
+  const puedeEditarPunto = Boolean(onEditarPunto);
   const marcar = useEffectEvent((lat: number, long: number) => onMarcar?.({ lat, long }));
   const descartarPin = useEffectEvent(() => onDescartarPin?.());
+  const editarPunto = useEffectEvent((indice: number) => onEditarPunto?.(indice));
   const encuadrar = useEffectEvent((mapa: LeafletMap, L: Mapa['L']) => {
     const limites = L.latLngBounds(limitesTrenqueLauquen);
     puntos.forEach(({ lat, long }) => limites.extend([lat, long]));
@@ -88,23 +92,28 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, centrarEn, onMarcar
     if (linea.coordinates.length >= 2) L.polyline(posiciones(linea), { color: '#166044', weight: 5, interactive: false }).addTo(capa);
     if (sugerida) L.polyline(posiciones(sugerida), { color: '#185da8', weight: 5, dashArray: '8 7', interactive: false }).addTo(capa);
     puntos.forEach(({ lat, long }, indice) => {
+      if (pin && indice === indicePin) return;
       const numero = String(indice + 1);
-      L.marker([lat, long], {
+      const marcador = L.marker([lat, long], {
         icon: L.divIcon({ className: 'trayecto-marcador', html: numero, iconSize: [30, 30] }),
-        title: `Punto ${numero}`, keyboard: false,
-      }).addTo(capa);
+        title: puedeEditarPunto ? `Mover punto ${numero}` : `Punto ${numero}`,
+        keyboard: puedeEditarPunto,
+      });
+      if (puedeEditarPunto) marcador.on('click', () => editarPunto(indice));
+      marcador.addTo(capa);
     });
     if (pin) {
       L.marker([pin.lat, pin.long], {
-        icon: L.divIcon({ className: 'trayecto-marcador trayecto-marcador-pendiente', html: '+', iconSize: [32, 32] }),
-        title: descartable ? 'Pin por confirmar. Tocá para descartar.' : 'Pin por confirmar',
+        icon: L.divIcon({ className: 'trayecto-marcador trayecto-marcador-pendiente',
+          html: indicePin === undefined ? '+' : String(indicePin + 1), iconSize: [32, 32] }),
+        title: descartable ? 'Pin por confirmar. Tocá para deshacer.' : 'Pin por confirmar',
         draggable: interactivo,
       }).on('dragend', ({ target }) => {
         const { lat, lng } = instancia.mapa.wrapLatLng((target as import('leaflet').Marker).getLatLng());
         marcar(lat, lng);
       }).on('click', descartarPin).addTo(capa);
     }
-  }, [instancia, puntos, linea, sugerida, pin, interactivo, descartable]);
+  }, [instancia, puntos, linea, sugerida, pin, indicePin, interactivo, descartable, puedeEditarPunto]);
 
   useEffect(() => {
     if (instancia && centrarEn) {

@@ -33,6 +33,7 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
   const { borrador, pin, inversa, busqueda, sugerencia, guardando } = editor;
   const mostrarDatos = !borrador.id || !editandoRecorrido;
   const revisionPendiente = Boolean(pin || sugerencia.cargando || sugerencia.resultado);
+  const indicePin = pin?.origen ? borrador.puntos.indexOf(pin.origen) : -1;
 
   const mostrarInicioOpciones = () => opciones.current?.scrollTo({ top: 0 });
 
@@ -47,16 +48,21 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
         <div className="trayectos-mapa-editor">
           <TrayectoMapa puntos={borrador.puntos} linea={editor.linea} sugerida={sugerencia.resultado?.geometria}
             centrarEn={editor.centrarEn}
-            onDescartarPin={pin && !pin.origen ? editor.descartarPin : undefined}
+            indicePin={indicePin >= 0 ? indicePin : undefined}
+            onDescartarPin={pin ? editor.descartarPin : undefined}
+            onEditarPunto={editandoRecorrido && !guardando && !pin ? (indice) => {
+              mostrarInicioOpciones();
+              void editor.editarPunto(borrador.puntos[indice], false);
+            } : undefined}
             pin={pin} onMarcar={guardando || !editandoRecorrido ? undefined : (posicion) => {
               if (!pin) mostrarInicioOpciones();
               void editor.marcarEnMapa(posicion);
             }} />
           <div className="trayectos-mapa-pie">
             <p className={sugerencia.resultado && !pin ? 'trayectos-leyenda' : 'trayectos-ayuda'}>
-              {pin ? (pin.origen ? 'Arrastrá el pin azul para mover el punto.' : 'Arrastrá el pin para moverlo o tocalo de nuevo para descartarlo.')
+              {pin ? 'Arrastrá el pin azul o tocalo de nuevo para deshacer.'
                 : sugerencia.resultado ? 'Azul punteado · recorrido sugerido'
-                  : editandoRecorrido ? 'Tocá el mapa para marcar un punto.' : 'Usá «Editar recorrido» para cambiar los puntos.'}
+                  : editandoRecorrido ? 'Tocá un punto para moverlo o el mapa para agregar uno.' : 'Usá «Editar recorrido» para cambiar los puntos.'}
             </p>
             {(pin || sugerencia.resultado) && (
               <Button className="trayectos-revisar-movil" color="success" size="small"

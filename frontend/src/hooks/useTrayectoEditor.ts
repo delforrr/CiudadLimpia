@@ -48,9 +48,9 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
   };
 
   const marcarEnMapa = (posicion: Coordenadas) => revisarPin({ ...pin, ...posicion });
-  const editarPunto = (punto: PuntoEditor) => {
+  const editarPunto = (punto: PuntoEditor, centrar = true) => {
     const posicion = { lat: punto.lat, long: punto.long };
-    setCentrarEn(posicion);
+    if (centrar) setCentrarEn(posicion);
     return revisarPin({ ...posicion, origen: punto, referencia: punto.referencia });
   };
 
