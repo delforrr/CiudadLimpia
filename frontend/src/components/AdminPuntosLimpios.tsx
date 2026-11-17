@@ -61,6 +61,7 @@ export function AdminPuntosLimpios() {
   const puntos = usePuntosLimpios()
   const [detailPunto, setDetailPunto] = useState<PuntoLimpioAdmin | null>(null)
   const [mapaAbierto, setMapaAbierto] = useState(false)
+  const [ubicacionConfirmada, setUbicacionConfirmada] = useState(false)
   const isEditing = Boolean(puntos.editing) || puntos.isCreating
 
   const detailTipoIndex = detailPunto
@@ -178,7 +179,7 @@ export function AdminPuntosLimpios() {
             color="success"
             className="admin-points-add"
             startIcon={<AddIcon />}
-            onClick={puntos.openCreate}
+            onClick={() => { setUbicacionConfirmada(false); puntos.openCreate() }}
           >
             Agregar punto limpio
           </Button>
@@ -217,7 +218,7 @@ export function AdminPuntosLimpios() {
                 : 'Probá con otra búsqueda o cambiá los filtros.'}
             </p>
             {puntos.puntos.length === 0 ? (
-              <Button variant="contained" color="success" onClick={puntos.openCreate}>
+              <Button variant="contained" color="success" onClick={() => { setUbicacionConfirmada(false); puntos.openCreate() }}>
                 Agregar punto limpio
               </Button>
             ) : (
@@ -332,7 +333,7 @@ export function AdminPuntosLimpios() {
                             <IconButton
                               size="small"
                               aria-label={`Editar ${punto.nombre}`}
-                              onClick={() => puntos.startEdit(punto)}
+                              onClick={() => { setUbicacionConfirmada(false); puntos.startEdit(punto) }}
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
@@ -436,6 +437,7 @@ export function AdminPuntosLimpios() {
             onClick={() => {
               if (detailPunto) {
                 setDetailPunto(null)
+                setUbicacionConfirmada(false)
                 puntos.startEdit(detailPunto)
               }
             }}
@@ -558,13 +560,13 @@ export function AdminPuntosLimpios() {
               helperText={puntos.fieldErrors.direccion?.[0]}
               value={puntos.calle}
               onChange={(event) =>
-                puntos.actualizarDireccion(event.target.value, puntos.altura)
+                { setUbicacionConfirmada(false); puntos.actualizarDireccion(event.target.value, puntos.altura) }
               }
             />
             <TextField label="Altura" required color="success" placeholder="1200"
               value={puntos.altura} disabled={puntos.saving}
               slotProps={{ htmlInput: { inputMode: 'numeric', pattern: '[0-9]*' } }}
-              onChange={(event) => puntos.actualizarDireccion(puntos.calle, event.target.value)}
+              onChange={(event) => { setUbicacionConfirmada(false); puntos.actualizarDireccion(puntos.calle, event.target.value) }}
             />
             <div className="admin-points-form-full">
               <Button variant="outlined" color="success" startIcon={<LocationOnIcon />}
@@ -607,14 +609,16 @@ export function AdminPuntosLimpios() {
         fullWidth maxWidth="sm" aria-labelledby="admin-points-map-title">
         <DialogTitle id="admin-points-map-title">Ubicación del punto limpio</DialogTitle>
         <DialogContent>
-          <p>Marcá la ubicación en el mapa. Podés arrastrar el punto para ajustarlo.</p>
+          <p>{ubicacionConfirmada && puntos.ubicacion ? 'Ubicación confirmada.' : 'Marcá la ubicación en el mapa. Podés arrastrar el punto para ajustarlo.'}</p>
           <Suspense fallback={<p>Cargando mapa…</p>}>
             <MapaUbicacionPunto ubicacion={puntos.ubicacion} onChange={puntos.setUbicacion}
+              bloqueado={ubicacionConfirmada && Boolean(puntos.ubicacion)}
               icono={formTipo?.logo ? puntoLimpioIconSrc(formTipo.logo, formTipo.colorFondo) : undefined} />
           </Suspense>
         </DialogContent>
         <DialogActions>
-          <Button color="success" variant="contained" onClick={() => setMapaAbierto(false)}>Listo</Button>
+          <Button color="success" variant="contained" disabled={!puntos.ubicacion}
+            onClick={() => { setUbicacionConfirmada(true); setMapaAbierto(false) }}>Listo</Button>
         </DialogActions>
       </Dialog>
 
