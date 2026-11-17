@@ -13,6 +13,8 @@ type Props = {
   onMarcar?: (posicion: Coordenadas) => void;
   onDescartarPin?: () => void;
   onEditarPunto?: (indice: number) => void;
+  zoomInicial?: number;
+  zoomFijo?: boolean;
 };
 
 type Mapa = { L: typeof import('leaflet'); mapa: LeafletMap; capa: LayerGroup };
@@ -23,7 +25,7 @@ const zoomMaximo = 18;
 const posiciones = (linea: LineaTrayecto): [number, number][] =>
   linea.coordinates.map(([long, lat]) => [lat, long]);
 
-export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto }: Props) {
+export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto, zoomInicial = 14, zoomFijo = false }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const vistaAnterior = useRef<{ centro: LatLngTuple; zoom: number } | null>(null);
   const [instancia, setInstancia] = useState<Mapa | null>(null);
@@ -31,6 +33,8 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
   const interactivo = Boolean(onMarcar);
   const descartable = Boolean(onDescartarPin);
   const puedeEditarPunto = Boolean(onEditarPunto);
+  const zoomMapa = useEffectEvent(() => zoomInicial);
+  const mapaFijo = useEffectEvent(() => zoomFijo);
   const ajustandoPin = Boolean(pin);
   const marcar = useEffectEvent((lat: number, long: number) => onMarcar?.({ lat, long }));
   const descartarPin = useEffectEvent(() => onDescartarPin?.());
@@ -44,7 +48,8 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
       const recorrido = L.latLngBounds(posiciones(linea));
       limites.extend(recorrido);
       mapa.setMaxBounds(limites);
-      mapa.fitBounds(recorrido, { padding: [24, 24], maxZoom: 17, animate: false });
+      if (mapaFijo()) mapa.setView(recorrido.getCenter(), zoomMapa(), { animate: false });
+      else mapa.fitBounds(recorrido, { padding: [24, 24], maxZoom: 17, animate: false });
     } else {
       mapa.setMaxBounds(limites);
     }
@@ -61,7 +66,8 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
       if (desmontado) return;
       const L = modulo.default ?? modulo;
       const mapaCreado = L.map(nodo, {
-        center: centro, zoom: 14, minZoom: zoomMinimo, maxZoom: zoomMaximo,
+        center: centro, zoom: zoomMapa(), minZoom: mapaFijo() ? zoomMapa() : zoomMinimo,
+        maxZoom: mapaFijo() ? zoomMapa() : zoomMaximo, zoomControl: !mapaFijo(),
         maxBoundsViscosity: 1, zoomAnimation: false, scrollWheelZoom: false, bounceAtZoomLimits: false,
       });
       mapa = mapaCreado;

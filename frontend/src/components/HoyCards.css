@@ -285,6 +285,10 @@
   background: #edf3ee;
 }
 
+.hoy-mapa .leaflet-tile-pane {
+  filter: saturate(0.75) contrast(0.95);
+}
+
 @keyframes fadeInTrayecto {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }

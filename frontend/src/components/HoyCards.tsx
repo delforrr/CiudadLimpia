@@ -104,7 +104,7 @@ export const HoyCards: React.FC = () => {
                   <span className="mapa-header-tag">Mapa de Trenque Lauquen</span>
                 </div>
                 <div className="hoy-mapa">
-                  <TrayectoMapa puntos={[]} linea={{ type: 'LineString', coordinates: [] }} />
+                  <TrayectoMapa puntos={[]} linea={{ type: 'LineString', coordinates: [] }} zoomInicial={17} zoomFijo />
                 </div>
               </div>
             )}
