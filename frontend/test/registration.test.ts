@@ -49,19 +49,10 @@ test('opens login separately without registration fields', () => {
   assert.doesNotMatch(html, /Repetir contraseña|Mis domicilios|Etiqueta/)
 })
 
-test('offers sign-in directly in the admin panel when there is no session', () => {
-  const html = render(false, null, true)
-  assert.match(html, /Ingresá con tu cuenta de administrador/)
-  assert.match(html, /Correo electrónico/)
-  assert.doesNotMatch(html, /Registrate|Accesos directos/)
-})
-
 test('only shows the admin panel for current administrators', () => {
   const user: User = { id: 'user-1', email: 'ana@example.com', role: 'USER', cliente: null }
-  const denied = render(false, user, true)
-  assert.match(denied, /Tu cuenta no tiene permisos para acceder al panel/)
-  assert.match(denied, /Cerrar sesión/)
-  assert.doesNotMatch(denied, /Accesos directos/)
+  assert.equal(render(false, null, true), '')
+  assert.equal(render(false, user, true), '')
   assert.match(render(false, { ...user, role: 'ADMIN' }, true), /Accesos directos/)
 })
 

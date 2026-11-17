@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ButtonBase, MenuItem, Select } from '@mui/material';
+import { Navigate } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CategoryIcon from '@mui/icons-material/Category';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -14,7 +15,6 @@ import { AdminCamiones } from '../components/AdminCamiones';
 import { AdminPuntosLimpios } from '../components/AdminPuntosLimpios';
 import { AdminTiposPuntosLimpios } from '../components/AdminTiposPuntosLimpios';
 import { AdminTrayectos } from '../components/AdminTrayectos';
-import Login from '../components/Login';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAdminTrayectos } from '../hooks/useAdminTrayectos';
 import type { User } from '../services/authService';
@@ -67,7 +67,7 @@ const NAVEGACION = [
 export function AdminPage() {
   const { user } = useAuthContext();
 
-  return user?.role === 'ADMIN' ? <AdminPanel user={user} /> : <Login administrativo />;
+  return user?.role === 'ADMIN' ? <AdminPanel user={user} /> : <Navigate to="/perfil" replace />;
 }
 
 function AdminPanel({ user }: { user: User }) {

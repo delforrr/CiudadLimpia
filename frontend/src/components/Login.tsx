@@ -18,17 +18,14 @@ import DomiciliosCard from './DomiciliosCard';
 import camionRecolector from '../assets/camion-recolector.png';
 import './Login.css';
 
-export default function Login({
-  initialRegister = false,
-  administrativo = false,
-}: { initialRegister?: boolean; administrativo?: boolean }) {
+export default function Login({ initialRegister = false }: { initialRegister?: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeatedPassword, setShowRepeatedPassword] = useState(false);
   const { isAuthenticated, user, onAuthenticated, checking, logout, logoutError, loggingOut } = useAuthContext();
   const navigate = useNavigate();
   const { form, register, updateField, handleSubmit, error, pending, fieldErrors, validateField } = useAuthForm((authenticatedUser) => {
     onAuthenticated(authenticatedUser);
-    if (!administrativo) navigate('/hoy', { replace: true });
+    navigate(authenticatedUser.role === 'ADMIN' ? '/admin' : '/hoy', { replace: true });
   }, initialRegister);
 
   const {
@@ -39,22 +36,6 @@ export default function Login({
   } = useProfileForm(user, onAuthenticated);
 
   if (checking) return <p role="status">Comprobando sesión…</p>;
-
-  if (administrativo && user) {
-    return (
-      <div className="login-container">
-        <div className="login-card">
-          <Alert severity="warning">Tu cuenta no tiene permisos para acceder al panel.</Alert>
-          {logoutError && <Alert severity="error">{logoutError}</Alert>}
-          <footer className="login-footer">
-            <Button className="login-toggle-button" disabled={loggingOut} onClick={logout}>
-              {loggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
-            </Button>
-          </footer>
-        </div>
-      </div>
-    );
-  }
 
   // Si ya tiene sesión iniciada, mostrar su perfil o formulario de edición
   if (isAuthenticated) {
@@ -322,16 +303,14 @@ export default function Login({
       <div className={`login-card ${register ? 'register-card' : ''}`}>
         <header className="login-header">
           <div className="login-title-row">
-            <h2>{administrativo ? 'Panel de administración' : register ? 'Crear cuenta' : 'Iniciar Sesión'}</h2>
+            <h2>{register ? 'Crear cuenta' : 'Iniciar Sesión'}</h2>
             <img
               src={camionRecolector}
               alt="Camión recolector"
               className="login-truck-icon"
             />
           </div>
-          <p>{administrativo ? 'Ingresá con tu cuenta de administrador' : register
-            ? 'Completá tus datos y al menos un domicilio'
-            : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
+          <p>{register ? 'Completá tus datos y al menos un domicilio' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
         </header>
 
         <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
@@ -446,7 +425,7 @@ export default function Login({
           </Button>
         </form>
 
-        {!administrativo && <footer className="login-footer">
+        <footer className="login-footer">
           <span>{register ? '¿Ya tenés cuenta? ' : '¿No tenés cuenta? '}</span>
           <Button
             type="button"
@@ -456,7 +435,7 @@ export default function Login({
           >
             {register ? 'Iniciar sesión' : 'Registrate'}
           </Button>
-        </footer>}
+        </footer>
       </div>
     </div>
   );
