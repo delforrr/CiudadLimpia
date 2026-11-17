@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { createServer, type ViteDevServer } from 'vite'
 
 let server: ViteDevServer
-let AdminCamiones: ComponentType<{ onNavigateToTrayectos?: () => void }>
+let AdminCamiones: ComponentType
 
 before(async () => {
   server = await createServer({
@@ -23,15 +23,9 @@ before(async () => {
 after(async () => server?.close())
 
 test('renders the trucks module with class diagram fields, buttons and sample data', () => {
-  let navigated = false
   const html = renderToStaticMarkup(
-    createElement(MemoryRouter, null, createElement(AdminCamiones, {
-      onNavigateToTrayectos: () => {
-        navigated = true
-      },
-    })),
+    createElement(MemoryRouter, null, createElement(AdminCamiones)),
   )
-  assert.equal(navigated, false)
   assert.match(html, /Camiones totales/)
   assert.match(html, /Operativos/)
   assert.match(html, /En mantenimiento/)
