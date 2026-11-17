@@ -143,9 +143,9 @@
 .mapa-tarjeta-leyenda {
   scroll-margin-bottom: 90px;
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr 1.35fr;
-  gap: 4px;
-  padding: 8px 5px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 6px;
+  padding: 8px;
   background-color: #f7faf6;
   border-top: 1px solid #e2ede0;
   width: 100%;
@@ -157,8 +157,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 6px 3px;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 9px;
   background-color: #ffffff;
   border: 1.5px solid #d7e4d5;
   border-radius: 20px;
@@ -194,6 +195,11 @@
   filter: grayscale(35%);
 }
 
+.leyenda-filtro-btn[aria-pressed="true"] {
+  border-color: #1e6000;
+  background-color: #eaf5e6;
+}
+
 .leyenda-filtro-btn.activo-punto-limpio {
   background-color: #eaf5e6;
   border-color: #1E6000;
@@ -220,10 +226,11 @@
 
 .leyenda-btn-texto {
   font-weight: 700;
-  font-size: 0.63rem;
+  font-size: 0.72rem;
   letter-spacing: -0.015em;
-  white-space: nowrap;
-  line-height: 1.1;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
   display: inline-flex;
   align-items: baseline;
   gap: 2px;
