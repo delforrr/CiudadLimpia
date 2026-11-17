@@ -249,8 +249,8 @@ export function AdminCamiones({
   for (const { id, nombre } of catalogoTrayectos.values()) opcionesTrayectos.set(id, nombre)
   const idsAsignados = camionParaTrayectos?.trayectos.map(({ id }) => id) ?? []
   const filtroTrayectos = normalizarBusqueda(busquedaTrayectos)
-  const trayectosFiltrados = [...opcionesTrayectos].filter(([, nombre]) =>
-    normalizarBusqueda(nombre).includes(filtroTrayectos))
+  const trayectosFiltrados = [...opcionesTrayectos].filter(([id, nombre]) =>
+    filtroTrayectos ? normalizarBusqueda(nombre).includes(filtroTrayectos) : idsAsignados.includes(id))
 
   const abrirAsignacionTrayectos = (truck: Truck) => {
     setBusquedaTrayectos('')
@@ -859,7 +859,7 @@ export function AdminCamiones({
               </Alert>
             ) : cargandoTrayectos ? (
               <p role="status">Cargando trayectos…</p>
-            ) : opcionesTrayectos.size > 0 && trayectosFiltrados.length === 0 ? (
+            ) : filtroTrayectos && opcionesTrayectos.size > 0 && trayectosFiltrados.length === 0 ? (
               <p role="status">No encontramos trayectos con esa búsqueda.</p>
             ) : null}
             {trayectosFiltrados.length > 0 && (
