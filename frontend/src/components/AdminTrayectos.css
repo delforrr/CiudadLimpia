@@ -147,10 +147,8 @@
   margin-inline-start: auto;
 }
 
-.trayectos-panel .trayectos-nombre-recorrido {
-  padding-inline: 0.2rem;
-  color: var(--trayectos-verde);
-  font-weight: 700;
+.trayectos-nombre-movil {
+  display: none;
 }
 
 .trayectos-error-guardado {
@@ -458,6 +456,12 @@
 }
 
 @media (max-width: 900px) {
+  .trayectos-panel .trayectos-nombre-movil {
+    display: block;
+    font-size: 0.95rem;
+    overflow-wrap: anywhere;
+  }
+
   .trayectos-espacio-mapa {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -32,6 +32,7 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
   const [editandoRecorrido, setEditandoRecorrido] = useState(!inicial.id);
   const { borrador, pin, inversa, busqueda, sugerencia, guardando } = editor;
   const mostrarDatos = !borrador.id || !editandoRecorrido;
+  const nombreRecorrido = borrador.nombre.trim() || 'Trayecto sin nombre';
   const revisionPendiente = Boolean(pin || sugerencia.cargando || sugerencia.resultado);
   const indicePin = pin?.origen ? borrador.puntos.indexOf(pin.origen) : -1;
 
@@ -44,6 +45,9 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
         <ToggleButton value="mapa">Mapa</ToggleButton>
         <ToggleButton value="opciones">Opciones</ToggleButton>
       </ToggleButtonGroup>
+      {borrador.id && editandoRecorrido && panel === 'mapa' && (
+        <h3 className="trayectos-nombre-movil">{nombreRecorrido}</h3>
+      )}
       <div className="trayectos-espacio-mapa" data-panel={panel}>
         <div className="trayectos-mapa-editor">
           <TrayectoMapa puntos={borrador.puntos} linea={editor.linea} sugerida={sugerencia.resultado?.geometria}
@@ -81,7 +85,7 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
                 </IconButton>
               ) : <span className="trayectos-icono"><RouteOutlinedIcon /></span>}
               <div>
-                <h3>{borrador.id ? (editandoRecorrido ? 'Editar recorrido' : 'Editar trayecto') : 'Nuevo trayecto'}</h3>
+                <h3>{mostrarDatos ? (borrador.id ? 'Editar trayecto' : 'Nuevo trayecto') : nombreRecorrido}</h3>
                 {mostrarDatos && <p className="trayectos-localidad"><PlaceOutlinedIcon />Trenque Lauquen</p>}
               </div>
             </div>
@@ -93,9 +97,6 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
             </div>
             {editor.error && <Alert className="trayectos-error-guardado" severity="error">{editor.error}</Alert>}
           </div>
-          {borrador.id && editandoRecorrido && (
-            <p className="trayectos-nombre-recorrido">{borrador.nombre.trim() || 'Trayecto sin nombre'}</p>
-          )}
           {borrador.id && !editandoRecorrido && (
             <Button variant="outlined" color="success" startIcon={<RouteOutlinedIcon />}
               disabled={guardando || revisionPendiente} onClick={() => {
