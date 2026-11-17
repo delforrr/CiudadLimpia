@@ -2,6 +2,7 @@ import { useState, useMemo, type FormEvent } from 'react'
 import {
   Alert,
   Button,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -39,6 +40,7 @@ import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined
 import RouteIcon from '@mui/icons-material/Route'
 import SearchIcon from '@mui/icons-material/Search'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import type { Trayecto as TrayectoGuardado } from '../services/trayectosService'
 import './AdminCamiones.css'
 
 export type TruckStatus = 'OPERATIVO' | 'MANTENIMIENTO' | 'INACTIVO'
@@ -47,10 +49,6 @@ export type TruckStatus = 'OPERATIVO' | 'MANTENIMIENTO' | 'INACTIVO'
 export interface Trayecto {
   id: string
   name: string
-  zone: string
-  schedule: string
-  description: string
-  activeDays: string
 }
 
 // Modelo de Camion: asociado a Trayectos y Conductor (no a Zona directamente)
@@ -68,9 +66,14 @@ export interface Truck {
 
 export interface AdminCamionesProps {
   onNavigateToTrayectos?: (truck?: Truck) => void
+  trayectosDisponibles?: Pick<TrayectoGuardado, 'id' | 'nombre'>[]
+  cargandoTrayectos?: boolean
+  errorTrayectos?: string
+  recargarTrayectos?: () => void
 }
 
 const STORAGE_KEY = 'ciudad-limpia:camiones'
+const trayectosDeEjemplo = new Set(['tr-001', 'tr-002', 'tr-003', 'tr-004'])
 
 const INITIAL_TRUCKS: Truck[] = [
   {
@@ -82,25 +85,7 @@ const INITIAL_TRUCKS: Truck[] = [
     year: 2022,
     assignedDriver: 'Carlos González',
     status: 'OPERATIVO',
-    trayectos: [
-      {
-        id: 'tr-001',
-        name: 'Trayecto Centro 1',
-        zone: 'Zona 1 (Centro)',
-        schedule: 'Turno Mañana (07:00 - 12:30)',
-        description:
-          'Av. Villegas, Gob. Irigoyen, 9 de Julio y cuadrante comercial céntrico',
-        activeDays: 'Lunes a Viernes',
-      },
-      {
-        id: 'tr-002',
-        name: 'Trayecto Nocturno Refuerzo',
-        zone: 'Zona 1 (Centro)',
-        schedule: 'Turno Noche (20:00 - 00:00)',
-        description: 'Zona gastronómica de calle Cuello y San Martín',
-        activeDays: 'Martes, Jueves y Sábados',
-      },
-    ],
+    trayectos: [],
   },
   {
     id: 't-002',
@@ -111,17 +96,7 @@ const INITIAL_TRUCKS: Truck[] = [
     year: 2023,
     assignedDriver: 'Miguel Rodríguez',
     status: 'OPERATIVO',
-    trayectos: [
-      {
-        id: 'tr-003',
-        name: 'Trayecto Norte - Parque Municipal',
-        zone: 'Zona 2 (Norte)',
-        schedule: 'Turno Mañana (07:30 - 13:00)',
-        description:
-          'Bº Norte, inmediaciones de Parque Conrado Villegas y Bulevar Pasteur',
-        activeDays: 'Lunes a Sábados',
-      },
-    ],
+    trayectos: [],
   },
   {
     id: 't-003',
@@ -132,16 +107,7 @@ const INITIAL_TRUCKS: Truck[] = [
     year: 2021,
     assignedDriver: 'Roberto López',
     status: 'OPERATIVO',
-    trayectos: [
-      {
-        id: 'tr-004',
-        name: 'Trayecto Sur y Acceso Rodríguez Mera',
-        zone: 'Zona 3 (Sur)',
-        schedule: 'Turno Tarde (14:00 - 19:30)',
-        description: 'Bº Las Chozas, Acceso Sur y corredores periurbanos',
-        activeDays: 'Lunes, Miércoles y Viernes',
-      },
-    ],
+    trayectos: [],
   },
   {
     id: 't-004',
@@ -195,7 +161,9 @@ function loadTrucks(): Truck[] {
     if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_TRUCKS
     return parsed.map((t) => ({
       ...t,
-      trayectos: Array.isArray(t.trayectos) ? t.trayectos : [],
+      trayectos: Array.isArray(t.trayectos)
+        ? t.trayectos.filter((trayecto) => !trayectosDeEjemplo.has(trayecto.id))
+        : [],
     }))
   } catch {
     return INITIAL_TRUCKS
@@ -242,7 +210,9 @@ const DEFAULT_FORM: TruckFormState = {
   status: 'OPERATIVO',
 }
 
-export function AdminCamiones({ onNavigateToTrayectos }: AdminCamionesProps) {
+export function AdminCamiones({
+  onNavigateToTrayectos, trayectosDisponibles = [], cargandoTrayectos, errorTrayectos, recargarTrayectos,
+}: AdminCamionesProps) {
   const [trucks, setTrucks] = useState<Truck[]>(loadTrucks)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'TODOS' | TruckStatus>('TODOS')
@@ -264,6 +234,17 @@ export function AdminCamiones({ onNavigateToTrayectos }: AdminCamionesProps) {
 
   // Feedback
   const [notice, setNotice] = useState('')
+  const opcionesTrayectos = new Map(detailTruck?.trayectos.map(({ id, name }) => [id, name]))
+  for (const { id, nombre } of trayectosDisponibles) opcionesTrayectos.set(id, nombre)
+
+  const asignarTrayectos = (truck: Truck, ids: string[]) => {
+    const trayectos = ids.map((id) => ({ id, name: opcionesTrayectos.get(id) ?? id }))
+    const actualizado = { ...truck, trayectos }
+    const flota = trucks.map((unidad) => unidad.id === truck.id ? actualizado : unidad)
+    setTrucks(flota)
+    saveTrucks(flota)
+    setDetailTruck(actualizado)
+  }
 
   // Métricas
   const total = trucks.length
@@ -797,53 +778,36 @@ export function AdminCamiones({ onNavigateToTrayectos }: AdminCamionesProps) {
               {/* Sección de Trayectos Asignados */}
               <div className="admin-trucks-trayectos-section">
                 <div className="admin-trucks-trayectos-header">
-                  <div>
-                    <h4>
-                      Trayectos asignados ({detailTruck.trayectos?.length ?? 0})
-                    </h4>
-                    <p>Recorridos de recolección vinculados a esta unidad</p>
-                  </div>
+                  <h4>Trayectos asignados ({detailTruck.trayectos.length})</h4>
                 </div>
 
-                {detailTruck.trayectos && detailTruck.trayectos.length > 0 ? (
-                  <div className="admin-trucks-trayectos-list">
-                    {detailTruck.trayectos.map((trayecto) => (
-                      <article
-                        key={trayecto.id}
-                        className="admin-trucks-trayecto-card"
-                      >
-                        <div
-                          className="admin-trucks-trayecto-icon"
-                          aria-hidden="true"
-                        >
-                          <RouteIcon fontSize="small" />
-                        </div>
-                        <div className="admin-trucks-trayecto-content">
-                          <div className="admin-trucks-trayecto-top">
-                            <strong className="admin-trucks-trayecto-name">
-                              {trayecto.name}
-                            </strong>
-                            <span className="admin-trucks-trayecto-zone">
-                              {trayecto.zone}
-                            </span>
-                          </div>
-                          <p className="admin-trucks-trayecto-desc">
-                            {trayecto.description}
-                          </p>
-                          <div className="admin-trucks-trayecto-meta">
-                            <span>{trayecto.activeDays}</span>
-                            <span aria-hidden="true">•</span>
-                            <span>{trayecto.schedule}</span>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="admin-trucks-trayectos-empty">
-                    <RouteIcon className="admin-trucks-trayectos-empty-icon" />
-                    <p>Esta unidad no tiene trayectos asignados actualmente.</p>
-                  </div>
+                {errorTrayectos ? (
+                  <Alert severity="warning" action={recargarTrayectos &&
+                    <Button color="inherit" size="small" onClick={recargarTrayectos}>Reintentar</Button>}>
+                    No se pudieron cargar los trayectos guardados.
+                  </Alert>
+                ) : cargandoTrayectos ? (
+                  <p role="status">Cargando trayectos…</p>
+                ) : opcionesTrayectos.size === 0 ? (
+                  <p>Creá un recorrido en Trayectos para poder asignarlo.</p>
+                ) : null}
+                {opcionesTrayectos.size > 0 && (
+                  <FormControl className="admin-trucks-trayectos-select" fullWidth size="small" color="success" disabled={cargandoTrayectos}>
+                    <InputLabel id="camion-trayectos-label">Asignar trayectos</InputLabel>
+                    <Select<string[]> multiple labelId="camion-trayectos-label" label="Asignar trayectos"
+                      value={detailTruck.trayectos.map(({ id }) => id)}
+                      onChange={({ target: { value } }) =>
+                        asignarTrayectos(detailTruck, typeof value === 'string' ? value.split(',') : value)}
+                      renderValue={(ids) => ids.map((id) => opcionesTrayectos.get(id)).join(', ')}>
+                      {[...opcionesTrayectos].map(([id, nombre]) => (
+                        <MenuItem key={id} value={id}>
+                          <Checkbox color="success" size="small" tabIndex={-1} aria-hidden="true"
+                            checked={detailTruck.trayectos.some((trayecto) => trayecto.id === id)} />
+                          {nombre}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 )}
               </div>
             </>

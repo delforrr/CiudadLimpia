@@ -147,7 +147,9 @@ export function AdminPage() {
           ) : activeTab === 'choferes' ? (
             <AdminChoferes />
           ) : activeTab === 'camiones' ? (
-            <AdminCamiones onNavigateToTrayectos={() => setActiveTab('recoleccion')} />
+            <AdminCamiones onNavigateToTrayectos={() => setActiveTab('recoleccion')}
+              trayectosDisponibles={trayectos.trayectos} cargandoTrayectos={user?.role === 'ADMIN' && trayectos.cargando}
+              errorTrayectos={trayectos.error} recargarTrayectos={trayectos.cargar} />
           ) : activeTab === 'puntos' ? (
             <AdminPuntosLimpios />
           ) : activeTab === 'tipos' ? (
