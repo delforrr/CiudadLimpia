@@ -6,18 +6,6 @@
   background: #edf3ee;
 }
 
-.admin-points-pin {
-  display: grid;
-  place-items: center;
-  border: 3px solid white;
-  border-radius: 50%;
-  background: #197c3a;
-  box-shadow: 0 2px 8px #0006;
-}
-
-.admin-points-pin span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: white;
+.admin-points-new-pin .teardrop-pin-body {
+  outline: 3px solid #1683e8;
 }

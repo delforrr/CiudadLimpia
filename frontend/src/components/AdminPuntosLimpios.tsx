@@ -590,7 +590,8 @@ export function AdminPuntosLimpios() {
             {puntos.mostrarMapa && puntos.calle.trim() && /^\d+$/.test(puntos.altura) && <div className="admin-points-form-full">
               <p>Marcá la ubicación en el mapa. Podés arrastrar el punto para ajustarlo.</p>
               <Suspense fallback={<p>Cargando mapa…</p>}>
-                <MapaUbicacionPunto ubicacion={puntos.ubicacion} onChange={puntos.setUbicacion} />
+                <MapaUbicacionPunto ubicacion={puntos.ubicacion} onChange={puntos.setUbicacion}
+                  icono={formTipo?.logo ? puntoLimpioIconSrc(formTipo.logo, formTipo.colorFondo) : undefined} />
               </Suspense>
             </div>}
           </form>
