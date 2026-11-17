@@ -394,7 +394,7 @@ export default function Login({
             onChange={(e) => updateField('password', e.target.value)}
             onBlur={() => validateField('password')}
             error={Boolean(fieldErrors.password)}
-            helperText={fieldErrors.password?.[0] || (register ? 'Al menos 8 caracteres; hasta 72 bytes.' : '')}
+            helperText={fieldErrors.password?.[0] || (register ? 'Al menos 8 caracteres.' : '')}
             slotProps={{
               input: {
                 endAdornment: (
