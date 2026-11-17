@@ -4,7 +4,7 @@ import { useAuthContext } from '../hooks/useAuthContext';
 import camionRecolector from '../assets/camion-recolector.png';
 import residuosReciclables from '../assets/residuos-reciclables.png';
 import residuosNoReciclables from '../assets/residuos-no-reciclables.png';
-import truckIconImg from '../assets/icono-camion-hoy.png';
+import { TrayectoMapa } from './TrayectoMapa';
 import HoyDomicilio from './HoyDomicilio';
 import './HoyCards.css';
 
@@ -98,99 +98,16 @@ export const HoyCards: React.FC = () => {
               </button>
             </div>
 
-            {/* Mapa interactivo con línea verde oscura y el camión de Hoy */}
             {mostrarTrayecto && (
               <div className="mapa-trayecto-card">
                 <div className="mapa-header-fila">
-                  <span className="mapa-header-tag">
-                    <span className="dot-mapa-vivo"></span>
-                    Seguimiento en vivo
-                  </span>
-                  <span className="mapa-header-distancia">A 4 cuadras</span>
+                  <span className="mapa-header-tag">Mapa de Trenque Lauquen</span>
                 </div>
-
-                <div className="mapa-svg-wrapper">
-                  <svg viewBox="0 0 400 240" className="mapa-svg" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="400" height="240" fill="#eaf2e8" rx="10" />
-
-                    {/* Manzanas de la ciudad */}
-                    <g fill="#dfead9">
-                      <rect x="15" y="15" width="45" height="25" rx="3" />
-                      <rect x="75" y="15" width="75" height="25" rx="3" />
-                      <rect x="165" y="15" width="85" height="25" rx="3" />
-                      <rect x="265" y="15" width="65" height="25" rx="3" />
-
-                      <rect x="15" y="55" width="45" height="55" rx="3" />
-                      <rect x="75" y="55" width="75" height="55" rx="3" />
-                      <rect x="165" y="55" width="85" height="55" rx="3" />
-                      <rect x="265" y="55" width="65" height="55" rx="3" />
-
-                      <rect x="15" y="125" width="45" height="55" rx="3" />
-                      <rect x="75" y="125" width="75" height="55" rx="3" />
-                      <rect x="165" y="125" width="85" height="55" rx="3" />
-                      <rect x="265" y="125" width="65" height="55" rx="3" />
-
-                      <rect x="15" y="195" width="45" height="35" rx="3" />
-                      <rect x="75" y="195" width="75" height="35" rx="3" />
-                      <rect x="165" y="195" width="85" height="35" rx="3" />
-                      <rect x="265" y="195" width="65" height="35" rx="3" />
-                    </g>
-
-                    {/* Calles principales (fondo blanco) */}
-                    <g stroke="#ffffff" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="45" x2="395" y2="45" />
-                      <line x1="5" y1="115" x2="395" y2="115" />
-                      <line x1="5" y1="185" x2="395" y2="185" />
-                      <line x1="65" y1="5" x2="65" y2="235" />
-                      <line x1="155" y1="5" x2="155" y2="235" />
-                      <line x1="255" y1="5" x2="255" y2="235" />
-                      <line x1="335" y1="5" x2="335" y2="235" />
-                    </g>
-
-                    {/* Nombres de calles de Trenque Lauquen */}
-                    <text x="70" y="41" fontSize="8" fill="#607b5a" fontWeight="700">Av. Las Palmas</text>
-                    <text x="70" y="111" fontSize="8" fill="#607b5a" fontWeight="700">Scalese</text>
-                    <text x="70" y="181" fontSize="8" fill="#607b5a" fontWeight="700">Pellegrini</text>
-                    <text x="260" y="41" fontSize="8" fill="#607b5a" fontWeight="700">Barrio Los Olivos</text>
-
-                    {/* Línea verde oscura del trayecto */}
-                    <path
-                      d="M 35 185 L 155 185 L 155 115 L 255 115 L 255 45 L 325 45"
-                      stroke="#1E6000"
-                      strokeWidth="5.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      fill="none"
-                    />
-
-                    {/* Marcador de destino: Tu domicilio */}
-                    <g transform="translate(325, 45)">
-                      <circle cx="0" cy="0" r="14" fill="#dc2626" opacity="0.2" />
-                      <circle cx="0" cy="0" r="6.5" fill="#dc2626" />
-                      <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
-                      <rect x="-36" y="-23" width="72" height="15" rx="4" fill="#ffffff" stroke="#dc2626" strokeWidth="1" />
-                      <text x="0" y="-12.5" textAnchor="middle" fontSize="8" fill="#991b1b" fontWeight="800">Tu domicilio</text>
-                    </g>
-
-                    {/* Marcador del camión sobre la línea verde oscura con el ícono de Hoy */}
-                    <g transform="translate(195, 115)">
-                      <circle cx="0" cy="0" r="18" fill="#1E6000" opacity="0.22" className="pulse-radar" />
-                      <circle cx="0" cy="0" r="14" fill="#ffffff" stroke="#1E6000" strokeWidth="2.2" />
-                      <image
-                        href={truckIconImg}
-                        x="-10"
-                        y="-10"
-                        width="20"
-                        height="20"
-                      />
-                      <rect x="-44" y="17" width="88" height="15" rx="4" fill="#1E6000" />
-                      <text x="0" y="28" textAnchor="middle" fontSize="7.8" fill="#ffffff" fontWeight="700">Recolector en vivo</text>
-                    </g>
-                  </svg>
+                <div className="hoy-mapa">
+                  <TrayectoMapa puntos={[]} linea={{ type: 'LineString', coordinates: [] }} />
                 </div>
               </div>
             )}
-
             {/* Se retiraron los botones de '¿Pasó recién?' y 'Compartir' según lo solicitado */}
           </div>
         </div>
