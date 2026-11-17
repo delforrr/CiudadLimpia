@@ -19,7 +19,11 @@ export class AuthService {
   ) {}
 
   register(dto: RegisterRequest) {
-    return this.users.create(dto, Role.USER);
+    const { cliente } = dto;
+    return this.users.create(
+      { ...dto, cliente: { ...cliente, domicilios: cliente.domicilios ?? [] } },
+      Role.USER,
+    );
   }
 
   async login(dto: LoginRequest) {

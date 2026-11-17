@@ -51,7 +51,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Crear una cuenta e iniciar sesión',
     description:
-      'Crea una cookie session HttpOnly. La sesión dura una hora. Recibe email, password y cliente anidado.',
+      'Crea una cookie session HttpOnly. La sesión dura una hora. Recibe email, password, nombre y apellido. Los domicilios son opcionales al registrarse.',
   })
   @ApiConsumes('application/json')
   @ApiCreatedResponse({

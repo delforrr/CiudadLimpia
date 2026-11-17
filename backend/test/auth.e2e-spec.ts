@@ -176,13 +176,31 @@ describe('Email/password authentication (HTTP)', () => {
     }
   });
 
+  it('registers and starts a session without an address', async () => {
+    const agent = request.agent(app.getHttpServer());
+    const registered = await agent
+      .post('/auth/register')
+      .send({
+        ...account,
+        cliente: {
+          name: account.cliente.name,
+          lastName: account.cliente.lastName,
+        },
+      })
+      .expect(201);
+    expect(registered.body).toMatchObject({
+      role: 'USER',
+      cliente: { domicilios: [] },
+    });
+    await agent.get('/auth/me').expect(200).expect(registered.body);
+  });
+
   it.each([
     { email: 123 },
     { email: 'invalid' },
     { cliente: undefined },
     { cliente: null },
     ...[
-      { domicilios: undefined },
       { domicilios: null },
       { domicilios: [] },
       { domicilios: [[]] },

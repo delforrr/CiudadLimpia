@@ -35,7 +35,11 @@ export default function Login({
   const navigate = useNavigate();
   const { form, register, updateField, handleSubmit, error, pending, fieldErrors, validateField } = useAuthForm((authenticatedUser) => {
     onAuthenticated(authenticatedUser);
-    navigate(authenticatedUser.role === 'ADMIN' ? '/admin' : '/hoy', { replace: true });
+    if (authenticatedUser.role === 'ADMIN') {
+      navigate('/admin', { replace: true });
+    } else {
+      navigate(initialRegister ? '/perfil' : '/hoy', { replace: true });
+    }
   }, initialRegister);
 
   const {
@@ -343,7 +347,7 @@ export default function Login({
               className="login-truck-icon"
             />
           </div>
-          <p>{register ? 'Completá tus datos y al menos un domicilio' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
+          <p>{register ? 'Completá tus datos para crear tu cuenta' : 'Ingresá tus credenciales para ver el recolector en tu cuadra'}</p>
         </header>
 
         <form onSubmit={handleSubmit} className="login-form" aria-busy={pending} noValidate>
@@ -368,9 +372,6 @@ export default function Login({
                 error={Boolean(fieldErrors.lastName)} helperText={fieldErrors.lastName?.[0]}
                 slotProps={{ htmlInput: { maxLength: 100 } }}
               />
-              <DomiciliosCard domicilios={form.domicilios}
-                onChange={(domicilios) => updateField('domicilios', domicilios)}
-                disabled={pending} errors={fieldErrors.domicilios} />
             </>
           )}
           <TextField

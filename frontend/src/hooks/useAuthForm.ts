@@ -1,8 +1,7 @@
 import { useState, type SubmitEvent } from 'react'
-import { authService, type Domicilio, type User } from '../services/authService'
+import { authService, type User } from '../services/authService'
 import { z } from 'zod'
-import { authSchema } from '../schemas/authSchema'
-import { registerSchema } from '../schemas/registerSchema'
+import { authSchema, registerSchema } from '../schemas/authSchema'
 
 export function useAuthForm(onAuthenticated: (user: User) => void, register = false) {
   const [form, setForm] = useState({
@@ -11,7 +10,6 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
     name: '',
     lastName: '',
     repeatedPassword: '',
-    domicilios: [{ direccion: '', etiqueta: '' }] as Domicilio[],
     rememberMe: false,
   })
   const [error, setError] = useState('')
@@ -20,7 +18,7 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
   const [submitted, setSubmitted] = useState(false)
   const registration = register ? registerSchema.safeParse(form) : null
   const validation = registration ?? authSchema.safeParse(form)
-  const fieldErrors: Partial<Record<keyof typeof form, string[]>> = validation.success ? {} : z.flattenError(validation.error).fieldErrors
+  const fieldErrors = validation.success ? {} : z.flattenError<Partial<typeof form>>(validation.error).fieldErrors
   const visibleErrors = Object.fromEntries(
     Object.entries(fieldErrors).filter(([field]) => submitted || touched[field as keyof typeof form]),
   )
@@ -43,7 +41,7 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
     if (!validation.success) return
     setPending(true)
     try {
-      const { email, password, rememberMe } = validation.data
+      const { email, password } = validation.data
       const user = registration?.success
         ? await authService.register({
             email,
@@ -51,10 +49,9 @@ export function useAuthForm(onAuthenticated: (user: User) => void, register = fa
             cliente: {
               name: registration.data.name,
               lastName: registration.data.lastName,
-              domicilios: registration.data.domicilios,
             },
           })
-        : await authService.login({ email, password, rememberMe })
+        : await authService.login({ email, password, rememberMe: form.rememberMe })
       onAuthenticated(user)
     } catch (error) {
       setError(

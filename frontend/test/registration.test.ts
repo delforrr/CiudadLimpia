@@ -4,7 +4,7 @@ import { createElement, type ComponentType } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { createServer, type ViteDevServer } from 'vite'
-import { registerSchema } from '../src/schemas/registerSchema.ts'
+import { registerSchema } from '../src/schemas/authSchema.ts'
 import type { User } from '../src/services/authService.ts'
 import type { DomicilioForm } from '../src/schemas/profileSchema.ts'
 
@@ -60,11 +60,12 @@ test('shows one current address in Hoy and opens the new address form directly f
 
 test('opens registration with all fields required by the current API', () => {
   const html = render(true)
-  for (const label of ['Crear cuenta', 'Nombre', 'Apellido', 'Mis domicilios', 'Dirección', 'Etiqueta (opcional)', 'Agregar domicilio', 'Correo electrónico', 'Contraseña', 'Repetir contraseña']) {
+  for (const label of ['Crear cuenta', 'Nombre', 'Apellido', 'Correo electrónico', 'Contraseña', 'Repetir contraseña']) {
     assert.ok(html.includes(label), label)
   }
   assert.match(html, /autoComplete="new-password"/)
   assert.doesNotMatch(html, /Recordarme|Ingresá tu nombre|Las contraseñas no coinciden/)
+  assert.doesNotMatch(html, /Mis domicilios|Dirección|Etiqueta \(opcional\)|Agregar domicilio/)
 })
 
 test('opens login separately without registration fields', () => {
@@ -160,19 +161,17 @@ test('blocks adding another profile address until the current one is saved or di
 })
 
 test('validates registration fields together and normalizes the backend payload', () => {
-  const form = { name: ' Ana ', lastName: ' Pérez ', email: ' ANA@example.com ',
-    domicilios: [{ direccion: ' San Martín 123 ', etiqueta: ' Casa ' }, { direccion: ' Belgrano 456 ' }], password: 'Clave!123',
-    repeatedPassword: 'Clave!123', rememberMe: false }
+  const form = { name: ' Ana ', lastName: ' Pérez ', email: ' ANA@example.com ', password: 'Clave!123',
+    repeatedPassword: 'Clave!123' }
   assert.deepEqual(registerSchema.parse(form), {
     name: 'Ana', lastName: 'Pérez', email: 'ana@example.com',
-    domicilios: [{ direccion: 'San Martín 123', etiqueta: 'Casa' }, { direccion: 'Belgrano 456' }],
-    password: 'Clave!123', repeatedPassword: 'Clave!123', rememberMe: false,
+    password: 'Clave!123', repeatedPassword: 'Clave!123',
   })
   const invalid = registerSchema.safeParse({ ...form, name: ' ', lastName: ' ',
-    domicilios: [], email: 'inválido', repeatedPassword: 'otra' })
+    email: 'inválido', repeatedPassword: 'otra' })
   assert.equal(invalid.success, false)
   if (!invalid.success) {
     assert.deepEqual(invalid.error.issues.map(({ path }) => path[0]).sort(),
-      ['domicilios', 'email', 'lastName', 'name', 'repeatedPassword'])
+      ['email', 'lastName', 'name', 'repeatedPassword'])
   }
 })

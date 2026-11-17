@@ -13,7 +13,7 @@ export const loginSchema = z.strictObject({
 export const registerSchema = z.strictObject({
   email: emailSchema,
   password: passwordSchema,
-  cliente: clienteSchema,
+  cliente: clienteSchema.partial({ domicilios: true }),
 });
 export type LoginRequest = z.infer<typeof loginSchema>;
 export type RegisterRequest = z.infer<typeof registerSchema>;

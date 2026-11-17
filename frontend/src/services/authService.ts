@@ -24,7 +24,6 @@ export type RegisterCredentials = {
   cliente: {
     name: string
     lastName: string
-    domicilios: Domicilio[]
   }
 }
 

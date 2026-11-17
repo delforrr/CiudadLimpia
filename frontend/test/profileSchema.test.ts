@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { nuevoDomicilioSchema, profileSchema } from '../src/schemas/profileSchema.ts'
-import { registerSchema } from '../src/schemas/registerSchema.ts'
 
 const profile = { name: ' Ana ', lastName: ' Pérez ', email: ' ANA@example.com ',
   domicilios: [{ id: 'domicilio-1', direccion: ' San Martín 123 ', etiqueta: ' Casa ' }, { direccion: ' Belgrano 456 ' }] }
@@ -35,14 +34,6 @@ test('rejects empty names, missing addresses and limits before saving', () => {
     assert.equal(profileSchema.safeParse({ ...profile, ...change }).success, false, JSON.stringify(change))
   }
   assert.equal(profileSchema.safeParse({ ...profile, domicilios: Array(20).fill({ direccion: 'a'.repeat(200), etiqueta: 'a'.repeat(100) }) }).success, true)
-})
-
-test('registration requires matching passwords and a complete profile', () => {
-  const registration = { ...profile, password: 'contraseña!2026', repeatedPassword: 'contraseña!2026', rememberMe: false }
-  assert.equal(registerSchema.safeParse(registration).success, true)
-  for (const change of [{ repeatedPassword: 'otra' }, { domicilios: [] }, { name: '' }]) {
-    assert.equal(registerSchema.safeParse({ ...registration, ...change }).success, false)
-  }
 })
 
 test('accepts addresses without labels and allows clearing an existing label', () => {

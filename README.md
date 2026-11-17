@@ -61,9 +61,9 @@ La configuración local usa `NODE_ENV=development` para permitir la cookie de se
 
 ## Autenticación
 
-Los domicilios guardan `direccion` y una `etiqueta` opcional de hasta 100 caracteres (por ejemplo, Casa o Trabajo) en PostgreSQL. Registro y edición de perfil permiten agregarlos desde la tarjeta de domicilios; no se guardan en localStorage.
+Los domicilios se agregan desde Mi Perfil y guardan `direccion` y una `etiqueta` opcional de hasta 100 caracteres (por ejemplo, Casa o Trabajo) en PostgreSQL.
 
-- `POST /auth/register`: `{ email, password, cliente: { name, lastName, domicilios: [{ direccion, etiqueta? }] } }`. Crea una cuenta USER e inicia sesión. La confirmación de contraseña queda en el formulario y no se envía al servidor. El registro rechaza `role`, `rememberMe` y `repeatedPassword`.
+- `POST /auth/register`: `{ email, password, cliente: { name, lastName } }`. Crea una cuenta USER e inicia sesión. La API también acepta `cliente.domicilios` de forma opcional. La confirmación de contraseña queda en el formulario y no se envía al servidor. El registro rechaza `role`, `rememberMe` y `repeatedPassword`.
 - `POST /auth/login`: `{ email, password, rememberMe? }`.
 - `GET /auth/me`: usuario autenticado, sin hash ni token; devuelve 401 si la sesión venció.
 - `POST /auth/logout`: elimina la cookie del navegador.
@@ -84,7 +84,7 @@ Registro y login comparten diez intentos por IP cada quince minutos; el guard de
 
 La migración `20261023000000_separate_cliente` copia los nombres y apellidos existentes a `Cliente` antes de quitarlos de `User`, en una transacción. Conserva IDs de cuentas, emails, hashes y roles; no inventa domicilios. Los domicilios que la pantalla antigua guardaba en localStorage no están en PostgreSQL y deben ingresarse nuevamente.
 
-Las respuestas de autenticación y usuarios ahora tienen `{ id, email, role, cliente }`; `cliente` puede ser `null` o `{ id, name, lastName, domicilios: [{ id, direccion, etiqueta }] }`. Los consumidores anteriores deben leer los nombres dentro de `cliente`. El registro requiere `cliente.domicilios: [{ direccion }]`, con al menos una dirección.
+Las respuestas de autenticación y usuarios tienen `{ id, email, role, cliente }`. El campo `cliente` puede ser `null` o `{ id, name, lastName, domicilios: [{ id, direccion, etiqueta }] }`, con una lista vacía de domicilios si todavía no se cargaron.
 
 | Endpoint | Permiso | Comportamiento |
 | --- | --- | --- |

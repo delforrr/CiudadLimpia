@@ -152,7 +152,7 @@ describe('Public API and documentation (HTTP)', () => {
         'cliente',
         'required',
       ],
-      ['name', 'lastName', 'domicilios'],
+      ['name', 'lastName'],
     );
     expect(document.paths['/users'].post?.parameters ?? []).not.toEqual(
       expect.arrayContaining([
