@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, ButtonBase, MenuItem, Select } from '@mui/material';
+import { ButtonBase, MenuItem, Select } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CategoryIcon from '@mui/icons-material/Category';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -14,8 +14,10 @@ import { AdminCamiones } from '../components/AdminCamiones';
 import { AdminPuntosLimpios } from '../components/AdminPuntosLimpios';
 import { AdminTiposPuntosLimpios } from '../components/AdminTiposPuntosLimpios';
 import { AdminTrayectos } from '../components/AdminTrayectos';
+import Login from '../components/Login';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useAdminTrayectos } from '../hooks/useAdminTrayectos';
+import type { User } from '../services/authService';
 import './AdminPage.css';
 import './AdminModules.css';
 
@@ -64,13 +66,18 @@ const NAVEGACION = [
 
 export function AdminPage() {
   const { user } = useAuthContext();
-  const trayectos = useAdminTrayectos(user?.role === 'ADMIN');
+
+  return user?.role === 'ADMIN' ? <AdminPanel user={user} /> : <Login administrativo />;
+}
+
+function AdminPanel({ user }: { user: User }) {
+  const trayectos = useAdminTrayectos();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
 
-  const adminName = user?.cliente
+  const adminName = user.cliente
     ? `${user.cliente.name} ${user.cliente.lastName}`
-    : (user?.email ?? 'Administrador');
-  const adminInitials = user?.cliente?.name ? user.cliente.name.charAt(0).toUpperCase() : 'A';
+    : user.email;
+  const adminInitials = adminName.charAt(0).toUpperCase();
   const seccionActual = SECCIONES[activeTab];
 
   return (
@@ -126,7 +133,7 @@ export function AdminPage() {
             <div className="admin-avatar">{adminInitials}</div>
             <div className="admin-user-info">
               <span className="admin-user-name">{adminName}</span>
-              <span className="admin-user-role">{user?.role ?? 'ADMIN'}</span>
+              <span className="admin-user-role">{user.role}</span>
             </div>
           </div>
         </div>
@@ -149,14 +156,14 @@ export function AdminPage() {
           ) : activeTab === 'camiones' ? (
             <AdminCamiones
               trayectosDisponibles={trayectos.trayectos} localidades={trayectos.localidades}
-              cargandoTrayectos={user?.role === 'ADMIN' && trayectos.cargando}
+              cargandoTrayectos={trayectos.cargando}
               errorTrayectos={trayectos.error} recargarTrayectos={trayectos.cargar} />
           ) : activeTab === 'puntos' ? (
             <AdminPuntosLimpios />
           ) : activeTab === 'tipos' ? (
             <AdminTiposPuntosLimpios />
           ) : activeTab === 'recoleccion' ? (
-            user?.role === 'ADMIN' ? <AdminTrayectos admin={trayectos} /> : <Alert severity="warning">Iniciá sesión como administrador para gestionar trayectos.</Alert>
+            <AdminTrayectos admin={trayectos} />
           ) : (
             <section className="admin-dashboard" aria-labelledby="admin-dashboard-title">
               <h3 id="admin-dashboard-title">Accesos directos</h3>

@@ -9,6 +9,7 @@ import type { User } from '../src/services/authService.ts'
 
 let server: ViteDevServer
 let PerfilPage: ComponentType<{ initialRegister?: boolean }>
+let AdminPage: ComponentType
 let AuthContext: typeof import('../src/context/auth-context.ts').AuthContext
 
 before(async () => {
@@ -19,16 +20,17 @@ before(async () => {
     ssr: { external: ['react', 'react/jsx-runtime', 'react-router-dom', '@mui/material', '@mui/icons-material'] },
   })
   ;({ PerfilPage } = await server.ssrLoadModule('/src/pages/PerfilPage.tsx'))
+  ;({ AdminPage } = await server.ssrLoadModule('/src/pages/AdminPage.tsx'))
   ;({ AuthContext } = await server.ssrLoadModule('/src/context/auth-context.ts'))
 })
 after(async () => server?.close())
 
-function render(initialRegister = false, user: User | null = null) {
+function render(initialRegister = false, user: User | null = null, admin = false) {
   const session = { user, checking: false, isAuthenticated: user !== null,
     loggingOut: false, logoutError: '', onAuthenticated: () => {}, logout: async () => {} }
   return renderToStaticMarkup(createElement(AuthContext.Provider, { value: session },
-    createElement(MemoryRouter, { initialEntries: [initialRegister ? '/registro' : '/perfil'] },
-      createElement(PerfilPage, { initialRegister }))))
+    createElement(MemoryRouter, { initialEntries: [admin ? '/admin' : initialRegister ? '/registro' : '/perfil'] },
+      admin ? createElement(AdminPage) : createElement(PerfilPage, { initialRegister }))))
 }
 
 test('opens registration with all fields required by the current API', () => {
@@ -45,6 +47,22 @@ test('opens login separately without registration fields', () => {
   assert.match(html, /Iniciar Sesión/)
   assert.match(html, /Recordarme/)
   assert.doesNotMatch(html, /Repetir contraseña|Mis domicilios|Etiqueta/)
+})
+
+test('offers sign-in directly in the admin panel when there is no session', () => {
+  const html = render(false, null, true)
+  assert.match(html, /Ingresá con tu cuenta de administrador/)
+  assert.match(html, /Correo electrónico/)
+  assert.doesNotMatch(html, /Registrate|Accesos directos/)
+})
+
+test('only shows the admin panel for current administrators', () => {
+  const user: User = { id: 'user-1', email: 'ana@example.com', role: 'USER', cliente: null }
+  const denied = render(false, user, true)
+  assert.match(denied, /Tu cuenta no tiene permisos para acceder al panel/)
+  assert.match(denied, /Cerrar sesión/)
+  assert.doesNotMatch(denied, /Accesos directos/)
+  assert.match(render(false, { ...user, role: 'ADMIN' }, true), /Accesos directos/)
 })
 
 test('displays saved address labels from the authenticated profile', () => {

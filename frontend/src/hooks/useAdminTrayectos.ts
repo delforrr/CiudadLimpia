@@ -6,7 +6,7 @@ type Vista = { tipo: 'lista' } | { tipo: 'detalle'; trayecto: Trayecto } | { tip
 
 const idTrenqueLauquen = '06826050';
 
-export function useAdminTrayectos(habilitado: boolean) {
+export function useAdminTrayectos() {
   const [trayectos, setTrayectos] = useState<Trayecto[]>([]);
   const [localidades, setLocalidades] = useState<Localidad[]>([]);
   const [vista, setVista] = useState<Vista>({ tipo: 'lista' });
@@ -18,7 +18,6 @@ export function useAdminTrayectos(habilitado: boolean) {
   const localidadFija = localidades.find(({ id }) => id === idTrenqueLauquen);
 
   useEffect(() => {
-    if (!habilitado) return;
 
     const solicitud = new AbortController();
     const { signal } = solicitud;
@@ -35,7 +34,7 @@ export function useAdminTrayectos(habilitado: boolean) {
         if (!signal.aborted) setCargando(false);
       });
     return () => solicitud.abort();
-  }, [habilitado, intento]);
+  }, [intento]);
 
   useEffect(() => () => solicitudActiva.current?.abort(), []);
 
