@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import { trayectosService } from '../services/trayectosService'
 import { puntoLimpioSchema } from '../schemas/puntoLimpioSchema.ts'
@@ -148,10 +148,7 @@ export function usePuntosLimpios() {
     [],
   )
 
-  const save = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      if (saving) return
+  const validarFormulario = useCallback(() => {
       setFormError('')
       const validation = puntoLimpioSchema.safeParse(form)
       setFieldErrors(
@@ -160,17 +157,24 @@ export function usePuntosLimpios() {
           : (z.flattenError(validation.error)
               .fieldErrors as Partial<Record<keyof PuntoLimpioForm, string[]>>),
       )
-      if (!validation.success) return
+      if (!validation.success) return null
       if (!editing && (!calle.trim() || !/^\d+$/.test(altura))) {
         setFormError('Ingresá la calle y la altura.')
-        return
+        return null
       }
+      return validation.data
+  }, [form, editing, calle, altura])
+
+  const save = useCallback(
+    async () => {
+      if (saving) return false
+      const data = validarFormulario()
+      if (!data) return false
       if (!editing && !ubicacion) {
         setFormError('Marcá la ubicación del punto en el mapa.')
-        return
+        return false
       }
 
-      const data = validation.data
       setSaving(true)
       try {
         const payload: PuntoLimpioAdmin = {
@@ -200,13 +204,15 @@ export function usePuntosLimpios() {
             ? 'Punto limpio actualizado correctamente.'
             : 'Punto limpio agregado correctamente.',
         )
+        return true
       } catch {
         setFormError('No se pudo guardar el punto limpio')
+        return false
       } finally {
         setSaving(false)
       }
     },
-    [editing, form, saving, ubicacion, calle, altura],
+    [editing, saving, ubicacion, validarFormulario],
   )
 
   const requestDelete = useCallback((punto: PuntoLimpioAdmin) => {
@@ -273,19 +279,25 @@ export function usePuntosLimpios() {
       setForm((previous) => ({ ...previous, direccion: [nuevaCalle.trim(), nuevaAltura.trim()].filter(Boolean).join(' ') }))
     },
     buscarDireccion: async () => {
-      if (!calle.trim() || !/^\d+$/.test(altura)) return
+      if (!calle.trim() || !/^\d+$/.test(altura)) return 'no-encontrada' as const
       busquedaDireccion.current?.abort()
       const solicitud = new AbortController()
       busquedaDireccion.current = solicitud
       try {
         const resultado = await trayectosService.buscar(calle.trim(), Number(altura), solicitud.signal)
-        if (solicitud.signal.aborted) return
+        if (solicitud.signal.aborted) return 'cancelada' as const
         const coincidencia = resultado.sugerencias.find((sugerencia) => sugerencia.altura === Number(altura))
-        if (coincidencia) setUbicacion({ lat: coincidencia.lat, lng: coincidencia.long })
+        if (coincidencia) {
+          setUbicacion({ lat: coincidencia.lat, lng: coincidencia.long })
+          return 'encontrada' as const
+        }
+        return 'no-encontrada' as const
       } catch {
-        // El mapa permite marcar la ubicación aunque la búsqueda no encuentre la dirección.
+        return solicitud.signal.aborted ? 'cancelada' as const : 'error' as const
       }
     },
+    cancelarBusquedaDireccion: () => busquedaDireccion.current?.abort(),
+    validarFormulario,
     save,
     pendingDelete,
     requestDelete,

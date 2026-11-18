@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Collapse } from '@mui/material';
+import { Badge, Button, Collapse, IconButton } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import fotoPunto1 from '../assets/punto-limpio-1.jpg';
@@ -36,9 +37,10 @@ export const PuntosLimpios: React.FC = () => {
   const [filtroActivo, setFiltroActivo] = useState<string>('todos');
   const [mapReady, setMapReady] = useState(false);
   const [mapaAbierto, setMapaAbierto] = useState(false);
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const leyendaRef = useRef<HTMLDivElement | null>(null);
+  const tarjetaMapaRef = useRef<HTMLElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
@@ -154,8 +156,13 @@ export const PuntosLimpios: React.FC = () => {
       materiales.textContent = `Recibe: ${punto.tipo.materiales.join(', ')}`;
       cuerpo.append(titulo, direccion, materiales);
       contenido.append(encabezado, cuerpo);
-      L.marker([punto.lat, punto.lng], { icon, title: punto.nombre })
-        .bindPopup(contenido, { className: 'modern-leaflet-popup', maxWidth: 260, maxHeight: 180, autoPanPadding: [12, 12] })
+      const marcador = L.marker([punto.lat, punto.lng], { icon, title: punto.nombre });
+      marcador.on('click', () => {
+        if (marcador.isPopupOpen()) {
+          map.flyTo([-35.973, -62.734], 13, { duration: 0.6 });
+        }
+      });
+      marcador.bindPopup(contenido, { className: 'modern-leaflet-popup', maxWidth: 260, maxHeight: 180, autoPanPadding: [12, 12] })
         .addTo(markersLayer);
     });
     // Ajuste de cámara según el filtro
@@ -184,7 +191,7 @@ export const PuntosLimpios: React.FC = () => {
       </section>
 
       {/* Tarjeta del Mapa con Filtros */}
-      <section className="mapa-tarjeta-card">
+      <section ref={tarjetaMapaRef} className="mapa-tarjeta-card">
         <div className="mapa-tarjeta-header">
           <div className="mapa-tarjeta-titulo-grupo">
             <span className="mapa-tarjeta-tag">
@@ -197,23 +204,19 @@ export const PuntosLimpios: React.FC = () => {
             endIcon={<ExpandMoreIcon className={mapaAbierto ? 'mapa-flecha-abierta' : 'mapa-flecha'} />}>
             {mapaAbierto ? 'Ocultar mapa' : 'Ver mapa'}
           </Button>
-          {filtroActivo !== 'todos' && (
-            <button
-              type="button"
-              className="mapa-btn-ver-todos"
-              onClick={() => setFiltroActivo('todos')}
-              title="Quitar filtro y ver todos"
-            >
-              ✕ Mostrar todos
-            </button>
-          )}
+
         </div>
 
         <Collapse in={mapaAbierto} id="mapa-puntos-desplegable" onEntered={() => {
           mapRef.current?.invalidateSize();
-          leyendaRef.current?.scrollIntoView({
+          tarjetaMapaRef.current?.scrollIntoView({
             behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
-            block: 'end',
+            block: 'start',
+          });
+        }} onExited={() => {
+          window.scrollTo({
+            top: 0,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
           });
         }}>
         <div className="mapa-tarjeta-body">
@@ -221,15 +224,37 @@ export const PuntosLimpios: React.FC = () => {
             ref={mapContainerRef}
             className="leaflet-card-canvas"
           />
-        </div>
-
-        {/* Leyenda y Filtros interactivos: Tocar para filtrar */}
-        <div ref={leyendaRef} className="mapa-tarjeta-leyenda">
+        <div className="mapa-filtros">
+          <IconButton color="success" size="small" aria-label="Filtros del mapa" aria-expanded={filtrosAbiertos}
+            aria-controls="filtros-puntos-desplegable" onClick={() => setFiltrosAbiertos((abiertos) => !abiertos)}
+            className="mapa-filtros-boton">
+            <Badge color="error" variant="dot" invisible={filtroActivo === 'todos'}>
+              <FilterListIcon />
+            </Badge>
+          </IconButton>
+        <Collapse in={filtrosAbiertos} id="filtros-puntos-desplegable">
+        <div className="mapa-tarjeta-leyenda">
+          {filtroActivo !== 'todos' && (
+            <button
+              type="button"
+              className="mapa-btn-ver-todos"
+              onClick={() => {
+                setFiltroActivo('todos');
+                setFiltrosAbiertos(false);
+              }}
+              title="Quitar filtro y ver todos"
+            >
+              ✕ Mostrar todos
+            </button>
+          )}
           {tipos.map((tipo) => (
             <button key={tipo.id} type="button"
               className={`leyenda-filtro-btn ${filtroActivo !== 'todos' && filtroActivo !== tipo.id ? 'inactivo' : ''}`}
               aria-pressed={filtroActivo === tipo.id}
-              onClick={() => setFiltroActivo((actual) => actual === tipo.id ? 'todos' : tipo.id)}>
+              onClick={() => {
+                setFiltroActivo((actual) => actual === tipo.id ? 'todos' : tipo.id);
+                setFiltrosAbiertos(false);
+              }}>
               <div className="leyenda-pin-badge">
                 <img src={tipo.icono} alt="" className="leyenda-icon-white" />
               </div>
@@ -238,6 +263,9 @@ export const PuntosLimpios: React.FC = () => {
               </span>
             </button>
           ))}
+        </div>
+        </Collapse>
+        </div>
         </div>
         </Collapse>
       </section>

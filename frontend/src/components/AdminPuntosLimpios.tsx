@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useState, type FormEvent } from 'react'
 import {
   Alert,
   Button,
@@ -62,7 +62,28 @@ export function AdminPuntosLimpios() {
   const [detailPunto, setDetailPunto] = useState<PuntoLimpioAdmin | null>(null)
   const [mapaAbierto, setMapaAbierto] = useState(false)
   const [ubicacionConfirmada, setUbicacionConfirmada] = useState(false)
+  const [estadoBusqueda, setEstadoBusqueda] = useState<'buscando' | 'encontrada' | 'no-encontrada' | 'error' | null>(null)
   const isEditing = Boolean(puntos.editing) || puntos.isCreating
+
+  const enviarFormulario = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (puntos.editing) {
+      await puntos.save()
+      return
+    }
+    if (!puntos.validarFormulario()) return
+    setUbicacionConfirmada(false)
+    setEstadoBusqueda('buscando')
+    setMapaAbierto(true)
+    const resultado = await puntos.buscarDireccion()
+    if (resultado !== 'cancelada') setEstadoBusqueda(resultado)
+  }
+
+  const cerrarMapa = () => {
+    puntos.cancelarBusquedaDireccion()
+    setMapaAbierto(false)
+    setEstadoBusqueda(null)
+  }
 
   const detailTipoIndex = detailPunto
     ? puntos.tipos.findIndex((tipo) => tipo.id === detailPunto.tipoId)
@@ -462,7 +483,7 @@ export function AdminPuntosLimpios() {
           <form
             id="admin-points-form"
             className="admin-points-form"
-            onSubmit={puntos.save}
+            onSubmit={enviarFormulario}
             noValidate
           >
             {puntos.formError && (
@@ -568,7 +589,7 @@ export function AdminPuntosLimpios() {
               slotProps={{ htmlInput: { inputMode: 'numeric', pattern: '[0-9]*' } }}
               onChange={(event) => { setUbicacionConfirmada(false); puntos.actualizarDireccion(puntos.calle, event.target.value) }}
             />
-            <div className="admin-points-form-full">
+            {puntos.editing && <div className="admin-points-form-full">
               <Button variant="outlined" color="success" startIcon={<LocationOnIcon />}
                 disabled={!puntos.calle.trim() || !/^\d+$/.test(puntos.altura) || puntos.saving}
                 onClick={() => {
@@ -577,7 +598,7 @@ export function AdminPuntosLimpios() {
                 }}>
                 Ver mapa
               </Button>
-            </div>
+            </div>}
           </form>
         </DialogContent>
         <DialogActions>
@@ -594,7 +615,7 @@ export function AdminPuntosLimpios() {
             variant="contained"
             color="success"
             disabled={puntos.saving || puntos.tipos.length === 0}
-            startIcon={puntos.saving ? undefined : <EditIcon />}
+            startIcon={!puntos.saving && puntos.editing ? <EditIcon /> : undefined}
           >
             {puntos.saving
               ? 'Guardando…'
@@ -605,20 +626,37 @@ export function AdminPuntosLimpios() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={mapaAbierto && isEditing} onClose={() => setMapaAbierto(false)}
+      <Dialog open={mapaAbierto && isEditing} onClose={cerrarMapa}
         fullWidth maxWidth="sm" aria-labelledby="admin-points-map-title">
         <DialogTitle id="admin-points-map-title">Ubicación del punto limpio</DialogTitle>
         <DialogContent>
-          <p>{ubicacionConfirmada && puntos.ubicacion ? 'Ubicación confirmada.' : 'Marcá la ubicación en el mapa. Podés arrastrar el punto para ajustarlo.'}</p>
+          {estadoBusqueda === 'buscando' ? (
+            <Alert severity="info">Buscando la dirección...</Alert>
+          ) : estadoBusqueda === 'no-encontrada' ? (
+            <Alert severity="warning">No encontramos la dirección. Marcá la ubicación manualmente en el mapa.</Alert>
+          ) : estadoBusqueda === 'error' ? (
+            <Alert severity="warning">No se pudo buscar la dirección. Marcá la ubicación manualmente en el mapa.</Alert>
+          ) : (
+            <p>{ubicacionConfirmada && puntos.ubicacion ? 'Ubicación confirmada.' : 'Revisá la ubicación. Podés tocar el mapa o arrastrar el punto para ajustarlo.'}</p>
+          )}
+          {!puntos.editing && puntos.formError && <Alert severity="error">{puntos.formError}</Alert>}
           <Suspense fallback={<p>Cargando mapa…</p>}>
             <MapaUbicacionPunto ubicacion={puntos.ubicacion} onChange={puntos.setUbicacion}
-              bloqueado={ubicacionConfirmada && Boolean(puntos.ubicacion)}
+              bloqueado={estadoBusqueda === 'buscando' || (ubicacionConfirmada && Boolean(puntos.ubicacion))}
               icono={formTipo?.logo ? puntoLimpioIconSrc(formTipo.logo, formTipo.colorFondo) : undefined} />
           </Suspense>
         </DialogContent>
         <DialogActions>
-          <Button color="success" variant="contained" disabled={!puntos.ubicacion}
-            onClick={() => { setUbicacionConfirmada(true); setMapaAbierto(false) }}>Listo</Button>
+          <Button color="inherit" onClick={cerrarMapa} disabled={puntos.saving}>Volver</Button>
+          <Button color="success" variant="contained" disabled={!puntos.ubicacion || estadoBusqueda === 'buscando' || puntos.saving}
+            onClick={async () => {
+              if (puntos.editing) {
+                setUbicacionConfirmada(true)
+                cerrarMapa()
+              } else if (await puntos.save()) {
+                cerrarMapa()
+              }
+            }}>{puntos.editing ? 'Listo' : puntos.saving ? 'Guardando...' : 'Confirmar y agregar'}</Button>
         </DialogActions>
       </Dialog>
 
