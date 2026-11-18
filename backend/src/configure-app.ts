@@ -3,7 +3,9 @@ import {
   ValidationPipe,
   type INestApplication,
 } from '@nestjs/common';
+import { HttpAdapterHost } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { PrismaClientExceptionFilter } from './prisma/prisma-client-exception.filter';
 import { setupSwagger } from './swagger';
 
 export function configureApp(app: INestApplication) {
@@ -17,5 +19,7 @@ export function configureApp(app: INestApplication) {
       transform: true,
     }),
   );
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new PrismaClientExceptionFilter(httpAdapter));
   setupSwagger(app);
 }
