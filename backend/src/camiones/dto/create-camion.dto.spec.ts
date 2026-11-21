@@ -8,6 +8,7 @@ const camionValido = {
   patente: ' ab 123 cd ',
   marca: '  Mercedes-Benz  ',
   modelo: '  Atego 1729  ',
+  anio: 2020,
 };
 
 describe('CreateCamionDto', () => {
@@ -43,7 +44,7 @@ describe('CreateCamionDto', () => {
     const errores = await validate(dto);
     const propiedades = errores.map((e) => e.property).sort();
 
-    expect(propiedades).toEqual(['marca', 'modelo', 'patente'].sort());
+    expect(propiedades).toEqual(['anio', 'marca', 'modelo', 'patente']);
   });
 
   it.each([
@@ -56,6 +57,10 @@ describe('CreateCamionDto', () => {
     { modelo: '' },
     { modelo: ' ' },
     { modelo: 'a'.repeat(101) },
+    { anio: '2020' },
+    { anio: 2020.5 },
+    { anio: 0 },
+    { estado: null },
     { estado: 'INVALIDO' },
   ])('rechaza datos inválidos: %j', async (cambio) => {
     const dto = plainToInstance(CreateCamionDto, {

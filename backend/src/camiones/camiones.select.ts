@@ -5,6 +5,7 @@ export const camionSelect = {
   patente: true,
   marca: true,
   modelo: true,
+  anio: true,
   estado: true,
 } as const satisfies Prisma.CamionSelect;
 

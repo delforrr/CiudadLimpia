@@ -2,11 +2,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsEnum,
+  IsInt,
   IsNotEmpty,
-  IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 import { Estado } from '../../generated/prisma/enums';
@@ -57,6 +60,12 @@ export class CreateCamionDto {
   @MaxLength(100)
   modelo!: string;
 
+  @ApiProperty({ example: 2020, minimum: 1, maximum: 9999 })
+  @IsInt()
+  @Min(1)
+  @Max(9999)
+  anio!: number;
+
   @ApiPropertyOptional({
     enum: Estado,
     enumName: 'Estado',
@@ -64,7 +73,7 @@ export class CreateCamionDto {
     default: Estado.ACTIVO,
     description: 'Estado operativo del camión',
   })
-  @IsOptional()
+  @ValidateIf((_dto, value) => value !== undefined)
   @IsEnum(Estado)
   estado?: Estado;
 }

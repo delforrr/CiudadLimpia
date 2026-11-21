@@ -16,6 +16,7 @@ describe('CamionesService', () => {
     patente: 'AB 123 CD',
     marca: 'Mercedes-Benz',
     modelo: 'Atego 1729',
+    anio: 2020,
     estado: Estado.ACTIVO,
   };
 
@@ -24,6 +25,7 @@ describe('CamionesService', () => {
     patente: 'AB 123 CD',
     marca: 'Mercedes-Benz',
     modelo: 'Atego 1729',
+    anio: 2020,
     estado: Estado.ACTIVO,
   };
 
