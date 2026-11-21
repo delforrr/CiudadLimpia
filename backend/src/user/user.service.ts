@@ -4,6 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import type { DomicilioInput } from '../accounts/account.schemas';
+import {
+  resolverDireccion,
+  transaccionConDirecciones,
+} from '../direccion/direccion-referencia';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateUserInput, UpdateUserInput } from './user.schemas';
 import { publicUserSelect, toUserResponse } from './user.select';
@@ -16,22 +21,26 @@ export class UserService {
 
   async create(dto: Omit<CreateUserInput, 'role'>, role: Role) {
     const { password, cliente, ...account } = dto;
-    const user = await this.prisma.user.create({
-      data: {
-        ...account,
-        role,
-        passwordHash: await bcrypt.hash(password, 12),
-        cliente: {
-          create: {
-            name: cliente.name,
-            lastName: cliente.lastName,
-            domicilios: { create: cliente.domicilios },
+    const passwordHash = await bcrypt.hash(password, 12);
+    return transaccionConDirecciones(this.prisma, async (tx) => {
+      const domicilios = await this.resolverDomicilios(tx, cliente.domicilios);
+      const user = await tx.user.create({
+        data: {
+          ...account,
+          role,
+          passwordHash,
+          cliente: {
+            create: {
+              name: cliente.name,
+              lastName: cliente.lastName,
+              domicilios: { create: domicilios },
+            },
           },
         },
-      },
-      select: publicUserSelect,
+        select: publicUserSelect,
+      });
+      return toUserResponse(user);
     });
-    return toUserResponse(user);
   }
 
   async findAll() {
@@ -53,49 +62,57 @@ export class UserService {
 
   async update(id: string, dto: UpdateUserInput) {
     const { password, cliente, ...account } = dto;
-    const domicilios = cliente?.domicilios;
-    if (domicilios === undefined) {
-      const current = await this.prisma.user.findUnique({
-        where: { id },
-        select: {
-          cliente: {
-            select: { domicilios: { take: 1, select: { id: true } } },
-          },
-        },
-      });
-      if (!current) throw new NotFoundException('Usuario no encontrado');
-      if (!current.cliente?.domicilios.length) {
-        throw new BadRequestException(
-          'Completá al menos un domicilio para guardar tus datos',
-        );
-      }
-    }
-    const data: Prisma.UserUpdateInput = { ...account };
-    if (password !== undefined) {
-      data.passwordHash = await bcrypt.hash(password, 12);
-    }
-    if (cliente) {
-      const profile = { name: cliente.name, lastName: cliente.lastName };
-      if (domicilios === undefined) {
-        data.cliente = { update: profile };
-      } else {
-        data.cliente = {
-          upsert: {
-            create: { ...profile, domicilios: { create: domicilios } },
-            update: {
-              ...profile,
-              domicilios: { deleteMany: {}, create: domicilios },
+    const passwordHash =
+      password === undefined ? undefined : await bcrypt.hash(password, 12);
+    return transaccionConDirecciones(
+      this.prisma,
+      async (tx) => {
+        const data: Prisma.UserUpdateInput = { ...account };
+        if (passwordHash !== undefined) data.passwordHash = passwordHash;
+        if (cliente) {
+          const { domicilios, ...profile } = cliente;
+          const vinculos =
+            domicilios && (await this.resolverDomicilios(tx, domicilios));
+          data.cliente = {
+            upsert: {
+              create: {
+                ...profile,
+                domicilios: vinculos && { create: vinculos },
+              },
+              update: {
+                ...profile,
+                domicilios: vinculos && { deleteMany: {}, create: vinculos },
+              },
             },
-          },
-        };
+          };
+        }
+        const user = await tx.user.update({
+          where: { id },
+          data,
+          select: publicUserSelect,
+        });
+        return toUserResponse(user);
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  }
+
+  private async resolverDomicilios(
+    tx: Prisma.TransactionClient,
+    domicilios: readonly DomicilioInput[],
+  ): Promise<{ direccionId: string; etiqueta?: string | null }[]> {
+    const vinculos = new Map<
+      string,
+      { direccionId: string; etiqueta?: string | null }
+    >();
+    for (const referencia of domicilios) {
+      const { id } = await resolverDireccion(tx, referencia);
+      if (vinculos.has(id)) {
+        throw new BadRequestException('No se puede repetir un domicilio');
       }
+      vinculos.set(id, { direccionId: id, etiqueta: referencia.etiqueta });
     }
-    const user = await this.prisma.user.update({
-      where: { id },
-      data,
-      select: publicUserSelect,
-    });
-    return toUserResponse(user);
+    return [...vinculos.values()];
   }
 
   async remove(id: string) {

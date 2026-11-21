@@ -17,6 +17,19 @@ describe('User CRUD (HTTP)', () => {
   const adminId = '00000000-0000-4000-8000-000000000001';
   const userId = '00000000-0000-4000-8000-000000000002';
   const missingId = '00000000-0000-4000-8000-000000000003';
+  const direccionId = '00000000-0000-4000-8000-000000000004';
+  const frente = {
+    calle: 'San Martín',
+    altura: 123,
+    lat: -35.97,
+    long: -62.73,
+  };
+  const direccion = {
+    ...frente,
+    id: direccionId,
+    calle: { calle: frente.calle },
+  };
+  const domicilio = { direccion, etiqueta: null };
   const user = {
     id: userId,
     email: 'ana@example.com',
@@ -25,10 +38,26 @@ describe('User CRUD (HTTP)', () => {
       id: 'cliente-1',
       name: 'Ana',
       lastName: 'Pérez',
-      domicilios: [{ id: 'domicilio-1', direccion: 'San Martín 123' }],
+      domicilios: [domicilio],
+    },
+  };
+  const userResponse = {
+    ...user,
+    cliente: {
+      ...user.cliente,
+      domicilios: [
+        {
+          ...frente,
+          id: direccionId,
+          direccion: 'San Martín 123',
+          etiqueta: null,
+        },
+      ],
     },
   };
   const db = {
+    $transaction: jest.fn(),
+    direccion: { findUnique: jest.fn() },
     user: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
@@ -53,6 +82,10 @@ describe('User CRUD (HTTP)', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    db.$transaction.mockImplementation(
+      (operation: (tx: typeof db) => unknown) => operation(db),
+    );
+    db.direccion.findUnique.mockResolvedValue(direccion);
     db.user.findUnique.mockImplementation(
       ({ where }: { where: { id: string } }) =>
         where.id === adminId
@@ -81,7 +114,7 @@ describe('User CRUD (HTTP)', () => {
         cliente: {
           name: 'Ana',
           lastName: 'Pérez',
-          domicilios: [{ direccion: 'Casa' }],
+          domicilios: [{ direccionId }],
         },
       })
       .expect(201);
@@ -124,7 +157,7 @@ describe('User CRUD (HTTP)', () => {
           cliente: {
             name: 'Ana',
             lastName: 'Pérez',
-            domicilios: [{ direccion: 'San Martín 123' }],
+            domicilios: [{ direccionId }],
           },
         })
         .expect(400);
@@ -140,7 +173,7 @@ describe('User CRUD (HTTP)', () => {
       cliente: {
         name: ' Ana ',
         lastName: ' Pérez ',
-        domicilios: [{ direccion: ' San Martín 123 ' }],
+        domicilios: [{ direccionId }],
       },
     };
     await request(app.getHttpServer())
@@ -148,7 +181,7 @@ describe('User CRUD (HTTP)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send(dto)
       .expect(201)
-      .expect(user);
+      .expect(userResponse);
     const calls = db.user.create.mock.calls as [
       { data: { passwordHash: string } },
     ][];
@@ -163,7 +196,7 @@ describe('User CRUD (HTTP)', () => {
           create: {
             name: 'Ana',
             lastName: 'Pérez',
-            domicilios: { create: [{ direccion: 'San Martín 123' }] },
+            domicilios: { create: [{ direccionId }] },
           },
         },
       },
@@ -195,7 +228,7 @@ describe('User CRUD (HTTP)', () => {
         cliente: {
           name: 'Ana',
           lastName: 'Pérez',
-          domicilios: [{ direccion: 'San Martín 123' }],
+          domicilios: [{ direccionId }],
         },
       };
       await request(app.getHttpServer())
@@ -237,7 +270,7 @@ describe('User CRUD (HTTP)', () => {
         cliente: {
           name: 'Ana',
           lastName: 'Pérez',
-          domicilios: [{ direccion: 'Casa' }],
+          domicilios: [{ direccionId }],
         },
         ...change,
       })
@@ -255,7 +288,7 @@ describe('User CRUD (HTTP)', () => {
       .get('/users')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200)
-      .expect([user]);
+      .expect([userResponse]);
     await request(app.getHttpServer())
       .post('/users')
       .set('Authorization', `Bearer ${userToken}`)
@@ -265,7 +298,7 @@ describe('User CRUD (HTTP)', () => {
         cliente: {
           name: 'Ana',
           lastName: 'Pérez',
-          domicilios: [{ direccion: 'San Martín 123' }],
+          domicilios: [{ direccionId }],
         },
       })
       .expect(403);
@@ -294,12 +327,12 @@ describe('User CRUD (HTTP)', () => {
       .get(`/users/${userId}`)
       .set('Authorization', `Bearer ${userToken}`)
       .expect(200)
-      .expect(user);
+      .expect(userResponse);
     await request(app.getHttpServer())
       .get(`/users/${userId}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200)
-      .expect(user);
+      .expect(userResponse);
     await request(app.getHttpServer())
       .get(`/users/${adminId}`)
       .set('Authorization', `Bearer ${userToken}`)
@@ -382,18 +415,12 @@ describe('User CRUD (HTTP)', () => {
   it.each([undefined, null, '', ' Casa '])(
     'saves and returns an optional address label: %j',
     async (etiqueta) => {
-      const domicilios = [{ direccion: 'San Martín 123', etiqueta }];
+      const domicilios = [{ direccionId, etiqueta }];
       const saved = {
         ...user,
         cliente: {
           ...user.cliente,
-          domicilios: [
-            {
-              id: 'domicilio-1',
-              direccion: 'San Martín 123',
-              etiqueta: etiqueta?.trim() ?? null,
-            },
-          ],
+          domicilios: [{ ...domicilio, etiqueta: etiqueta?.trim() ?? null }],
         },
       };
       db.user.update.mockResolvedValue(saved);
@@ -402,10 +429,21 @@ describe('User CRUD (HTTP)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .send({ cliente: { name: 'Ana', lastName: 'Pérez', domicilios } })
         .expect(200)
-        .expect(saved);
+        .expect({
+          ...userResponse,
+          cliente: {
+            ...userResponse.cliente,
+            domicilios: [
+              {
+                ...userResponse.cliente.domicilios[0],
+                etiqueta: etiqueta?.trim() ?? null,
+              },
+            ],
+          },
+        });
       const normalized = [
         {
-          direccion: 'San Martín 123',
+          direccionId,
           ...(etiqueta !== undefined
             ? { etiqueta: etiqueta?.trim() ?? null }
             : {}),
@@ -443,7 +481,7 @@ describe('User CRUD (HTTP)', () => {
           cliente: {
             name: 'Ana',
             lastName: 'Pérez',
-            domicilios: [{ direccion: 'San Martín 123', etiqueta }],
+            domicilios: [{ direccionId, etiqueta }],
           },
         })
         .expect(400);
@@ -463,7 +501,7 @@ describe('User CRUD (HTTP)', () => {
       where: { id: userId },
       data: {
         cliente: {
-          update: cliente,
+          upsert: { create: cliente, update: cliente },
         },
       },
       select: publicUserSelect,
@@ -472,7 +510,7 @@ describe('User CRUD (HTTP)', () => {
       .patch(endpoint)
       .set('Authorization', `Bearer ${userToken}`)
       .send({
-        cliente: { ...cliente, domicilios: [{ direccion: 'Belgrano 456' }] },
+        cliente: { ...cliente, domicilios: [{ direccionId }] },
       })
       .expect(200);
     expect(db.user.update).toHaveBeenLastCalledWith(
@@ -482,13 +520,13 @@ describe('User CRUD (HTTP)', () => {
             upsert: {
               create: {
                 ...cliente,
-                domicilios: { create: [{ direccion: 'Belgrano 456' }] },
+                domicilios: { create: [{ direccionId }] },
               },
               update: {
                 ...cliente,
                 domicilios: {
                   deleteMany: {},
-                  create: [{ direccion: 'Belgrano 456' }],
+                  create: [{ direccionId }],
                 },
               },
             },
@@ -527,7 +565,7 @@ describe('User CRUD (HTTP)', () => {
       .set('Authorization', `Bearer ${userToken}`)
       .send({ password })
       .expect(200)
-      .expect(user);
+      .expect(userResponse);
     const calls = db.user.update.mock.calls as [
       { data: { passwordHash: string } },
     ][];
@@ -542,38 +580,37 @@ describe('User CRUD (HTTP)', () => {
     });
   });
 
-  it.each([null, { name: 'Ana', lastName: 'Pérez', domicilios: [] }])(
-    'requires an address before updating an incomplete account: %j',
-    async (cliente) => {
-      db.user.findUnique.mockResolvedValue({ ...user, cliente });
-      for (const body of [
-        { email: 'new@example.com' },
-        { cliente: { name: 'Ana', lastName: 'Pérez' } },
-      ]) {
-        const response = await request(app.getHttpServer())
-          .patch(`/users/${userId}`)
-          .set('Authorization', `Bearer ${userToken}`)
-          .send(body)
-          .expect(400);
-        expect((response.body as { message: string }).message).toBe(
-          'Completá al menos un domicilio para guardar tus datos',
-        );
-      }
-      expect(db.user.update).not.toHaveBeenCalled();
-      await request(app.getHttpServer())
+  it('permite dejar la lista vacía y devuelve 400 si se repite la dirección', async () => {
+    const patch = () =>
+      request(app.getHttpServer())
         .patch(`/users/${userId}`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({
+        .set('Authorization', `Bearer ${userToken}`);
+    const cliente = { name: 'Ana', lastName: 'Pérez' };
+    await patch()
+      .send({
+        cliente: { ...cliente, domicilios: [{ direccionId }, { direccionId }] },
+      })
+      .expect(400);
+    expect(db.user.update).not.toHaveBeenCalled();
+    await patch()
+      .send({ cliente: { ...cliente, domicilios: [] } })
+      .expect(200);
+    expect(db.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
           cliente: {
-            name: 'Ana',
-            lastName: 'Pérez',
-            domicilios: [{ direccion: 'San Martín 123' }],
+            upsert: {
+              create: { ...cliente, domicilios: { create: [] } },
+              update: {
+                ...cliente,
+                domicilios: { deleteMany: {}, create: [] },
+              },
+            },
           },
-        })
-        .expect(200);
-      expect(db.user.update).toHaveBeenCalledTimes(1);
-    },
-  );
+        },
+      }),
+    );
+  });
 
   it.each([
     { email: null },
@@ -582,7 +619,6 @@ describe('User CRUD (HTTP)', () => {
     { passwordHash: 'untrusted' },
     { cliente: null },
     { cliente: [] },
-    { cliente: { name: 'Ana', lastName: 'Pérez', domicilios: [] } },
     { cliente: {} },
     { cliente: { name: ' ', lastName: 'Pérez' } },
     {

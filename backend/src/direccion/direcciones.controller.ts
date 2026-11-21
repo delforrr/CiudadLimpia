@@ -51,7 +51,7 @@ export class DireccionesController {
 
   @Get()
   @ApiOperation({
-    summary: 'Listar direcciones, incluidos domicilios de clientes (ADMIN)',
+    summary: 'Listar direcciones del catálogo compartido (ADMIN)',
   })
   @ApiQuery({
     name: 'buscar',
@@ -76,7 +76,7 @@ export class DireccionesController {
   })
   @ApiOkResponse({ type: DireccionResponseDto, isArray: true })
   findForPuntosLimpios(@Query('buscar') buscar?: string) {
-    return this.direcciones.findAll(buscar, true);
+    return this.direcciones.findAll(buscar);
   }
 
   @Get(':id')
@@ -90,9 +90,9 @@ export class DireccionesController {
 
   @Post()
   @ApiOperation({
-    summary: 'Registrar una dirección en el catálogo público (ADMIN)',
+    summary: 'Registrar una dirección en el catálogo compartido (ADMIN)',
     description:
-      'Podés omitir las coordenadas de referencia o enviar lat y long juntas. Estas coordenadas sirven para reutilizar la ubicación de la dirección.',
+      'Enviá calle, altura, lat y long. El par identifica el pin compartido.',
   })
   @ApiConsumes('application/json')
   @ApiCreatedResponse({ type: DireccionResponseDto })
@@ -107,9 +107,9 @@ export class DireccionesController {
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Editar una dirección del catálogo público (ADMIN)',
+    summary: 'Editar una dirección del catálogo compartido (ADMIN)',
     description:
-      'Enviá lat y long juntas para actualizar la referencia. Una referencia sin altura ni texto histórico requiere coordenadas. Para las demás direcciones, enviá ambas nulas para borrarlas. Si cambia la calle o la altura y omitís el par, se elimina la referencia anterior.',
+      'Enviá lat y long juntas para corregir el pin compartido. Si enviás calle o altura, deben coincidir con el frente registrado.',
   })
   @ApiConsumes('application/json')
   @ApiOkResponse({ type: DireccionResponseDto })
@@ -118,7 +118,6 @@ export class DireccionesController {
       'Identificador o datos inválidos, o par de coordenadas incompleto.',
   })
   @ApiNotFoundResponse()
-  @ApiConflictResponse({ description: 'La dirección ya existe.' })
   @ApiUnsupportedMediaTypeResponse()
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -129,7 +128,7 @@ export class DireccionesController {
 
   @Delete(':id')
   @ApiOperation({
-    summary: 'Eliminar una dirección del catálogo público (ADMIN)',
+    summary: 'Eliminar una dirección del catálogo compartido (ADMIN)',
   })
   @HttpCode(204)
   @ApiConsumes('application/json')

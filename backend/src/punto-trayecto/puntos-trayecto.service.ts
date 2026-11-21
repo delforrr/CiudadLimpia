@@ -1,12 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { DireccionesService } from '../direccion/direcciones.service';
+import {
+  referenciaConPin,
+  resolverDireccion,
+} from '../direccion/direccion-referencia';
 import type { Prisma } from '../generated/prisma/client';
 import type { CreatePuntoTrayectoDto } from './punto-trayecto.dto';
 
 @Injectable()
 export class PuntosTrayectoService {
-  constructor(private readonly direcciones: DireccionesService) {}
-
   ordenar(puntos: readonly CreatePuntoTrayectoDto[]) {
     const ordenados = [...puntos].sort((a, b) => a.orden - b.orden);
     if (ordenados.some((punto, indice) => punto.orden !== indice)) {
@@ -15,13 +16,6 @@ export class PuntosTrayectoService {
       );
     }
 
-    for (const punto of ordenados) {
-      if (punto.direccion && punto.direccionId) {
-        throw new BadRequestException(
-          'Enviá direccionId o direccion, solo uno',
-        );
-      }
-    }
     return ordenados;
   }
 
@@ -31,14 +25,9 @@ export class PuntosTrayectoService {
   ) {
     const referencias: Prisma.PuntoTrayectoUncheckedCreateWithoutTrayectoInput[] =
       [];
-    for (const { orden, lat, long, direccion, direccionId } of puntos) {
-      const referencia = await this.direcciones.resolveForTrayecto(tx, {
-        lat,
-        long,
-        direccion,
-        direccionId,
-      });
-      referencias.push({ orden, lat, long, direccionId: referencia.id });
+    for (const punto of puntos) {
+      const { id } = await resolverDireccion(tx, referenciaConPin(punto));
+      referencias.push({ orden: punto.orden, direccionId: id });
     }
     return referencias;
   }

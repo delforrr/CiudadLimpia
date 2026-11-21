@@ -8,92 +8,118 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/configure-app';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { AuthService } from '../src/auth/auth.service';
-import type { PublicUser } from '../src/accounts/account.schemas';
+import { publicUserSelect } from '../src/user/user.select';
 
 describe('Email/password authentication (HTTP)', () => {
   let app: INestApplication<App>;
-  const users = new Map<string, { user: PublicUser; passwordHash: string }>();
+  type UserRecord = Prisma.UserGetPayload<{ select: typeof publicUserSelect }>;
+  const users = new Map<string, { user: UserRecord; passwordHash: string }>();
+  const frente = {
+    calle: 'San Martín',
+    altura: 123,
+    lat: -35.97,
+    long: -62.73,
+  };
+  const direccionId = '00000000-0000-4000-8000-000000000001';
+  const direccion = {
+    ...frente,
+    id: direccionId,
+    calle: { calle: frente.calle },
+  };
   const account = {
     email: ' ANA@Example.com ',
     password: ' pass!word á ',
     cliente: {
       name: 'Ana María',
       lastName: 'Pérez',
-      domicilios: [{ direccion: ' San Martín 123 ', etiqueta: ' Casa ' }],
+      domicilios: [
+        {
+          direccion: { ...frente, calle: ' San   Martín ' },
+          etiqueta: ' Casa ',
+        },
+      ],
     },
   };
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-only-secret-at-least-32-characters';
-    const module = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(PrismaService)
-      .useValue({
-        user: {
-          create: jest.fn(
-            ({
-              data,
-            }: {
-              data: {
-                email: string;
-                passwordHash: string;
-                cliente: {
-                  create: {
-                    name: string;
-                    lastName: string;
-                    domicilios: {
-                      create: { direccion: string; etiqueta?: string | null }[];
-                    };
+    const db = {
+      user: {
+        create: jest.fn(
+          ({
+            data,
+          }: {
+            data: {
+              email: string;
+              passwordHash: string;
+              cliente: {
+                create: {
+                  name: string;
+                  lastName: string;
+                  domicilios: {
+                    create: { direccionId: string; etiqueta?: string | null }[];
                   };
                 };
               };
-            }) => {
-              if (users.has(data.email))
-                throw new Prisma.PrismaClientKnownRequestError(
-                  'Duplicate email',
-                  { code: 'P2002', clientVersion: '7.10.1' },
-                );
-              const profile = data.cliente.create;
-              const user: PublicUser = {
-                id: 'user-1',
-                email: data.email,
-                role: 'USER',
-                cliente: {
-                  id: 'cliente-1',
-                  name: profile.name,
-                  lastName: profile.lastName,
-                  domicilios: profile.domicilios.create.map((domicilio) => ({
-                    id: 'domicilio-1',
-                    etiqueta: null,
-                    ...domicilio,
-                  })),
-                },
-              };
-              users.set(user.email, { user, passwordHash: data.passwordHash });
-              return user;
-            },
-          ),
-          findUnique: jest.fn(
-            ({
-              where,
-              select,
-            }: {
-              where: { email?: string; id?: string };
-              select?: { passwordHash?: boolean };
-            }) => {
-              const stored = where.email
-                ? users.get(where.email)
-                : [...users.values()].find(({ user }) => user.id === where.id);
-              return stored
-                ? {
-                    ...stored.user,
-                    ...(select?.passwordHash
-                      ? { passwordHash: stored.passwordHash }
-                      : {}),
-                  }
-                : null;
-            },
-          ),
-        },
+            };
+          }) => {
+            if (users.has(data.email))
+              throw new Prisma.PrismaClientKnownRequestError(
+                'Duplicate email',
+                { code: 'P2002', clientVersion: '7.10.1' },
+              );
+            const profile = data.cliente.create;
+            const user: UserRecord = {
+              id: 'user-1',
+              email: data.email,
+              role: 'USER',
+              cliente: {
+                id: 'cliente-1',
+                name: profile.name,
+                lastName: profile.lastName,
+                domicilios: profile.domicilios.create.map((domicilio) => ({
+                  direccion,
+                  etiqueta: domicilio.etiqueta ?? null,
+                })),
+              },
+            };
+            users.set(user.email, { user, passwordHash: data.passwordHash });
+            return user;
+          },
+        ),
+        findUnique: jest.fn(
+          ({
+            where,
+            select,
+          }: {
+            where: { email?: string; id?: string };
+            select?: { passwordHash?: boolean };
+          }) => {
+            const stored = where.email
+              ? users.get(where.email)
+              : [...users.values()].find(({ user }) => user.id === where.id);
+            return stored
+              ? {
+                  ...stored.user,
+                  ...(select?.passwordHash
+                    ? { passwordHash: stored.passwordHash }
+                    : {}),
+                }
+              : null;
+          },
+        ),
+      },
+      calle: { upsert: jest.fn().mockResolvedValue({ id: 'calle-1' }) },
+      direccion: {
+        createMany: jest.fn(),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(direccion),
+      },
+    };
+    const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PrismaService)
+      .useValue({
+        ...db,
+        $transaction: (operation: (tx: typeof db) => unknown) => operation(db),
       })
       .compile();
     app = module.createNestApplication();
@@ -129,7 +155,12 @@ describe('Email/password authentication (HTTP)', () => {
         name: 'Ana María',
         lastName: 'Pérez',
         domicilios: [
-          { id: 'domicilio-1', direccion: 'San Martín 123', etiqueta: 'Casa' },
+          {
+            ...frente,
+            id: direccionId,
+            direccion: 'San Martín 123',
+            etiqueta: 'Casa',
+          },
         ],
       },
     });
@@ -209,14 +240,12 @@ describe('Email/password authentication (HTTP)', () => {
       { domicilios: [{ direccion: ' ' }] },
       { domicilios: [{ direccion: 'x'.repeat(201) }] },
       {
-        domicilios: [
-          { direccion: 'San Martín 123', etiqueta: 'x'.repeat(101) },
-        ],
+        domicilios: [{ direccion: frente, etiqueta: 'x'.repeat(101) }],
       },
-      { domicilios: [{ direccion: 'San Martín 123', etiqueta: 123 }] },
+      { domicilios: [{ direccion: frente, etiqueta: 123 }] },
       {
         domicilios: Array.from({ length: 21 }, () => ({
-          direccion: 'San Martín 123',
+          direccion: frente,
         })),
       },
       { name: 123 },

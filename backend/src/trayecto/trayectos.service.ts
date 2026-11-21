@@ -1,9 +1,9 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { transaccionConDirecciones } from '../direccion/direccion-referencia';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -93,45 +93,36 @@ export class TrayectosService {
 
     const ordenados = this.puntosTrayecto.ordenar(puntos);
 
-    for (let intento = 0; ; intento++) {
-      try {
-        return await this.prisma.$transaction(
-          async (tx) => {
-            const localidad = await tx.localidad.findUnique({
-              where: { id: localidadId },
-              select: { id: true },
-            });
-            if (!localidad)
-              throw new BadRequestException('La localidad indicada no existe');
+    return transaccionConDirecciones(
+      this.prisma,
+      async (tx) => {
+        const localidad = await tx.localidad.findUnique({
+          where: { id: localidadId },
+          select: { id: true },
+        });
+        if (!localidad)
+          throw new BadRequestException('La localidad indicada no existe');
 
-            const referencias = await this.puntosTrayecto.resolverReferencias(
-              tx,
-              ordenados,
-            );
-
-            return escribir(tx, {
-              nombre,
-              localidadId,
-              geometria: {
-                type: geometria.type,
-                coordinates: geometria.coordinates,
-              },
-              puntos: { create: referencias },
-            });
-          },
-          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        const referencias = await this.puntosTrayecto.resolverReferencias(
+          tx,
+          ordenados,
         );
-      } catch (error: unknown) {
-        if (!(error instanceof Prisma.PrismaClientKnownRequestError))
-          throw error;
-        // Una escritura concurrente puede invalidar la búsqueda de un pin.
-        if (error.code !== 'P2034') throw error;
-        if (intento >= 2) {
-          throw new ConflictException(
-            'Cambió el trayecto o una referencia. Volvé a intentar.',
-          );
-        }
-      }
-    }
+
+        return escribir(tx, {
+          nombre,
+          localidadId,
+          geometria: {
+            type: geometria.type,
+            coordinates: geometria.coordinates,
+          },
+          puntos: { create: referencias },
+        });
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        // Resolver todos los puntos puede superar 5 s con PostgreSQL remoto.
+        timeout: 20_000,
+      },
+    );
   }
 }

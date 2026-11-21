@@ -1,4 +1,7 @@
-import { InternalServerErrorException } from '@nestjs/common';
+import {
+  direccionSelect,
+  toDireccionResponse,
+} from '../direccion/direcciones.select';
 import type { Prisma } from '../generated/prisma/client';
 
 export const publicUserSelect = {
@@ -11,8 +14,8 @@ export const publicUserSelect = {
       name: true,
       lastName: true,
       domicilios: {
-        select: { id: true, direccion: true, etiqueta: true },
-        orderBy: { id: 'asc' },
+        select: { direccion: { select: direccionSelect }, etiqueta: true },
+        orderBy: { direccionId: 'asc' },
       },
     },
   },
@@ -30,11 +33,10 @@ export function toUserResponse({
     role,
     cliente: cliente && {
       ...cliente,
-      domicilios: cliente.domicilios.map((domicilio) => {
-        if (domicilio.direccion === null)
-          throw new InternalServerErrorException('Domicilio sin texto');
-        return { ...domicilio, direccion: domicilio.direccion };
-      }),
+      domicilios: cliente.domicilios.map(({ direccion, etiqueta }) => ({
+        ...toDireccionResponse(direccion),
+        etiqueta,
+      })),
     },
   };
 }

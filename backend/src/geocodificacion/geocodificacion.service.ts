@@ -52,15 +52,12 @@ export class GeocodificacionService {
   }: GeocodificacionDirectaQuery): Promise<GeocodificacionDirectaResponse> {
     const local = await this.prisma.direccion.findFirst({
       where: {
-        clienteId: null,
         calle: { clave: claveCalle(calle) },
         altura,
-        lat: { not: null },
-        long: { not: null },
       },
       select: { calle: { select: { calle: true } }, lat: true, long: true },
     });
-    if (local?.calle && local.lat !== null && local.long !== null) {
+    if (local) {
       return {
         sugerencias: [
           {

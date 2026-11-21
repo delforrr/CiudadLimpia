@@ -125,18 +125,21 @@ describe('Public API and documentation (HTTP)', () => {
       expect.arrayContaining([{ session: [] }, { bearer: [] }]),
     );
     expect(document.paths['/direcciones/{id}'].patch?.description).toContain(
-      'ambas nulas',
+      'pin compartido',
     );
     expect(document.components?.schemas?.CreateDireccionDto).toMatchObject({
-      required: ['calle', 'altura'],
       properties: {
-        lat: { type: 'number', nullable: true, minimum: -90, maximum: 90 },
-        long: { type: 'number', nullable: true, minimum: -180, maximum: 180 },
+        lat: { type: 'number', minimum: -90, maximum: 90 },
+        long: { type: 'number', minimum: -180, maximum: 180 },
       },
     });
+    expect(document.components?.schemas?.CreateDireccionDto).toHaveProperty(
+      'required',
+      expect.arrayContaining(['calle', 'altura', 'lat', 'long']),
+    );
     expect(
       document.paths['/geocodificacion/directa'].get?.description,
-    ).toContain('catálogo público');
+    ).toContain('catálogo compartido');
     expect(register).toHaveProperty(
       [
         'requestBody',
@@ -224,7 +227,10 @@ describe('Public API and documentation (HTTP)', () => {
       true,
     );
     expect(document.paths['/users'].get?.responses).toHaveProperty('403');
-    expect(register?.responses).toHaveProperty('409');
+    expect(register?.responses['409']).toHaveProperty(
+      ['content', 'application/json', 'schema', 'oneOf', '0', '$ref'],
+      '#/components/schemas/PinDireccionDistintoDto',
+    );
     expect(document.paths['/users/{id}'].patch?.responses).toHaveProperty(
       '415',
     );

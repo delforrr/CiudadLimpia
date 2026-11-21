@@ -50,7 +50,7 @@ describe('CreatePuntoLimpioDto', () => {
   it('exige los campos obligatorios', async () => {
     const errores = await validate(new CreatePuntoLimpioDto());
     expect(errores.map((error) => error.property).sort()).toEqual(
-      ['nombre', 'tipoId', 'direccionId', 'lat', 'long'].sort(),
+      ['nombre', 'tipoId', 'direccionId'].sort(),
     );
   });
 });
