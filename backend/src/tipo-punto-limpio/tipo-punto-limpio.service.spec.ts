@@ -1,9 +1,6 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TipoPuntoLimpioResiduoService } from '../tipo-punto-limpio-residuo/tipo-punto-limpio-residuo.service';
 import { TipoPuntoLimpioService } from './tipo-punto-limpio.service';
 
 describe('TipoPuntoLimpioService', () => {
@@ -41,7 +38,10 @@ describe('TipoPuntoLimpioService', () => {
         delete: jest.fn(),
       },
     };
-    service = new TipoPuntoLimpioService(prisma as unknown as PrismaService);
+    service = new TipoPuntoLimpioService(
+      prisma as unknown as PrismaService,
+      new TipoPuntoLimpioResiduoService(),
+    );
   });
 
   it('creates a tipo with its residuos', async () => {
@@ -125,29 +125,29 @@ describe('TipoPuntoLimpioService', () => {
     expect(lastCall?.[0].select).toBeDefined();
   });
 
-  it('maps duplicate names and missing residuos to HTTP errors', async () => {
-    prisma.tipoPuntoLimpio.create.mockRejectedValueOnce({ code: 'P2002' });
-    await expect(
-      service.create({ nombre: 'Botellero' }),
-    ).rejects.toBeInstanceOf(ConflictException);
+  it.each(['P2002', 'P2003'])(
+    'propaga el error %s de Prisma al crear un tipo',
+    async (code) => {
+      const error = { code };
+      prisma.tipoPuntoLimpio.create.mockRejectedValueOnce(error);
 
-    prisma.tipoPuntoLimpio.create.mockRejectedValueOnce({ code: 'P2003' });
-    await expect(
-      service.create({ nombre: 'Botellero', residuos: [residuoId] }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
+      await expect(
+        service.create({ nombre: 'Botellero', residuos: [residuoId] }),
+      ).rejects.toBe(error);
+    },
+  );
 
-  it('removes a tipo and maps missing or in-use records', async () => {
+  it('elimina un tipo', async () => {
     await expect(service.remove(tipoId)).resolves.toBeUndefined();
-
-    prisma.tipoPuntoLimpio.delete.mockRejectedValueOnce({ code: 'P2025' });
-    await expect(service.remove(tipoId)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
-
-    prisma.tipoPuntoLimpio.delete.mockRejectedValueOnce({ code: 'P2003' });
-    await expect(service.remove(tipoId)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
   });
+
+  it.each(['P2025', 'P2003'])(
+    'propaga el error %s de Prisma al eliminar un tipo',
+    async (code) => {
+      const error = { code };
+      prisma.tipoPuntoLimpio.delete.mockRejectedValueOnce(error);
+
+      await expect(service.remove(tipoId)).rejects.toBe(error);
+    },
+  );
 });

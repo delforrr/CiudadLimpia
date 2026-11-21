@@ -23,7 +23,7 @@ El frontend centraliza las rutas de sesión en `src/services/authService.ts` y l
 
 ## Arquitectura del backend
 
-`AccountsModule` registra los controladores de autenticación y usuarios, sus servicios y los guards. `AuthService` verifica credenciales y emite sesiones; delega la creación de cuentas en `UserService`, que concentra las escrituras y el mapeo de errores Prisma a 409/404. `PrismaModule` proporciona una sola instancia del cliente a cuentas y puntos limpios, sin depender de autenticación.
+`AccountsModule` registra los controladores de autenticación y usuarios, sus servicios y los guards. `AuthService` verifica credenciales y emite sesiones; delega la creación de cuentas en `UserService`, que concentra las escrituras. El filtro global de excepciones convierte los conflictos de Prisma en 409 y los registros faltantes en 404. `PrismaModule` proporciona una sola instancia del cliente a cuentas y puntos limpios, sin depender de autenticación.
 
 El arranque y las pruebas HTTP usan la misma configuración de aplicación. La política HTTP mantiene `no-store`, rechazo cross-site y Content-Type JSON; el límite de intentos de registro/login tiene su propio guard. Se usa `AuthGuard('jwt')` de Passport directamente y se conserva `publicUserSelect` como lista explícita de campos públicos.
 

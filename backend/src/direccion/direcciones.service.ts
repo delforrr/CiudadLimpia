@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -57,20 +56,16 @@ export class DireccionesService {
     return toDireccionResponse(direccion);
   }
 
-  async create(dto: CreateDireccionDto) {
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        const data = {
-          ...coordenadas(dto),
-          ...(await this.buildDireccionData(tx, dto)),
-        };
-        return toDireccionResponse(
-          await tx.direccion.create({ data, select: direccionSelect }),
-        );
-      });
-    } catch (error: unknown) {
-      this.rethrow(error);
-    }
+  create(dto: CreateDireccionDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const data = {
+        ...coordenadas(dto),
+        ...(await this.buildDireccionData(tx, dto)),
+      };
+      return toDireccionResponse(
+        await tx.direccion.create({ data, select: direccionSelect }),
+      );
+    });
   }
 
   async resolveForPuntoLimpio(
@@ -139,62 +134,54 @@ export class DireccionesService {
 
   async update(id: string, dto: UpdateDireccionDto) {
     const ubicacion = coordenadas(dto);
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        const actual = await tx.direccion.findUnique({
-          where: { id, clienteId: null },
-          select: { ...direccionSelect, calleId: true },
-        });
-        if (!actual) throw new NotFoundException('Direccion no encontrada');
-        const { calleId, ...registro } = actual;
-        let data = ubicacion;
-        if (dto.calle !== undefined || dto.altura !== undefined) {
-          const altura = dto.altura ?? actual.altura;
-          const nuevaCalleId =
-            dto.calle === undefined
-              ? calleId
-              : await this.resolveCalleId(tx, dto.calle);
-          if (altura === null || !nuevaCalleId)
-            throw new BadRequestException(
-              'Indica calle y altura para completar la direccion',
-            );
-          const cambio = altura !== actual.altura || nuevaCalleId !== calleId;
-          const reinicio = cambio ? { lat: null, long: null } : {};
-          data = {
-            ...{ calleId: nuevaCalleId, altura, direccion: null },
-            ...reinicio,
-            ...ubicacion,
-          };
-        } else if (dto.lat === undefined) {
-          return toDireccionResponse(registro);
-        } else if (
-          dto.lat === null &&
-          registro.direccion === null &&
-          registro.altura === null
-        ) {
-          throw new BadRequestException(
-            'Una dirección sin altura requiere coordenadas',
-          );
-        }
-        return toDireccionResponse(
-          await tx.direccion.update({
-            where: { id, clienteId: null },
-            data,
-            select: direccionSelect,
-          }),
-        );
+    return this.prisma.$transaction(async (tx) => {
+      const actual = await tx.direccion.findUnique({
+        where: { id, clienteId: null },
+        select: { ...direccionSelect, calleId: true },
       });
-    } catch (error: unknown) {
-      this.rethrow(error);
-    }
+      if (!actual) throw new NotFoundException('Direccion no encontrada');
+      const { calleId, ...registro } = actual;
+      let data = ubicacion;
+      if (dto.calle !== undefined || dto.altura !== undefined) {
+        const altura = dto.altura ?? actual.altura;
+        const nuevaCalleId =
+          dto.calle === undefined
+            ? calleId
+            : await this.resolveCalleId(tx, dto.calle);
+        if (altura === null || !nuevaCalleId)
+          throw new BadRequestException(
+            'Indica calle y altura para completar la direccion',
+          );
+        const cambio = altura !== actual.altura || nuevaCalleId !== calleId;
+        const reinicio = cambio ? { lat: null, long: null } : {};
+        data = {
+          ...{ calleId: nuevaCalleId, altura, direccion: null },
+          ...reinicio,
+          ...ubicacion,
+        };
+      } else if (dto.lat === undefined) {
+        return toDireccionResponse(registro);
+      } else if (
+        dto.lat === null &&
+        registro.direccion === null &&
+        registro.altura === null
+      ) {
+        throw new BadRequestException(
+          'Una dirección sin altura requiere coordenadas',
+        );
+      }
+      return toDireccionResponse(
+        await tx.direccion.update({
+          where: { id, clienteId: null },
+          data,
+          select: direccionSelect,
+        }),
+      );
+    });
   }
 
   async remove(id: string) {
-    try {
-      await this.prisma.direccion.delete({ where: { id, clienteId: null } });
-    } catch (error: unknown) {
-      this.rethrow(error);
-    }
+    await this.prisma.direccion.delete({ where: { id, clienteId: null } });
   }
 
   private async buildDireccionData(
@@ -216,17 +203,5 @@ export class DireccionesService {
       select: { id: true },
     });
     return calle.id;
-  }
-
-  private rethrow(error: unknown): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002')
-        throw new ConflictException('La direccion ya existe');
-      if (error.code === 'P2003')
-        throw new ConflictException('La direccion esta en uso');
-      if (error.code === 'P2025')
-        throw new NotFoundException('Direccion no encontrada');
-    }
-    throw error;
   }
 }

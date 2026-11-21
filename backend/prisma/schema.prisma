@@ -129,3 +129,40 @@ model PuntoTrayecto {
   @@id([trayectoId, orden])
   @@index([direccionId])
 }
+
+enum Estado {
+  ACTIVO
+  INACTIVO
+}
+
+model Conductor {
+  id        String              @id @default(uuid())
+  nombre    String
+  apellido  String
+  activo    Boolean             @default(true)
+  contratos ContratoConductor[]
+}
+
+model ContratoConductor {
+  idCamion    String
+  idConductor String
+  fechaInicio DateTime
+  fechaFin    DateTime?
+
+  camion    Camion    @relation(fields: [idCamion], references: [id], onDelete: Restrict)
+  conductor Conductor @relation(fields: [idConductor], references: [id], onDelete: Restrict)
+
+  @@id([idCamion, idConductor, fechaInicio])
+  @@index([idCamion, fechaInicio])
+  @@index([idConductor, fechaInicio])
+}
+
+model Camion {
+  id        String              @id @default(uuid())
+  marca     String
+  modelo    String
+  anio      Int
+  estado    Estado              @default(ACTIVO)
+  patente   String              @unique
+  contratos ContratoConductor[]
+}

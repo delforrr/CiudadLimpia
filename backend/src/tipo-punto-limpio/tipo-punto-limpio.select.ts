@@ -1,16 +1,10 @@
 import type { Prisma } from '../generated/prisma/client';
+import { residuosDelTipoArgs } from '../tipo-punto-limpio-residuo/tipo-punto-limpio-residuo.select';
 
 export const tipoPuntoLimpioSelect = {
   id: true,
   nombre: true,
-  residuos: {
-    select: {
-      residuo: {
-        select: { id: true, nombre: true },
-      },
-    },
-    orderBy: { residuo: { nombre: 'asc' } },
-  },
+  residuos: residuosDelTipoArgs,
 } satisfies Prisma.TipoPuntoLimpioSelect;
 
 export type TipoPuntoLimpioRecord = Prisma.TipoPuntoLimpioGetPayload<{

@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PuntosLimpiosService } from './puntos-limpios.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DireccionesService } from '../direccion/direcciones.service';
 
@@ -47,24 +46,13 @@ describe('PuntosLimpiosService', () => {
   });
 
   it.each([
-    [
-      'P2003',
-      BadRequestException,
-      'El tipo o la dirección indicados no existen',
-    ],
-    ['P2025', NotFoundException, 'Punto limpio no encontrado'],
-  ])('traduce %s a una excepción HTTP', async (code, exception, message) => {
-    create.mockRejectedValue({ code });
-    const result = service.create(dto);
-    await expect(result).rejects.toBeInstanceOf(exception);
-    await expect(result).rejects.toThrow(message);
+    { code: 'P2003' },
+    { code: 'P2025' },
+    { code: 'P2002' },
+    new Error('Fallo de conexión'),
+    null,
+  ])('propaga el error original: %j', async (error) => {
+    create.mockRejectedValue(error);
+    await expect(service.create(dto)).rejects.toBe(error);
   });
-
-  it.each([new Error('Fallo de conexión'), { code: 'P2002' }, null])(
-    'conserva errores no contemplados: %j',
-    async (error) => {
-      create.mockRejectedValue(error);
-      await expect(service.create(dto)).rejects.toBe(error);
-    },
-  );
 });

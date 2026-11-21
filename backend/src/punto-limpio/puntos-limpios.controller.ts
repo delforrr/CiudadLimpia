@@ -15,6 +15,7 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiCookieAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNoContentResponse,
@@ -72,11 +73,14 @@ export class PuntosLimpiosController {
   })
   @ApiCreatedResponse({ type: PuntoLimpioResponseDto })
   @ApiBadRequestResponse({
-    description: 'Datos inválidos o tipo o dirección inexistentes.',
+    description: 'Datos inválidos o dirección pública inexistente.',
   })
   @ApiUnauthorizedResponse({ description: 'Sesión ausente o inválida.' })
   @ApiForbiddenResponse({
     description: 'No tenés permiso para esta operación.',
+  })
+  @ApiConflictResponse({
+    description: 'El tipo o la dirección generan un conflicto de referencia.',
   })
   create(@Body() dto: CreatePuntoLimpioDto) {
     return this.puntos.create(dto);
@@ -97,13 +101,16 @@ export class PuntosLimpiosController {
   @ApiOkResponse({ type: PuntoLimpioResponseDto })
   @ApiBadRequestResponse({
     description:
-      'Datos o identificador inválidos, o tipo o dirección inexistentes.',
+      'Datos o identificador inválidos, o dirección pública inexistente.',
   })
   @ApiUnauthorizedResponse({ description: 'Sesión ausente o inválida.' })
   @ApiForbiddenResponse({
     description: 'No tenés permiso para esta operación.',
   })
   @ApiNotFoundResponse({ description: 'Punto limpio no encontrado.' })
+  @ApiConflictResponse({
+    description: 'El tipo o la dirección generan un conflicto de referencia.',
+  })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePuntoLimpioDto,

@@ -67,7 +67,7 @@ export class TrayectosController {
       'Datos inválidos, localidad inexistente o referencia inexistente o privada.',
   })
   @ApiConflictResponse({
-    description: 'Conflicto con una escritura concurrente. Podés reintentar.',
+    description: 'Conflicto de referencia o de escritura concurrente.',
   })
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',
@@ -89,7 +89,7 @@ export class TrayectosController {
   })
   @ApiNotFoundResponse({ description: 'Trayecto no encontrado.' })
   @ApiConflictResponse({
-    description: 'Conflicto con una escritura concurrente. Podés reintentar.',
+    description: 'Conflicto de referencia o de escritura concurrente.',
   })
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',

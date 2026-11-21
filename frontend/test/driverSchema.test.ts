@@ -10,6 +10,7 @@ test('validates and normalizes driver data', () => {
     phone: ' 02392-456789 ',
     status: 'ACTIVO',
     assignedTruck: ' Camión 01 ',
+    inicio: '2026-11-21',
   })
 
   assert.equal(result.firstName, 'Carlos')

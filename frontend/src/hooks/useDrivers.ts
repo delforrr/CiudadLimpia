@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type FormEvent } from 'react'
 import { z } from 'zod'
+import { asignacionesCamion, type ContratoConductor } from '../utils/contratoConductor.ts'
 import { driverSchema } from '../schemas/driverSchema.ts'
 import type { Driver, DriverStatus } from '../utils/driverFormat.ts'
 
@@ -53,6 +54,8 @@ export type DriverForm = {
   phone: string
   status: DriverStatus
   assignedTruck: string
+  inicio: string
+  fin: string
 }
 
 function normalize(value: string) {
@@ -63,14 +66,32 @@ function normalize(value: string) {
 }
 
 function loadDrivers(): Driver[] {
+  let drivers = SEED_DRIVERS
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return SEED_DRIVERS
-    const parsed = JSON.parse(raw) as Driver[]
-    if (!Array.isArray(parsed) || parsed.length === 0) return SEED_DRIVERS
-    return parsed
+    const parsed = raw ? JSON.parse(raw) : null
+    if (Array.isArray(parsed) && parsed.length) drivers = parsed
+    const rawTrucks = localStorage.getItem('ciudad-limpia:camiones')
+    const trucks = rawTrucks ? JSON.parse(rawTrucks) as {
+      code: string; assignedDriver?: string; contrato?: ContratoConductor
+    }[] : []
+    if (!Array.isArray(trucks)) return drivers
+    const asignaciones = trucks.flatMap((unidad) =>
+      asignacionesCamion(unidad).map((asignacion) => ({ ...asignacion, codigo: unidad.code })),
+    )
+    return drivers.map((driver): Driver => {
+      const nombre = `${driver.firstName} ${driver.lastName}`.trim()
+      const asignacion = asignaciones.find((item) => item.nombre === nombre)
+      if (asignacion) {
+        return { ...driver, status: 'ACTIVO', assignedTruck: asignacion.codigo, contrato: asignacion.contrato }
+      }
+      if (trucks.some((unidad) => unidad.code === driver.assignedTruck)) {
+        return { ...driver, status: 'INACTIVO', assignedTruck: null, contrato: undefined }
+      }
+      return { ...driver, status: driver.assignedTruck ? 'ACTIVO' : 'INACTIVO' }
+    })
   } catch {
-    return SEED_DRIVERS
+    return drivers
   }
 }
 
@@ -79,6 +100,29 @@ function saveDrivers(drivers: Driver[]) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(drivers))
   } catch {
     // ignore storage errors
+  }
+}
+
+function sincronizarCamiones(nombre: string, codigo: string | null, contrato?: ContratoConductor, nombreAnterior = nombre) {
+  try {
+    const raw = localStorage.getItem('ciudad-limpia:camiones')
+    if (!raw) return
+    const trucks = JSON.parse(raw)
+    if (!Array.isArray(trucks)) return
+    const actualizados = trucks.map((truck: { code: string; assignedDriver?: string; contrato?: ContratoConductor }) => {
+      const anteriores = asignacionesCamion(truck)
+      const asignaciones = anteriores
+        .filter((asignacion) => asignacion.nombre !== nombreAnterior && asignacion.nombre !== nombre)
+      if (codigo && truck.code === codigo) {
+        asignaciones.push({ nombre, contrato })
+      }
+      return asignaciones.length === 0 && anteriores.length === 0
+        ? truck
+        : { ...truck, conductores: asignaciones }
+    })
+    localStorage.setItem('ciudad-limpia:camiones', JSON.stringify(actualizados))
+  } catch {
+    // La edición del chofer sigue disponible si el almacenamiento está bloqueado.
   }
 }
 
@@ -96,6 +140,8 @@ export function useDrivers() {
     phone: '',
     status: 'ACTIVO',
     assignedTruck: '',
+    inicio: '',
+    fin: '',
   })
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof DriverForm, string[]>>
@@ -151,6 +197,8 @@ export function useDrivers() {
       phone: '',
       status: 'ACTIVO',
       assignedTruck: '',
+      inicio: '',
+      fin: '',
     })
     setFieldErrors({})
     setFormError('')
@@ -166,6 +214,8 @@ export function useDrivers() {
       phone: driver.phone,
       status: driver.status,
       assignedTruck: driver.assignedTruck ?? '',
+      inicio: driver.contrato?.inicio ?? '',
+      fin: driver.contrato?.fin ?? '',
     })
     setFieldErrors({})
     setFormError('')
@@ -222,8 +272,9 @@ export function useDrivers() {
           lastName: data.lastName,
           dni: data.dni,
           phone: data.phone,
-          status: data.status,
+          status: data.assignedTruck ? 'ACTIVO' : 'INACTIVO',
           assignedTruck: data.assignedTruck?.trim() || null,
+          contrato: data.assignedTruck ? { inicio: data.inicio, fin: data.fin || undefined } : undefined,
         }
 
         setDrivers((previous) => {
@@ -236,6 +287,7 @@ export function useDrivers() {
           return next
         })
 
+        sincronizarCamiones(`${payload.firstName} ${payload.lastName}`.trim(), payload.assignedTruck ?? null, payload.contrato, editing ? `${editing.firstName} ${editing.lastName}`.trim() : undefined)
         setEditing(null)
         setIsCreating(false)
         setNotice(editing ? 'Chofer actualizado correctamente.' : 'Chofer agregado correctamente.')
@@ -260,63 +312,40 @@ export function useDrivers() {
   const confirmDelete = useCallback(() => {
     if (!pendingDelete || deleting) return
     setDeleting(true)
+    const nombre = `${pendingDelete.firstName} ${pendingDelete.lastName}`.trim()
     setDrivers((previous) => {
       const next = previous.filter((driver) => driver.id !== pendingDelete.id)
       saveDrivers(next)
       return next
     })
+    sincronizarCamiones(nombre, null, undefined, nombre)
     setPendingDelete(null)
     setNotice('Chofer eliminado correctamente.')
     setDeleting(false)
   }, [deleting, pendingDelete])
 
   const assignTruck = useCallback(
-    (driverId: string, truckCode: string | null) => {
+    (driverId: string, truckCode: string | null, contrato?: ContratoConductor) => {
       const normalizedTruck = truckCode?.trim() || null
-      let targetName = ''
-
-      setDrivers((previous) => {
-        const target = previous.find((d) => d.id === driverId)
-        if (target) {
-          targetName = `${target.firstName} ${target.lastName}`.trim()
-        }
-        const next = previous.map((d) =>
-          d.id === driverId ? { ...d, assignedTruck: normalizedTruck } : d,
-        )
-        saveDrivers(next)
-
-        // Sincronizar con el almacenamiento de camiones si existe
-        try {
-          const raw = localStorage.getItem('ciudad-limpia:camiones')
-          if (raw) {
-            const parsed = JSON.parse(raw)
-            if (Array.isArray(parsed)) {
-              const updatedTrucks = parsed.map((t: { code?: string; assignedDriver?: string }) => {
-                if (normalizedTruck && t.code === normalizedTruck) {
-                  return { ...t, assignedDriver: targetName || t.assignedDriver }
-                }
-                if (targetName && t.assignedDriver === targetName && t.code !== normalizedTruck) {
-                  return { ...t, assignedDriver: 'Sin asignar' }
-                }
-                return t
-              })
-              localStorage.setItem('ciudad-limpia:camiones', JSON.stringify(updatedTrucks))
-            }
+      const target = drivers.find((driver) => driver.id === driverId)
+      if (!target) return
+      const targetName = `${target.firstName} ${target.lastName}`.trim()
+      const next = drivers.map((driver): Driver =>
+        driver.id === driverId
+          ? {
+            ...driver,
+            status: normalizedTruck ? 'ACTIVO' : 'INACTIVO',
+            assignedTruck: normalizedTruck,
+            contrato: normalizedTruck ? contrato : undefined,
           }
-        } catch {
-          // ignorar errores de almacenamiento
-        }
-
-        return next
-      })
-
-      if (normalizedTruck) {
-        setNotice(`Se asignó ${normalizedTruck} a ${targetName || 'chofer'}.`)
-      } else {
-        setNotice(`Se desvinculó la unidad de ${targetName || 'chofer'}.`)
-      }
+          : driver,
+      )
+      setDrivers(next)
+      saveDrivers(next)
+      sincronizarCamiones(targetName, normalizedTruck, contrato)
+      setNotice(normalizedTruck ? `Se asignó ${normalizedTruck} a ${targetName}.` : `Se desvinculó la unidad de ${targetName}.`)
     },
-    [],
+    [drivers],
   )
 
   return {

@@ -8,6 +8,7 @@ import { PuntosLimpiosModule } from './punto-limpio/puntos-limpios.module';
 
 import { TipoPuntoLimpioModule } from './tipo-punto-limpio/tipo-punto-limpio.module';
 import { TrayectosModule } from './trayecto/trayectos.module';
+import { CamionesModule } from './camiones/camiones.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { TrayectosModule } from './trayecto/trayectos.module';
     PuntosLimpiosModule,
     TipoPuntoLimpioModule,
     TrayectosModule,
+    CamionesModule,
   ],
   controllers: [AppController],
 })

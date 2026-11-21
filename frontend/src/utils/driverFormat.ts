@@ -1,3 +1,5 @@
+import type { ContratoConductor } from './contratoConductor.ts'
+
 export type DriverStatus = 'ACTIVO' | 'INACTIVO'
 
 export interface Driver {
@@ -8,6 +10,7 @@ export interface Driver {
   phone: string
   status: DriverStatus
   assignedTruck?: string | null
+  contrato?: ContratoConductor
 }
 
 export function driverFullName(driver: Driver) {

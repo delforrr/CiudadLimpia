@@ -95,6 +95,37 @@
   overflow-wrap: anywhere;
 }
 
+.admin-module-table .MuiTableCell-root {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.admin-module-table .MuiTableCell-body > div,
+.admin-module-table .MuiTableCell-body .admin-users-name,
+.admin-module-table .MuiTableCell-body .admin-drivers-contact-item {
+  justify-content: center;
+  align-items: center;
+}
+
+.admin-module-table .MuiTableCell-body > :is(
+  .admin-points-identity,
+  .admin-types-identity,
+  .admin-trucks-identity,
+  .admin-drivers-identity,
+  .admin-users-identity
+) {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  justify-content: normal;
+  width: 100%;
+}
+
+.admin-module-table .MuiTableCell-body :is(.admin-drivers-truck, .admin-drivers-contact-item) {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  width: 100%;
+}
+
 .admin-module-table .MuiTableRow-hover:hover {
   background-color: #f3f8f4;
 }
@@ -108,8 +139,17 @@
 }
 
 .admin-module-actions .MuiIconButton-root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
   width: 34px;
   height: 34px;
+  padding: 0;
+}
+
+.admin-module-table .MuiTableCell-body :is(.admin-trucks-driver, .admin-drivers-truck, .admin-drivers-contact-item) .MuiSvgIcon-root {
+  flex-shrink: 0;
 }
 
 .admin-module-panel .admin-module-empty {

@@ -160,7 +160,12 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
       .post('/puntos-limpios')
       .set('Authorization', `Bearer ${adminToken}`)
       .send(body)
-      .expect(400);
+      .expect(409)
+      .expect({
+        statusCode: 409,
+        message: 'Conflicto de integridad referencial en la base de datos',
+        error: 'Conflict',
+      });
   });
 
   it('registra la direccion junto con el punto y rechaza dos opciones o una altura invalida', async () => {

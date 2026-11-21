@@ -70,15 +70,13 @@ export class TipoPuntoLimpioController {
     summary: 'Crear un tipo de punto limpio con sus residuos (ADMIN)',
   })
   @ApiCreatedResponse({ type: TipoPuntoLimpioResponseDto })
-  @ApiBadRequestResponse({
-    description: 'Datos inválidos o residuos inexistentes.',
-  })
+  @ApiBadRequestResponse({ description: 'Datos inválidos.' })
   @ApiUnauthorizedResponse({ description: 'Sesión ausente o inválida.' })
   @ApiForbiddenResponse({
     description: 'No tenés permiso para esta operación.',
   })
   @ApiConflictResponse({
-    description: 'Ya existe un tipo de punto limpio con ese nombre.',
+    description: 'El nombre ya existe o algún residuo indicado no existe.',
   })
   create(@Body() dto: CreateTipoPuntoLimpioDto) {
     return this.tipos.create(dto);
@@ -100,7 +98,7 @@ export class TipoPuntoLimpioController {
   })
   @ApiOkResponse({ type: TipoPuntoLimpioResponseDto })
   @ApiBadRequestResponse({
-    description: 'Datos o identificador inválidos, o residuos inexistentes.',
+    description: 'Datos o identificador inválidos.',
   })
   @ApiUnauthorizedResponse({ description: 'Sesión ausente o inválida.' })
   @ApiForbiddenResponse({
@@ -108,7 +106,7 @@ export class TipoPuntoLimpioController {
   })
   @ApiNotFoundResponse({ description: 'Tipo de punto limpio no encontrado.' })
   @ApiConflictResponse({
-    description: 'Ya existe un tipo de punto limpio con ese nombre.',
+    description: 'El nombre ya existe o algún residuo indicado no existe.',
   })
   update(
     @Param('id', ParseUUIDPipe) id: string,

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { validarContrato } from '../utils/contratoConductor.ts'
 
 export const driverSchema = z.object({
   firstName: z
@@ -38,4 +39,11 @@ export const driverSchema = z.object({
     .max(30, 'La unidad no puede superar 30 caracteres')
     .optional()
     .or(z.literal('')),
+  inicio: z.string().default(''),
+  fin: z.string().default(''),
+}).superRefine((datos, ctx) => {
+  if (!datos.assignedTruck) return
+  for (const [campo, message] of Object.entries(validarContrato(datos.inicio, datos.fin))) {
+    ctx.addIssue({ code: 'custom', path: [campo], message })
+  }
 })
