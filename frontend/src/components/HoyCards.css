@@ -80,6 +80,7 @@
   flex-direction: column;
   align-items: flex-start;
   padding: 0.45rem 0.65rem;
+  border: 1px solid transparent;
   border-radius: 8px;
   color: #234e26;
   font-size: 0.85rem;
@@ -89,7 +90,8 @@
 }
 
 .direccion-opcion.MuiMenuItem-root.Mui-selected {
-  background-color: #e1efdc;
+  background-color: transparent;
+  border-color: #1e6000;
 }
 
 .direccion-etiqueta {

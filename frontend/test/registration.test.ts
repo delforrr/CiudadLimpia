@@ -79,7 +79,7 @@ test('only shows the admin panel for current administrators', () => {
   const user: User = { id: 'user-1', email: 'ana@example.com', role: 'USER', cliente: null }
   assert.equal(render(false, null, '/admin', true), '')
   assert.equal(render(false, user, '/admin', true), '')
-  assert.match(render(false, { ...user, role: 'ADMIN' }, '/admin', true), /Accesos directos/)
+  assert.match(render(false, { ...user, role: 'ADMIN' }, '/admin', true), /Puntos Limpios/)
 })
 
 test('keeps a single address hidden until its dropdown is opened', () => {
