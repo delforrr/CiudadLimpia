@@ -6,7 +6,8 @@ import {
   IsObject,
   ValidateNested,
 } from 'class-validator';
-import { CoordenadasTrayectoDto, LineStringDto } from './trayecto.dto';
+import { CoordenadasTrayectoDto } from '../punto-trayecto/punto-trayecto.dto';
+import { LineStringDto } from './trayecto.dto';
 
 export class SugerirTrayectoDto {
   @ApiProperty({

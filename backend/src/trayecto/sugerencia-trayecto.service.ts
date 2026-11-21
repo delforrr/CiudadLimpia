@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { types } from 'node:util';
 import { esLineaValida } from './line-string';
 import type { SugerenciaTrayectoDto } from './sugerencia-trayecto.dto';
-import type { CoordenadasTrayectoDto } from './trayecto.dto';
+import type { CoordenadasTrayectoDto } from '../punto-trayecto/punto-trayecto.dto';
 
 const demoOsrm = 'https://routing.openstreetmap.de/routed-car/';
 const continuarManual = 'Podés dibujar el trayecto manualmente.';

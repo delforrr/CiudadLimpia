@@ -4,27 +4,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DireccionesService } from '../direccion/direcciones.service';
-import {
-  direccionSelect,
-  toDireccionResponse,
-} from '../direccion/direcciones.select';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  puntosTrayectoArgs,
+  toPuntoTrayectoResponse,
+} from '../punto-trayecto/puntos-trayecto.select';
+import { PuntosTrayectoService } from '../punto-trayecto/puntos-trayecto.service';
 import { esLineaValida } from './line-string';
 import type { CreateTrayectoDto } from './trayecto.dto';
 
 const trayectoInclude = {
-  puntos: {
-    orderBy: { orden: 'asc' },
-    select: {
-      orden: true,
-      lat: true,
-      long: true,
-      direccionId: true,
-      direccion: { select: direccionSelect },
-    },
-  },
+  puntos: puntosTrayectoArgs,
 } as const satisfies Prisma.TrayectoInclude;
 
 function toTrayectoResponse(
@@ -32,10 +23,7 @@ function toTrayectoResponse(
 ) {
   return {
     ...trayecto,
-    puntos: trayecto.puntos.map(({ direccion, ...punto }) => ({
-      ...punto,
-      direccion: toDireccionResponse(direccion),
-    })),
+    puntos: trayecto.puntos.map(toPuntoTrayectoResponse),
   };
 }
 
@@ -43,7 +31,7 @@ function toTrayectoResponse(
 export class TrayectosService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly direcciones: DireccionesService,
+    private readonly puntosTrayecto: PuntosTrayectoService,
   ) {}
 
   async findAll() {
@@ -79,7 +67,7 @@ export class TrayectosService {
 
   async update(id: string, dto: CreateTrayectoDto) {
     return this.guardar(dto, async (tx, data) => {
-      await tx.puntoTrayecto.deleteMany({ where: { trayectoId: id } });
+      await this.puntosTrayecto.eliminarDeTrayecto(tx, id);
       return toTrayectoResponse(
         await tx.trayecto.update({
           where: { id },
@@ -103,20 +91,7 @@ export class TrayectosService {
       );
     }
 
-    const ordenados = [...puntos].sort((a, b) => a.orden - b.orden);
-    if (ordenados.some((punto, indice) => punto.orden !== indice)) {
-      throw new BadRequestException(
-        'El orden de puntos debe empezar en cero y ser consecutivo',
-      );
-    }
-
-    for (const punto of ordenados) {
-      if (punto.direccion && punto.direccionId) {
-        throw new BadRequestException(
-          'Enviá direccionId o direccion, solo uno',
-        );
-      }
-    }
+    const ordenados = this.puntosTrayecto.ordenar(puntos);
 
     for (let intento = 0; ; intento++) {
       try {
@@ -129,28 +104,10 @@ export class TrayectosService {
             if (!localidad)
               throw new BadRequestException('La localidad indicada no existe');
 
-            const referencias: Prisma.PuntoTrayectoUncheckedCreateWithoutTrayectoInput[] =
-              [];
-            for (const {
-              orden,
-              lat,
-              long,
-              direccion,
-              direccionId,
-            } of ordenados) {
-              const referencia = await this.direcciones.resolveForTrayecto(tx, {
-                lat,
-                long,
-                direccion,
-                direccionId,
-              });
-              referencias.push({
-                orden,
-                lat,
-                long,
-                direccionId: referencia.id,
-              });
-            }
+            const referencias = await this.puntosTrayecto.resolverReferencias(
+              tx,
+              ordenados,
+            );
 
             return escribir(tx, {
               nombre,
