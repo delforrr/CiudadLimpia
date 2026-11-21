@@ -11,6 +11,7 @@ import type { DireccionResponseDto } from '../src/direccion/dto/direccion-respon
 import type { TrayectoResponseDto } from '../src/trayecto/trayecto.dto';
 import type { PublicUser } from '../src/accounts/account.schemas';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { PuntosTrayectoService } from '../src/punto-trayecto/puntos-trayecto.service';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
@@ -268,6 +269,35 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
       { clienteId: vecina.cliente!.id, direccionId, etiqueta: 'Trabajo' },
     ]);
   });
+
+  it('confirma el alta aunque la transacción demore más de cinco segundos', async () => {
+    const servicio = app.get<PuntosTrayectoService>(PuntosTrayectoService);
+    const resolver = servicio.resolverReferencias.bind(
+      servicio,
+    ) as PuntosTrayectoService['resolverReferencias'];
+    const demora = jest
+      .spyOn(servicio, 'resolverReferencias')
+      .mockImplementationOnce(async (tx, puntos) => {
+        await tx.$executeRaw`SELECT pg_sleep(6)`;
+        return resolver(tx, puntos);
+      });
+
+    try {
+      const guardado = await guardar()
+        .send({
+          ...entrada,
+          puntos: [
+            { ...origen, direccion: { ...referencia, altura: 855 } },
+            destino,
+          ],
+        })
+        .expect(201);
+      const { id } = guardado.body as TrayectoResponseDto;
+      await leer(id).expect(200).expect(guardado.body);
+    } finally {
+      demora.mockRestore();
+    }
+  }, 25000);
 
   it('rechaza referencias inexistentes y revierte las escrituras del alta y la edición', async () => {
     const guardado = await guardar()

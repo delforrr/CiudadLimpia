@@ -118,7 +118,11 @@ export class TrayectosService {
           puntos: { create: referencias },
         });
       },
-      Prisma.TransactionIsolationLevel.Serializable,
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        // Resolver todos los puntos puede superar 5 s con PostgreSQL remoto.
+        timeout: 20_000,
+      },
     );
   }
 }

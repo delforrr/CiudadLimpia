@@ -112,11 +112,14 @@ export async function resolverDireccion(
 export async function transaccionConDirecciones<T>(
   prisma: PrismaService,
   guardar: (tx: Prisma.TransactionClient) => Promise<T>,
-  isolationLevel?: Prisma.TransactionIsolationLevel,
+  opciones?: {
+    isolationLevel?: Prisma.TransactionIsolationLevel;
+    timeout?: number;
+  },
 ): Promise<T> {
   for (let intento = 0; ; intento++) {
     try {
-      return await prisma.$transaction(guardar, { isolationLevel });
+      return await prisma.$transaction(guardar, opciones);
     } catch (error) {
       if (
         !(error instanceof Prisma.PrismaClientKnownRequestError) ||

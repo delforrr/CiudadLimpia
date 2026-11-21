@@ -93,7 +93,7 @@ export class UserService {
         });
         return toUserResponse(user);
       },
-      Prisma.TransactionIsolationLevel.Serializable,
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
   }
 

@@ -54,7 +54,7 @@ export class PuntosLimpiosService {
         });
         return toPuntoLimpioResponse(punto);
       },
-      Prisma.TransactionIsolationLevel.Serializable,
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
   }
 
