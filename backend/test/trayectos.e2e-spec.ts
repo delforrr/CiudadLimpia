@@ -19,6 +19,11 @@ describe('Trayectos (HTTP)', () => {
         role: where.id === 'admin' ? 'ADMIN' : 'USER',
       }),
     },
+    $transaction: (
+      operation: (tx: {
+        localidad: { findUnique: () => typeof localidad };
+      }) => unknown,
+    ) => operation({ localidad: { findUnique: () => localidad } }),
     localidad: { findMany: jest.fn().mockResolvedValue([localidad]) },
   };
 
@@ -84,6 +89,18 @@ describe('Trayectos (HTTP)', () => {
       { puntos: [puntos[0], { ...puntos[1], long: '1' }] },
       { puntos: [puntos[0], { ...puntos[1], orden: 0 }] },
       { puntos: [puntos[0], { ...puntos[1], direccion: null }] },
+      { puntos },
+      { puntos: [{ ...puntos[0], direccion: { calle: 'Roca' } }, puntos[1]] },
+      {
+        puntos: [
+          {
+            ...puntos[0],
+            direccion: { calle: 'Roca', altura: 850 },
+            long: undefined,
+          },
+          puntos[1],
+        ],
+      },
       {
         puntos: [
           puntos[0],

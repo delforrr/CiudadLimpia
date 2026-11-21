@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PuntosLimpiosService } from './puntos-limpios.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { DireccionesService } from '../direccion/direcciones.service';
 
 describe('PuntosLimpiosService', () => {
   let service: PuntosLimpiosService;
@@ -16,19 +15,26 @@ describe('PuntosLimpiosService', () => {
 
   beforeEach(async () => {
     create.mockReset();
+    const db = {
+      puntoLimpio: { create },
+      direccion: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: dto.direccionId,
+          lat: dto.lat,
+          long: dto.long,
+        }),
+      },
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PuntosLimpiosService,
         {
           provide: PrismaService,
           useValue: {
-            puntoLimpio: { create },
-            direccion: {
-              findUnique: jest.fn().mockResolvedValue({ id: dto.direccionId }),
-            },
+            $transaction: (operation: (tx: typeof db) => unknown) =>
+              operation(db),
           },
         },
-        { provide: DireccionesService, useValue: {} },
       ],
     }).compile();
 
@@ -41,7 +47,8 @@ describe('PuntosLimpiosService', () => {
 
   it('devuelve el punto creado', async () => {
     const punto = { id: 'punto-id', ...dto };
-    create.mockResolvedValue(punto);
+    const { lat, long, ...record } = punto;
+    create.mockResolvedValue({ ...record, direccion: { lat, long } });
     await expect(service.create(dto)).resolves.toEqual(punto);
   });
 

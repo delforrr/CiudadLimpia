@@ -6,12 +6,12 @@ import {
   IsObject,
   ValidateNested,
 } from 'class-validator';
-import { CoordenadasTrayectoDto } from '../punto-trayecto/punto-trayecto.dto';
+import { CoordenadasDireccionDto } from '../direccion/dto/create-direccion.dto';
 import { LineStringDto } from './trayecto.dto';
 
 export class SugerirTrayectoDto {
   @ApiProperty({
-    type: [CoordenadasTrayectoDto],
+    type: [CoordenadasDireccionDto],
     minItems: 2,
     description: 'Puntos en el orden en que se deben recorrer.',
   })
@@ -19,8 +19,8 @@ export class SugerirTrayectoDto {
   @ArrayMinSize(2)
   @IsObject({ each: true })
   @ValidateNested({ each: true })
-  @Type(() => CoordenadasTrayectoDto)
-  puntos!: CoordenadasTrayectoDto[];
+  @Type(() => CoordenadasDireccionDto)
+  puntos!: CoordenadasDireccionDto[];
 }
 
 export class SugerenciaTrayectoDto {

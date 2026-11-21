@@ -15,7 +15,6 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiCookieAuth,
-  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNoContentResponse,
@@ -26,6 +25,7 @@ import {
   ApiUnauthorizedResponse,
   ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
+import { ApiConflictoPin } from '../direccion/dto/direccion-response.dto';
 import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
@@ -69,19 +69,19 @@ export class PuntosLimpiosController {
   @ApiOperation({
     summary: 'Crear un punto limpio (ADMIN)',
     description:
-      'Enviá direccionId para reutilizar una dirección o direccion con calle y altura para registrarla junto al punto limpio. Enviá solo una opción. Los campos lat y long del punto limpio son obligatorios y representan la ubicación física del contenedor.',
+      'Enviá direccionId o direccion con calle y altura y el par lat y long a nivel del punto. Si enviás coordenadas junto al ID, deben coincidir con el pin guardado.',
   })
   @ApiCreatedResponse({ type: PuntoLimpioResponseDto })
   @ApiBadRequestResponse({
-    description: 'Datos inválidos o dirección pública inexistente.',
+    description: 'Datos inválidos o dirección inexistente.',
   })
   @ApiUnauthorizedResponse({ description: 'Sesión ausente o inválida.' })
   @ApiForbiddenResponse({
     description: 'No tenés permiso para esta operación.',
   })
-  @ApiConflictResponse({
-    description: 'El tipo o la dirección generan un conflicto de referencia.',
-  })
+  @ApiConflictoPin(
+    'Pin distinto para una dirección existente o conflicto de referencia.',
+  )
   create(@Body() dto: CreatePuntoLimpioDto) {
     return this.puntos.create(dto);
   }
@@ -97,20 +97,21 @@ export class PuntosLimpiosController {
   })
   @ApiOperation({
     summary: 'Editar un punto limpio (ADMIN)',
+    description:
+      'Enviá direccionId para cambiar el frente. El par opcional lat y long debe coincidir con el pin de la dirección resultante.',
   })
   @ApiOkResponse({ type: PuntoLimpioResponseDto })
   @ApiBadRequestResponse({
-    description:
-      'Datos o identificador inválidos, o dirección pública inexistente.',
+    description: 'Datos o identificador inválidos, o dirección inexistente.',
   })
   @ApiUnauthorizedResponse({ description: 'Sesión ausente o inválida.' })
   @ApiForbiddenResponse({
     description: 'No tenés permiso para esta operación.',
   })
   @ApiNotFoundResponse({ description: 'Punto limpio no encontrado.' })
-  @ApiConflictResponse({
-    description: 'El tipo o la dirección generan un conflicto de referencia.',
-  })
+  @ApiConflictoPin(
+    'Pin distinto para una dirección existente o conflicto de referencia.',
+  )
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePuntoLimpioDto,

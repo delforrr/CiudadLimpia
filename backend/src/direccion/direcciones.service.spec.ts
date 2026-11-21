@@ -6,10 +6,9 @@ import { DireccionesService } from './direcciones.service';
 describe('DireccionesService', () => {
   const id = '00000000-0000-4000-8000-000000000001';
   const calleId = '00000000-0000-4000-8000-000000000002';
-  const dto = { calle: 'Roca', altura: 50 };
-  const respuesta = { id, direccion: 'Roca 50', calle: 'Roca', altura: 50 };
-  const registro = { ...respuesta, direccion: null, calle: { calle: 'Roca' } };
-  const historica = { id, direccion: 'Roca 50', calle: null, altura: null };
+  const dto = { calle: 'Roca', altura: 50, lat: -35.97, long: -62.73 };
+  const respuesta = { id, direccion: 'Roca 50', ...dto };
+  const registro = { ...dto, id, calle: { calle: 'Roca' } };
 
   const db = {
     direccion: {
@@ -22,7 +21,6 @@ describe('DireccionesService', () => {
   };
   const prisma = {
     ...db,
-    $queryRaw: jest.fn(),
     $transaction: (operation: (tx: typeof db) => Promise<unknown>) =>
       operation(db),
   };
@@ -37,13 +35,7 @@ describe('DireccionesService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
-    db.calle.upsert.mockResolvedValue({ id: calleId, calle: 'Roca' });
-  });
-
-  it('devuelve direcciones históricas aunque no tengan calle ni altura estructuradas', async () => {
-    prisma.$queryRaw.mockResolvedValue([historica]);
-
-    await expect(service.findAll()).resolves.toEqual([historica]);
+    db.calle.upsert.mockResolvedValue({ id: calleId });
   });
 
   it('devuelve la dirección por id o informa que no existe', async () => {
@@ -54,13 +46,13 @@ describe('DireccionesService', () => {
     await expect(service.findOne(id)).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('registra la dirección con la calle resuelta y su altura', async () => {
+  it('registra el frente y el pin', async () => {
     db.direccion.create.mockResolvedValue(registro);
 
     await expect(service.create(dto)).resolves.toEqual(respuesta);
     expect(db.direccion.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { calleId, altura: 50 },
+        data: { calleId, altura: 50, lat: dto.lat, long: dto.long },
       }),
     );
   });
@@ -72,30 +64,34 @@ describe('DireccionesService', () => {
     await expect(service.create(dto)).rejects.toBe(error);
   });
 
-  it('mantiene la calle al editar solo la altura', async () => {
-    db.direccion.findUnique.mockResolvedValue({ ...registro, calleId });
-    db.direccion.update.mockResolvedValue({
-      ...registro,
-      altura: 52,
-      lat: null,
-      long: null,
-    });
+  it('corrige el pin cuando coincide el frente indicado', async () => {
+    const pin = { lat: -35.971, long: dto.long };
+    db.direccion.findUnique.mockResolvedValue(registro);
+    db.direccion.update.mockResolvedValue({ ...registro, ...pin });
 
-    await expect(service.update(id, { altura: 52 })).resolves.toEqual({
+    await expect(
+      service.update(id, { ...pin, calle: 'roca', altura: 50 }),
+    ).resolves.toEqual({
       ...respuesta,
-      altura: 52,
-      direccion: 'Roca 52',
-      lat: null,
-      long: null,
+      ...pin,
     });
     expect(db.direccion.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { calleId, altura: 52, direccion: null, lat: null, long: null },
-      }),
+      expect.objectContaining({ data: pin }),
     );
   });
 
-  it('muestra el nombre actual de la calle sin reescribir la dirección', async () => {
+  it.each([{ altura: 52 }, { calle: 'Belgrano' }, { lat: 0 }])(
+    'rechaza un cambio de frente o un par incompleto: %j',
+    async (dto) => {
+      db.direccion.findUnique.mockResolvedValue(registro);
+      await expect(service.update(id, dto)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(db.direccion.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('muestra el nombre actual de la calle', async () => {
     db.direccion.findUnique.mockResolvedValue({
       ...registro,
       calle: { calle: 'General Roca' },
@@ -105,26 +101,6 @@ describe('DireccionesService', () => {
       calle: 'General Roca',
       direccion: 'General Roca 50',
     });
-  });
-
-  it('exige calle y altura al completar una dirección histórica', async () => {
-    db.direccion.findUnique.mockResolvedValue(historica);
-
-    await expect(service.update(id, { altura: 52 })).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
-  });
-
-  it('reemplaza el texto libre al estructurar una dirección histórica', async () => {
-    db.direccion.findUnique.mockResolvedValue({ ...historica, calleId: null });
-    db.direccion.update.mockResolvedValue(registro);
-
-    await expect(service.update(id, dto)).resolves.toEqual(respuesta);
-    expect(db.direccion.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { calleId, altura: 50, direccion: null, lat: null, long: null },
-      }),
-    );
   });
 
   it('elimina una dirección disponible', async () => {

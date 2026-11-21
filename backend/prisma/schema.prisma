@@ -28,12 +28,12 @@ model User {
 }
 
 model Cliente {
-  id         String      @id @default(uuid())
-  userId     String      @unique
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String             @id @default(uuid())
+  userId     String             @unique
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   name       String
   lastName   String
-  domicilios Direccion[]
+  domicilios ClienteDireccion[]
 }
 
 model Calle {
@@ -44,21 +44,28 @@ model Calle {
 }
 
 model Direccion {
-  id             String          @id @default(uuid())
-  clienteId      String?
-  cliente        Cliente?        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  direccion      String?
-  calleId        String?
-  calle          Calle?          @relation(fields: [calleId], references: [id], onDelete: Restrict)
-  altura         Int?
-  lat            Float?
-  long           Float?
-  etiqueta       String?         @db.VarChar(100)
+  id             String             @id @default(uuid())
+  calleId        String
+  calle          Calle              @relation(fields: [calleId], references: [id], onDelete: Restrict)
+  altura         Int
+  lat            Float
+  long           Float
+  domicilios     ClienteDireccion[]
   puntosLimpios  PuntoLimpio[]
   puntosTrayecto PuntoTrayecto[]
 
   @@unique([calleId, altura])
-  @@index([clienteId])
+}
+
+model ClienteDireccion {
+  clienteId   String
+  direccionId String
+  etiqueta    String?   @db.VarChar(100)
+  cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  direccion   Direccion @relation(fields: [direccionId], references: [id], onDelete: Restrict)
+
+  @@id([clienteId, direccionId])
+  @@index([direccionId])
 }
 
 model TipoPuntoLimpio {
@@ -75,8 +82,6 @@ model PuntoLimpio {
   tipo        TipoPuntoLimpio @relation(fields: [tipoId], references: [id])
   direccionId String
   direccion   Direccion       @relation(fields: [direccionId], references: [id])
-  lat         Float
-  long        Float
 
   @@index([tipoId])
   @@index([direccionId])
@@ -123,8 +128,6 @@ model PuntoTrayecto {
   orden       Int
   direccionId String
   direccion   Direccion @relation(fields: [direccionId], references: [id])
-  lat         Float
-  long        Float
 
   @@id([trayectoId, orden])
   @@index([direccionId])

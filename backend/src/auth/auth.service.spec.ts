@@ -18,12 +18,13 @@ describe('AuthService', () => {
       domicilios: [],
     },
   };
+  const direccionId = '00000000-0000-4000-8000-000000000001';
   const dto = {
     email: user.email,
     cliente: {
       name: 'Ana',
       lastName: 'Pérez',
-      domicilios: [{ direccion: 'San Martín 123' }],
+      domicilios: [{ direccionId }],
     },
     password: ' contraseña! ',
   };
@@ -35,7 +36,16 @@ describe('AuthService', () => {
     service = new AuthService(
       db as unknown as PrismaService,
       new JwtService({ secret: 'test-secret-only' }),
-      new UserService(db as unknown as PrismaService),
+      new UserService({
+        ...db,
+        $transaction: (operation: (tx: object) => unknown) =>
+          operation({
+            ...db,
+            direccion: {
+              findUnique: jest.fn().mockResolvedValue({ id: direccionId }),
+            },
+          }),
+      } as unknown as PrismaService),
     );
   });
 

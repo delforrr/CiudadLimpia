@@ -16,16 +16,16 @@ describe('DireccionesController', () => {
 
   beforeEach(() => jest.resetAllMocks());
 
-  it('distingue el listado general del catálogo para puntos limpios', async () => {
+  it('usa el catálogo compartido en ambos listados', async () => {
     await controller.findAll('Roca');
     expect(service.findAll).toHaveBeenLastCalledWith('Roca');
 
     await controller.findForPuntosLimpios('Roca');
-    expect(service.findAll).toHaveBeenLastCalledWith('Roca', true);
+    expect(service.findAll).toHaveBeenLastCalledWith('Roca');
   });
 
   it('delega la consulta, el alta, la edición y la baja', async () => {
-    const direccion = { calle: 'Roca', altura: 50 };
+    const direccion = { calle: 'Roca', altura: 50, lat: -35.97, long: -62.73 };
 
     await controller.findOne(id);
     expect(service.findOne).toHaveBeenCalledWith(id);
@@ -33,8 +33,11 @@ describe('DireccionesController', () => {
     await controller.create(direccion);
     expect(service.create).toHaveBeenCalledWith(direccion);
 
-    await controller.update(id, { altura: 52 });
-    expect(service.update).toHaveBeenCalledWith(id, { altura: 52 });
+    await controller.update(id, { lat: -35.96, long: -62.73 });
+    expect(service.update).toHaveBeenCalledWith(id, {
+      lat: -35.96,
+      long: -62.73,
+    });
 
     await controller.remove(id);
     expect(service.remove).toHaveBeenCalledWith(id);
