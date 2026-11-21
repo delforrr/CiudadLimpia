@@ -41,6 +41,13 @@ describe('Public API and documentation (HTTP)', () => {
       .expect(200);
     const document = response.body as OpenAPIObject;
     expect(Object.keys(document.paths).sort()).toEqual([
+      '/api/camiones',
+      '/api/camiones/{id}',
+      '/api/camiones/{id}/contrato-vigente',
+      '/api/conductores',
+      '/api/conductores/{id}',
+      '/api/contratos-conductor',
+      '/api/contratos-conductor/{idCamion}/{idConductor}/{fechaInicio}',
       '/api/geocodificacion/directa',
       '/api/geocodificacion/inversa',
       '/api/localidades',
