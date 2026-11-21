@@ -1,6 +1,7 @@
-import { Button, TextField } from '@mui/material';
+import { Alert, Button, TextField } from '@mui/material';
 import type { FormEvent } from 'react';
 import type { NuevoDomicilioForm } from '../schemas/profileSchema';
+import { DomicilioMapa } from './DomicilioMapa';
 
 type PerfilNuevoDomicilioProps = {
   domicilio: NuevoDomicilioForm;
@@ -8,13 +9,17 @@ type PerfilNuevoDomicilioProps = {
   onChange: (domicilio: NuevoDomicilioForm) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
+  paso: 'datos' | 'mapa';
+  onContinuar: (event: FormEvent<HTMLFormElement>) => void;
+  onVolver: () => void;
 };
 
 export default function PerfilNuevoDomicilio({
-  domicilio, errores, onChange, onSubmit, onCancel,
+  domicilio, errores, onChange, onSubmit, onCancel, paso, onContinuar, onVolver,
 }: PerfilNuevoDomicilioProps) {
   return (
-    <form className="perfil-edit-form perfil-nuevo-domicilio" onSubmit={onSubmit} noValidate>
+    <form className="perfil-edit-form perfil-nuevo-domicilio" onSubmit={paso === 'datos' ? onContinuar : onSubmit} noValidate>
+      {paso === 'datos' ? <>
       <TextField
         label="Calle"
         size="small"
@@ -48,9 +53,17 @@ export default function PerfilNuevoDomicilio({
         helperText={errores.etiqueta?.[0]}
         onChange={(event) => onChange({ ...domicilio, etiqueta: event.target.value })}
       />
+      </> : <>
+        <DomicilioMapa calle={domicilio.calle} altura={domicilio.altura} ubicacion={domicilio.ubicacion}
+          onChange={(ubicacion) => onChange({ ...domicilio, ubicacion })} />
+        {errores.ubicacion && <Alert severity="error">{errores.ubicacion[0]}</Alert>}
+      </>}
       <div className="perfil-edit-acciones">
-        <Button type="submit" className="login-button">Agregar domicilio</Button>
-        <Button type="button" className="btn-cancelar-edicion" onClick={onCancel}>Cancelar</Button>
+        {paso === 'mapa' && <Button type="button" className="btn-cancelar-edicion" onClick={onVolver}>Volver</Button>}
+        <Button type="submit" className="login-button" disabled={paso === 'mapa' && !domicilio.ubicacion}>
+          {paso === 'datos' ? 'Continuar' : 'Confirmar domicilio'}
+        </Button>
+        {paso === 'datos' && <Button type="button" className="btn-cancelar-edicion" onClick={onCancel}>Cancelar</Button>}
       </div>
     </form>
   );

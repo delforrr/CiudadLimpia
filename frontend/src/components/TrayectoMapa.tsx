@@ -2,6 +2,8 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { LatLngTuple, LayerGroup, Map as LeafletMap } from 'leaflet';
 import type { Coordenadas, LineaTrayecto } from '../services/trayectosService';
 import 'leaflet/dist/leaflet.css';
+import './DomicilioMapa.css';
+import camionRecolector from '../assets/icono-camion-hoy.png';
 
 type Props = {
   puntos: Coordenadas[];
@@ -15,6 +17,10 @@ type Props = {
   onEditarPunto?: (indice: number) => void;
   zoomInicial?: number;
   zoomFijo?: boolean;
+  camion?: { nombre: string; posicion: Coordenadas };
+  domicilio?: Coordenadas;
+  onMoverDomicilio?: (posicion: Coordenadas) => void;
+  onDescartarDomicilio?: () => void;
 };
 
 type Mapa = { L: typeof import('leaflet'); mapa: LeafletMap; capa: LayerGroup };
@@ -25,14 +31,20 @@ const zoomMaximo = 18;
 const posiciones = (linea: LineaTrayecto): [number, number][] =>
   linea.coordinates.map(([long, lat]) => [lat, long]);
 
-export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto, zoomInicial = 14, zoomFijo = false }: Props) {
+export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto, zoomInicial = 14, zoomFijo = false, camion, domicilio, onMoverDomicilio, onDescartarDomicilio }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const vistaAnterior = useRef<{ centro: LatLngTuple; zoom: number } | null>(null);
+  const vistaDomicilioAnterior = useRef<{ centro: LatLngTuple; zoom: number } | null>(null);
   const [instancia, setInstancia] = useState<Mapa | null>(null);
   const [error, setError] = useState(false);
   const interactivo = Boolean(onMarcar);
   const descartable = Boolean(onDescartarPin);
   const puedeEditarPunto = Boolean(onEditarPunto);
+  const domicilioMovible = Boolean(onMoverDomicilio);
+  const domicilioDescartable = Boolean(onDescartarDomicilio);
+  const ajustandoDomicilio = domicilioMovible && Boolean(domicilio);
+  const descartarDomicilio = useEffectEvent(() => onDescartarDomicilio?.());
+  const moverDomicilio = useEffectEvent((posicion: Coordenadas) => onMoverDomicilio?.(posicion));
   const zoomMapa = useEffectEvent(() => zoomInicial);
   const mapaFijo = useEffectEvent(() => zoomFijo);
   const ajustandoPin = Boolean(pin);
@@ -99,6 +111,40 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
     const { L, capa } = instancia;
     capa.clearLayers();
     if (linea.coordinates.length >= 2) L.polyline(posiciones(linea), { color: '#166044', weight: 5, interactive: false }).addTo(capa);
+    if (domicilio) {
+      const marcadorDomicilio = L.marker([domicilio.lat, domicilio.long], {
+        title: 'Tu domicilio',
+        draggable: domicilioMovible,
+        bubblingMouseEvents: false,
+        icon: L.divIcon({
+          className: 'hoy-domicilio-marcador',
+          html: `<svg width="28" height="34" viewBox="0 0 38 46" aria-hidden="true">
+            <path d="M19 44 7 29A17 17 0 1 1 31 29Z" fill="#1e6000" stroke="#1e6000" stroke-width="2" />
+            <path d="m8 19 11-9 11 9-2 2-2-2v11h-6v-8h-4v8h-6V19l-1 2Z" fill="white" />
+          </svg>`,
+          iconSize: [28, 34], iconAnchor: [14, 33], popupAnchor: [0, -30],
+        }),
+      }).on('dragstart', () => instancia.mapa.stop()).on('dragend', ({ target }) => {
+        const posicion = (target as import('leaflet').Marker).getLatLng();
+        moverDomicilio({ lat: posicion.lat, long: posicion.lng });
+      }).addTo(capa);
+      if (domicilioDescartable) marcadorDomicilio.on('click', descartarDomicilio);
+      else marcadorDomicilio.bindPopup('Tu domicilio', { autoPan: false, closeButton: false });
+    }
+    if (camion) {
+      L.marker([camion.posicion.lat, camion.posicion.long], {
+        title: camion.nombre,
+        icon: L.divIcon({
+          className: 'hoy-camion-marcador',
+          html: `<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+            <circle cx="20" cy="20" r="18" fill="#1e6000" opacity="0.22" />
+            <circle cx="20" cy="20" r="14" fill="white" stroke="#1e6000" stroke-width="2.2" />
+            <image href="${camionRecolector}" x="10" y="10" width="20" height="20" />
+          </svg>`,
+          iconSize: [40, 40], iconAnchor: [20, 20],
+        }),
+      }).addTo(capa);
+    }
     if (sugerida) L.polyline(posiciones(sugerida), { color: '#185da8', weight: 5, dashArray: '8 7', interactive: false }).addTo(capa);
     puntos.forEach(({ lat, long }, indice) => {
       if (pin && indice === indicePin) return;
@@ -122,7 +168,7 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
         marcar(lat, lng);
       }).on('click', descartarPin).addTo(capa);
     }
-  }, [instancia, puntos, linea, sugerida, pin, indicePin, interactivo, descartable, puedeEditarPunto]);
+  }, [instancia, puntos, linea, sugerida, pin, indicePin, interactivo, descartable, puedeEditarPunto, camion, domicilio, domicilioMovible, domicilioDescartable]);
 
   useEffect(() => {
     if (!instancia) return;
@@ -146,10 +192,24 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
       vistaAnterior.current = null;
       mapa.invalidateSize({ pan: false });
       mapa.flyTo(anterior.centro, anterior.zoom, { animate: animar, duration: 0.45 });
+    } else if (!ajustandoDomicilio && vistaDomicilioAnterior.current) {
+      const anteriorDomicilio = vistaDomicilioAnterior.current;
+      vistaDomicilioAnterior.current = null;
+      mapa.invalidateSize({ pan: false });
+      mapa.flyTo(anteriorDomicilio.centro, anteriorDomicilio.zoom, { animate: animar, duration: 0.45 });
     } else if (centrarEn) {
-      mapa.setView([centrarEn.lat, centrarEn.long], Math.max(16, mapa.getZoom()), { animate: false });
+      if (domicilioMovible) {
+        if (!vistaDomicilioAnterior.current) {
+          const { lat, lng } = mapa.getCenter();
+          vistaDomicilioAnterior.current = { centro: [lat, lng], zoom: mapa.getZoom() };
+        }
+        mapa.invalidateSize({ pan: false });
+        mapa.flyTo([centrarEn.lat, centrarEn.long], zoomMaximo, { animate: animar, duration: 0.45 });
+      } else {
+        mapa.setView([centrarEn.lat, centrarEn.long], Math.max(16, mapa.getZoom()), { animate: false });
+      }
     }
-  }, [instancia, ajustandoPin, centrarEn]);
+  }, [instancia, ajustandoPin, centrarEn, domicilioMovible, ajustandoDomicilio]);
 
   return (
     <>

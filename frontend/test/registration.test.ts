@@ -12,6 +12,7 @@ let server: ViteDevServer
 let PerfilPage: ComponentType<{ initialRegister?: boolean }>
 let AdminPage: ComponentType
 let HoyDomicilio: ComponentType<{ user: User }>
+let HoyCards: ComponentType
 let DomiciliosCard: ComponentType<{
   domicilios: DomicilioForm[]; onChange: () => void; readOnly?: boolean; expanded?: boolean
 }>
@@ -27,6 +28,7 @@ before(async () => {
   ;({ PerfilPage } = await server.ssrLoadModule('/src/pages/PerfilPage.tsx'))
   ;({ AdminPage } = await server.ssrLoadModule('/src/pages/AdminPage.tsx'))
   ;({ default: HoyDomicilio } = await server.ssrLoadModule('/src/components/HoyDomicilio.tsx'))
+  ;({ HoyCards } = await server.ssrLoadModule('/src/components/HoyCards.tsx'))
   ;({ default: DomiciliosCard } = await server.ssrLoadModule('/src/components/DomiciliosCard.tsx'))
   ;({ AuthContext } = await server.ssrLoadModule('/src/context/auth-context.ts'))
 })
@@ -54,8 +56,24 @@ test('shows one current address in Hoy and opens the new address form directly f
 
   const perfil = render(false, user, '/perfil?nuevoDomicilio=1')
   assert.match(perfil, /<h2>Nuevo domicilio<\/h2>/)
-  assert.match(perfil, /Agregar domicilio/)
+  assert.match(perfil, /Continuar/)
+  assert.doesNotMatch(perfil, /Mapa del trayecto|Confirmar domicilio/)
   assert.doesNotMatch(perfil, /Guardar cambios/)
+})
+
+test('Hoy muestra distancia, estado de paso y mapa sin explicaciones técnicas', () => {
+  const user: User = { id: 'user-1', email: 'ana@example.com', role: 'USER',
+    cliente: { id: 'cliente-1', name: 'Ana', lastName: 'Pérez',
+      domicilios: [{ id: 'domicilio-1', direccion: 'San Martín 123' }] } }
+  const session = { user, checking: false, isAuthenticated: true, loggingOut: false,
+    logoutError: '', onAuthenticated: () => {}, logout: async () => {} }
+  const html = renderToStaticMarkup(createElement(AuthContext.Provider, { value: session },
+    createElement(MemoryRouter, null, createElement(HoyCards))))
+  assert.match(html, /350 m/)
+  assert.match(html, /NO HA PASADO/)
+  assert.match(html, /Recorrido del recolector/)
+  assert.match(html, /aria-label="Mapa del trayecto"/)
+  assert.doesNotMatch(html, /simulad|esquinas|backend|OSRM|GeoRef/)
 })
 
 test('opens registration with all fields required by the current API', () => {

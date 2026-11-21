@@ -199,10 +199,6 @@
   box-shadow: 0 4px 16px rgba(104, 165, 68, 0.1);
 }
 
-.perfil-card-activo .login-header p {
-  color: #2d5526;
-}
-
 .perfil-avatar-circle {
   width: 56px;
   height: 56px;
@@ -447,15 +443,15 @@
   border-color: #47762c;
 }
 
-/* Botón de cerrar sesión un toque más oscuro que la tarjeta */
+/* Botón de cerrar sesión en verde oscuro */
 .btn-cerrar-sesion.MuiButton-root {
   width: 100%;
   padding: 0.68rem 1rem;
   font-size: 0.88rem;
   font-weight: 700;
-  color: #1E6000;
-  background-color: #9ec595;
-  border: 1.5px solid #1e6000;
+  color: #ffffff;
+  background-color: #02523a;
+  border: 1.5px solid #02523a;
   border-radius: 6px;
   cursor: pointer;
   display: flex;
@@ -463,10 +459,11 @@
   justify-content: center;
   gap: 0.5rem;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(30, 96, 0, 0.15);
+  box-shadow: 0 2px 6px rgba(2, 82, 58, 0.15);
 }
 
 .btn-cerrar-sesion.MuiButton-root:hover:not(.Mui-disabled) {
-  background-color: #8bb783;
+  background-color: #013d2b;
+  border-color: #013d2b;
 }
 
