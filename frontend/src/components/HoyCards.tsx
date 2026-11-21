@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../hooks/useAuthContext';
 import camionRecolector from '../assets/camion-recolector.png';
@@ -6,14 +6,51 @@ import residuosReciclables from '../assets/residuos-reciclables.png';
 import residuosNoReciclables from '../assets/residuos-no-reciclables.png';
 import { TrayectoMapa } from './TrayectoMapa';
 import HoyDomicilio from './HoyDomicilio';
+import type { LineaTrayecto } from '../services/trayectosService';
 import './HoyCards.css';
+
+// Geometría del trayecto S guardado en la base, usada para la presentación de Hoy.
+const recorridoHoy: LineaTrayecto = {
+  type: 'LineString',
+  coordinates: [
+    [-62.73001310788618, -35.96452604612285],
+    [-62.722567249663484, -35.97433784493321],
+    [-62.7192147643791, -35.97878286674923],
+    [-62.72636501344357, -35.982364154033725],
+    [-62.730495561739076, -35.9770214786803],
+    [-62.742544109998676, -35.983124777477315],
+  ],
+};
+const [longCamion, latCamion] = recorridoHoy.coordinates[2];
+const camionHoy = { nombre: 'Camión recolector', posicion: { lat: latCamion, long: longCamion } };
+const [longSiguiente, latSiguiente] = recorridoHoy.coordinates[3];
+const domicilioHoy = {
+  lat: latCamion + (latSiguiente - latCamion) * 0.35,
+  long: longCamion + (longSiguiente - longCamion) * 0.35,
+};
 
 export const HoyCards: React.FC = () => {
   const { isAuthenticated, user } = useAuthContext();
   const navigate = useNavigate();
   const [recordatorioActivo, setRecordatorioActivo] = useState(true);
-  const [mostrarTrayecto, setMostrarTrayecto] = useState(false);
+  const [mostrarTrayecto, setMostrarTrayecto] = useState(true);
   const [fotoActiva, setFotoActiva] = useState(0);
+
+  const mapaRef = useRef<HTMLDivElement>(null);
+  const botonRef = useRef<HTMLDivElement>(null);
+  const desplazarAlCambiar = useRef(false);
+
+  useEffect(() => {
+    if (!desplazarAlCambiar.current) return;
+    desplazarAlCambiar.current = false;
+    const destino = mostrarTrayecto ? mapaRef.current : botonRef.current;
+    destino?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [mostrarTrayecto]);
+
+  const alternarTrayecto = () => {
+    desplazarAlCambiar.current = true;
+    setMostrarTrayecto((visible) => !visible);
+  };
 
   const fotosBanner = [
     {
@@ -56,6 +93,7 @@ export const HoyCards: React.FC = () => {
                 <span className="estado-pregunta">¿YA PASÓ POR TU PUERTA?</span>
                 <h3 className="estado-alerta">NO HA PASADO</h3>
                 <p className="estado-descripcion">El recolector está en camino hacia tu cuadra</p>
+                <p className="estado-distancia"><strong>350 m</strong> de tu domicilio</p>
               </div>
 
               <div className="camion-badge">
@@ -70,11 +108,11 @@ export const HoyCards: React.FC = () => {
 
 
             {/* Botón Ver Trayecto */}
-            <div className="trayecto-boton-fila">
+            <div className="trayecto-boton-fila" ref={botonRef}>
               <button
                 type="button"
                 className={`btn-ver-trayecto ${mostrarTrayecto ? 'activo' : ''}`}
-                onClick={() => setMostrarTrayecto(!mostrarTrayecto)}
+                onClick={alternarTrayecto}
               >
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
@@ -99,12 +137,13 @@ export const HoyCards: React.FC = () => {
             </div>
 
             {mostrarTrayecto && (
-              <div className="mapa-trayecto-card">
+              <div className="mapa-trayecto-card" ref={mapaRef}>
                 <div className="mapa-header-fila">
-                  <span className="mapa-header-tag">Mapa de Trenque Lauquen</span>
+                  <span className="mapa-header-tag">Recorrido del recolector</span>
                 </div>
                 <div className="hoy-mapa">
-                  <TrayectoMapa puntos={[]} linea={{ type: 'LineString', coordinates: [] }} zoomInicial={17} zoomFijo />
+                  <TrayectoMapa puntos={[]} linea={recorridoHoy} camion={camionHoy}
+                    domicilio={domicilioHoy} centrarEn={domicilioHoy} zoomInicial={16} />
                 </div>
               </div>
             )}
