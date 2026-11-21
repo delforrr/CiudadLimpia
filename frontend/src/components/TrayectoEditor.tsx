@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import {
   Accordion, AccordionDetails, AccordionSummary, Alert, Button, Chip, FormControlLabel, IconButton, Paper, Radio, RadioGroup, TextField,
-  ToggleButton, ToggleButtonGroup,
+  ToggleButton, ToggleButtonGroup, MenuItem,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddLocationAltOutlinedIcon from '@mui/icons-material/AddLocationAltOutlined';
@@ -15,17 +15,19 @@ import { useTrayectoEditor } from '../hooks/useTrayectoEditor';
 import type { Referencia, Trayecto } from '../services/trayectosService';
 import type { BorradorTrayecto } from '../utils/trayectoEditor';
 import { TrayectoMapa } from './TrayectoMapa';
+import type { Zona } from '../services/zonasService';
 
 const referenciaTexto = ({ calle, altura }: Referencia) => `${calle} ${altura ?? '· sin altura'}`;
 
 type Props = {
   inicial: BorradorTrayecto;
   onCancelar: () => void;
-  onGuardado: (trayecto: Trayecto) => void;
+  onGuardado: (trayecto: Trayecto, zonaId: string) => void;
+  zonas: Zona[];
 };
 
-export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
-  const editor = useTrayectoEditor(inicial, onGuardado);
+export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas }: Props) {
+  const editor = useTrayectoEditor(inicial, onGuardado, zonas);
   const idPuntos = useId();
   const opciones = useRef<HTMLElement>(null);
   const [panel, setPanel] = useState<'mapa' | 'opciones'>('mapa');
@@ -137,6 +139,12 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado }: Props) {
           {mostrarDatos && <TextField label="Nombre del trayecto" required size="small" value={borrador.nombre}
             disabled={guardando} slotProps={{ htmlInput: { maxLength: 100 } }}
             onChange={(event) => editor.actualizarNombre(event.target.value)} />}
+          {mostrarDatos && <TextField label="Zona" select required size="small" color="success"
+            value={borrador.zonaId ?? ''} disabled={guardando || zonas.length === 0}
+            helperText={zonas.length === 0 ? 'Creá una zona desde el apartado Zonas antes de guardar el trayecto.' : 'Zona a la que pertenece este trayecto.'}
+            onChange={(event) => editor.actualizarZona(event.target.value)}>
+            {zonas.map((zona) => <MenuItem key={zona.id} value={zona.id}>{zona.nombre}</MenuItem>)}
+          </TextField>}
           {!borrador.localidadId && <Alert severity="warning">Trenque Lauquen no está disponible en el catálogo de localidades.</Alert>}
           {editandoRecorrido && (
             <>

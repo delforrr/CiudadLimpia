@@ -251,7 +251,7 @@
   display: none;
 }
 
-.admin-body:has(> :is(.trayectos-editor, .trayectos-detalle)) {
+.admin-body:has(> :is(.trayectos-editor, .trayectos-detalle), > .trayectos-modulo :is(.trayectos-editor, .trayectos-detalle)) {
   min-height: 0;
   max-width: none;
   padding: clamp(0.5rem, 1.5vw, 1.25rem);

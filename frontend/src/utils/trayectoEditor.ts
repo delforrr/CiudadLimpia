@@ -10,6 +10,7 @@ export type BorradorTrayecto = {
   id?: string;
   nombre: string;
   localidadId: string;
+  zonaId?: string;
   puntos: PuntoEditor[];
   lineaElegida: LineaTrayecto | null;
 };

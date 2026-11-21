@@ -37,8 +37,8 @@ const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
     descripcion: 'Categorías disponibles y los materiales que recibe cada una',
   },
   recoleccion: {
-    titulo: 'Trayectos de recolección',
-    descripcion: 'Recorridos de recolección domiciliaria',
+    titulo: 'Trayectos y zonas',
+    descripcion: 'Zonas y recorridos de recolección domiciliaria',
   },
   camiones: {
     titulo: 'Camiones',
@@ -58,7 +58,7 @@ const NAVEGACION = [
   { id: 'dashboard', nombre: 'Panel de Control', icono: DashboardIcon },
   { id: 'puntos', nombre: 'Puntos Limpios', icono: LocationOnIcon },
   { id: 'tipos', nombre: 'Tipos de Puntos', icono: CategoryIcon },
-  { id: 'recoleccion', nombre: 'Trayectos', icono: RouteIcon },
+  { id: 'recoleccion', nombre: 'Trayectos y zonas', icono: RouteIcon },
   { id: 'camiones', nombre: 'Camiones', icono: LocalShippingIcon },
   { id: 'choferes', nombre: 'Choferes', icono: PeopleIcon },
   { id: 'usuarios', nombre: 'Usuarios', icono: PeopleIcon },

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { trayectosService, type Localidad, type Trayecto } from '../services/trayectosService';
-import { abrirBorrador, type BorradorTrayecto } from '../utils/trayectoEditor';
+import { trayectosService, type Localidad, type Trayecto } from '../services/trayectosService.ts';
+import { abrirBorrador, type BorradorTrayecto } from '../utils/trayectoEditor.ts';
 
 type Vista = { tipo: 'lista' } | { tipo: 'detalle'; trayecto: Trayecto } | { tipo: 'editor'; borrador: BorradorTrayecto };
 
