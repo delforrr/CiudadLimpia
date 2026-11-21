@@ -1,0 +1,70 @@
+.domicilio-ubicacion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.domicilio-ubicacion p {
+  margin: 0;
+  color: #35513b;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.domicilio-ubicacion .trayecto-mapa {
+  height: 270px;
+  width: 100%;
+  border: 1px solid #c5dcbf;
+  border-radius: 12px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.domicilio-ubicacion-sugerencias {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.domicilio-ubicacion-aviso.MuiAlert-root {
+  background-color: #013a27;
+  color: #fff;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.domicilio-ubicacion-aviso .MuiAlert-icon {
+  color: #fff;
+  margin-right: 6px;
+  padding: 3px 0;
+  font-size: 18px;
+}
+
+.domicilio-ubicacion-aviso .MuiAlert-message {
+  padding: 3px 0;
+}
+
+.domicilio-ubicacion-fuente {
+  color: #526351;
+  font-size: 0.68rem;
+}
+
+.domicilio-ubicacion-fuente a {
+  color: inherit;
+}
+
+.hoy-domicilio-marcador {
+  border: 0;
+  background: transparent;
+}
+
+.hoy-domicilio-marcador svg {
+  display: block;
+  filter: drop-shadow(0 2px 3px #0003);
+}

@@ -52,6 +52,7 @@ export default function Login({
     confirmarEliminarDomicilio,
     domicilioNuevo, erroresDomicilioNuevo, iniciarDomicilioNuevo,
     actualizarDomicilioNuevo, agregarDomicilioNuevo, cancelarDomicilioNuevo,
+    pasoDomicilio, continuarAlMapa, volverADatosDomicilio,
   } = useProfileForm(user, onAuthenticated, nuevoDomicilioInicial);
 
   if (checking) return <p role="status">Comprobando sesión…</p>;
@@ -82,8 +83,7 @@ export default function Login({
                 <circle cx="12" cy="7" r="4" />
               </svg>
             </div>
-            <h2>{domicilioNuevo ? 'Nuevo domicilio' : editando ? 'Editar mis datos' : 'Mi Perfil'}</h2>
-            {!editando && <p>Sesión activa para <strong>{nombreCompleto ?? user?.email}</strong></p>}
+            <h2>{domicilioNuevo ? pasoDomicilio === 'mapa' ? 'Ubicá tu casa' : 'Nuevo domicilio' : editando ? 'Editar mis datos' : 'Mi Perfil'}</h2>
           </header>
 
           {needsAddress && !domicilioNuevo && (
@@ -116,6 +116,9 @@ export default function Login({
               onChange={actualizarDomicilioNuevo}
               onSubmit={agregarDomicilioNuevo}
               onCancel={cancelarDomicilioNuevo}
+              paso={pasoDomicilio}
+              onContinuar={continuarAlMapa}
+              onVolver={volverADatosDomicilio}
             />
           ) : editando ? (
             <form onSubmit={handleGuardarCambios} className="perfil-edit-form" aria-busy={savingProfile} noValidate>

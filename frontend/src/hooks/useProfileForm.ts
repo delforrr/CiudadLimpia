@@ -4,6 +4,7 @@ import { userService } from '../services/userService'
 import { z } from 'zod'
 import { nuevoDomicilioSchema, profileSchema, type DomicilioForm, type NuevoDomicilioForm } from '../schemas/profileSchema'
 import { capitalizarInicial } from '../utils/capitalizarInicial'
+import { coordenadasDomicilioSchema, domicilioUbicacionService } from '../services/domicilioUbicacionService'
 
 const domicilioVacio: NuevoDomicilioForm = { calle: '', altura: '', etiqueta: '' }
 
@@ -13,7 +14,7 @@ function datosPerfil(user: User | null) {
     lastName: capitalizarInicial(user?.cliente?.lastName ?? ''),
     email: user?.email ?? '',
     domicilios: user?.cliente?.domicilios.map(({ id, direccion, etiqueta }): DomicilioForm =>
-      ({ id, direccion, etiqueta })) ?? [],
+      ({ id, direccion, etiqueta, ubicacion: user ? domicilioUbicacionService.leer(user.id, direccion) : undefined })) ?? [],
   }
 }
 
@@ -35,6 +36,7 @@ export function useProfileForm(
     agregarAlEntrar ? domicilioVacio : null,
   )
   const [erroresDomicilioNuevo, setErroresDomicilioNuevo] = useState<Partial<Record<keyof NuevoDomicilioForm, string[]>>>({})
+  const [pasoDomicilio, setPasoDomicilio] = useState<'datos' | 'mapa'>('datos')
 
   useEffect(() => {
     if (!mensajeExito) return
@@ -64,7 +66,19 @@ export function useProfileForm(
     if (pending || form.domicilios.length >= 20 || form.domicilios.some((domicilio) => !domicilio.id)) return
 
     setErroresDomicilioNuevo({})
+    setPasoDomicilio('datos')
     setDomicilioNuevo(domicilioVacio)
+  }
+
+  const continuarAlMapa = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const validation = nuevoDomicilioSchema.safeParse(domicilioNuevo)
+    if (!validation.success) {
+      setErroresDomicilioNuevo(z.flattenError(validation.error).fieldErrors)
+      return
+    }
+    setErroresDomicilioNuevo({})
+    setPasoDomicilio('mapa')
   }
 
   const agregarDomicilioNuevo = (event: FormEvent<HTMLFormElement>) => {
@@ -77,9 +91,15 @@ export function useProfileForm(
       return
     }
 
+    const ubicacion = coordenadasDomicilioSchema.safeParse(domicilioNuevo.ubicacion)
+    if (!ubicacion.success) {
+      setErroresDomicilioNuevo({ ubicacion: ['Ubicá tu casa en el mapa antes de confirmar.'] })
+      return
+    }
+
     setForm((previous) => {
       if (previous.domicilios.some((domicilio) => !domicilio.id)) return previous
-      return { ...previous, domicilios: [...previous.domicilios, validation.data] }
+      return { ...previous, domicilios: [...previous.domicilios, { ...validation.data, ubicacion: ubicacion.data }] }
     })
     setFieldErrors((previous) => ({ ...previous, domicilios: undefined }))
     setDomicilioNuevo(null)
@@ -118,6 +138,11 @@ export function useProfileForm(
           domicilios,
         },
       })
+      for (const domicilio of form.domicilios) {
+        if (!domicilio.ubicacion) continue
+        try { domicilioUbicacionService.guardar(user.id, domicilio.direccion, domicilio.ubicacion) }
+        catch { setError('Los datos se guardaron, pero el navegador no pudo conservar la ubicación del domicilio.') }
+      }
       onUpdated(updated)
       setEditando(false)
       setMensajeExito(true)
@@ -143,13 +168,17 @@ export function useProfileForm(
     pending,
     fieldErrors,
     domicilioNuevo,
+    pasoDomicilio,
+    continuarAlMapa,
+    volverADatosDomicilio: () => setPasoDomicilio('datos'),
     erroresDomicilioNuevo,
     iniciarDomicilioNuevo,
-    actualizarDomicilioNuevo: (domicilio: NuevoDomicilioForm) => setDomicilioNuevo({
+    actualizarDomicilioNuevo: (domicilio: NuevoDomicilioForm) => setDomicilioNuevo((anterior) => ({
       ...domicilio,
+      ubicacion: anterior?.calle === capitalizarInicial(domicilio.calle) && anterior.altura === domicilio.altura ? domicilio.ubicacion : undefined,
       calle: capitalizarInicial(domicilio.calle),
       etiqueta: capitalizarInicial(domicilio.etiqueta ?? ''),
-    }),
+    })),
     agregarDomicilioNuevo,
     cancelarDomicilioNuevo: () => setDomicilioNuevo(null),
     domicilioAEliminar,

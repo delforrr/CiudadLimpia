@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { emailSchema, lastNameSchema, nameSchema } from './authSchema.ts'
+import type { Coordenadas } from '../services/trayectosService.ts'
 
 export const domicilioSchema = z.object({
   direccion: z.string().trim().min(1, 'Ingresá una dirección').max(200, 'Cada dirección puede tener hasta 200 caracteres'),
@@ -18,7 +19,7 @@ export const nuevoDomicilioSchema = z.object({
   etiqueta,
 }))
 
-export type NuevoDomicilioForm = z.input<typeof nuevoDomicilioSchema>
+export type NuevoDomicilioForm = z.input<typeof nuevoDomicilioSchema> & { ubicacion?: Coordenadas }
 
 export const profileSchema = z.object({
   name: nameSchema,
@@ -29,4 +30,4 @@ export const profileSchema = z.object({
     .max(20, 'Podés cargar hasta 20 domicilios'),
 })
 
-export type DomicilioForm = z.input<typeof domicilioSchema> & { id?: string }
+export type DomicilioForm = z.input<typeof domicilioSchema> & { id?: string; ubicacion?: Coordenadas }
