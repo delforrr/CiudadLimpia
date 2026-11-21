@@ -45,6 +45,16 @@
   font-weight: 600;
 }
 
+.direccion-opcion.MuiMenuItem-root {
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.direccion-opcion.MuiMenuItem-root.Mui-selected {
+  background-color: transparent;
+  border-color: #1e6000;
+}
+
 .icono-pin {
   color: #059669;
   flex-shrink: 0;

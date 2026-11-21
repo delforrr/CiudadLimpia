@@ -53,7 +53,7 @@ test('only shows the admin panel for current administrators', () => {
   const user: User = { id: 'user-1', email: 'ana@example.com', role: 'USER', cliente: null }
   assert.equal(render(false, null, true), '')
   assert.equal(render(false, user, true), '')
-  assert.match(render(false, { ...user, role: 'ADMIN' }, true), /Accesos directos/)
+  assert.match(render(false, { ...user, role: 'ADMIN' }, true), /Puntos Limpios/)
 })
 
 test('displays saved address labels from the authenticated profile', () => {

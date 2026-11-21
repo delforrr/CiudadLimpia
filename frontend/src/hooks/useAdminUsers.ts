@@ -19,6 +19,10 @@ export type AdminUserForm = {
 
 const EMPTY_ADDRESS: Domicilio = { direccion: '', etiqueta: '' }
 
+// Lista ya pedida al servidor; se conserva mientras dure la pestaña.
+// Si se quiere actualizar, se recarga la página o se usa el botón de refrescar.
+let usuariosCache: User[] | null = null
+
 function normalize(value: string) {
   return value
     .normalize('NFD')
@@ -33,8 +37,8 @@ function loadErrorMessage(error: unknown) {
 }
 
 export function useAdminUsers(onUpdated?: (user: User) => void) {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+  const [users, setUsers] = useState<User[]>(() => usuariosCache ?? [])
+  const [loading, setLoading] = useState(() => usuariosCache === null)
   const [loadError, setLoadError] = useState('')
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('TODOS')
@@ -61,7 +65,9 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
 
   const load = useCallback(async () => {
     try {
-      setUsers(await userService.list())
+      const data = await userService.list()
+      usuariosCache = data
+      setUsers(data)
       setLoadError('')
     } catch (error) {
       setLoadError(loadErrorMessage(error))
@@ -77,24 +83,15 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
   }, [load])
 
   useEffect(() => {
-    let active = true
-    userService
-      .list()
-      .then((data) => {
-        if (!active) return
-        setUsers(data)
-        setLoadError('')
-      })
-      .catch((error: unknown) => {
-        if (active) setLoadError(loadErrorMessage(error))
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+    if (usuariosCache !== null) return
+    let activo = true
+    queueMicrotask(() => {
+      if (activo) void load()
+    })
     return () => {
-      active = false
+      activo = false
     }
-  }, [])
+  }, [load])
 
   const filteredUsers = useMemo(() => {
     const term = normalize(search.trim())
@@ -201,11 +198,13 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
       const updated = editing
         ? await userService.update(editing.id, payload)
         : await userService.create({ ...payload, password: form.password })
-      setUsers((previous) =>
-        editing
+      setUsers((previous) => {
+        const next = editing
           ? previous.map((user) => (user.id === updated.id ? updated : user))
-          : [...previous, updated],
-      )
+          : [...previous, updated]
+        usuariosCache = next
+        return next
+      })
       onUpdated?.(updated)
       setEditing(null)
       setIsCreating(false)
@@ -243,9 +242,11 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
     setDeleteError('')
     try {
       await userService.remove(pendingDelete.id)
-      setUsers((previous) =>
-        previous.filter((user) => user.id !== pendingDelete.id),
-      )
+      setUsers((previous) => {
+        const next = previous.filter((user) => user.id !== pendingDelete.id)
+        usuariosCache = next
+        return next
+      })
       setPendingDelete(null)
       setNotice('Usuario eliminado correctamente.')
     } catch (error) {
