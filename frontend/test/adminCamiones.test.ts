@@ -62,7 +62,7 @@ test('renders the trucks module with class diagram fields, buttons and sample da
   assert.doesNotMatch(html, /Esqueleto base/)
 })
 
-test('shows the number of assigned routes instead of the assign shortcut', () => {
+test('el número de trayectos de la tabla es un botón que abre la asignación', () => {
   const clave = 'ciudad-limpia:camiones'
   const unidades = [1, 2].map((cantidad) => ({
     id: String(cantidad),
@@ -85,9 +85,39 @@ test('shows the number of assigned routes instead of the assign shortcut', () =>
 
   try {
     const html = renderToStaticMarkup(createElement(AdminCamiones))
-    assert.match(html, />1 trayecto<\/span>/)
-    assert.match(html, />2 trayectos<\/span>/)
+    assert.match(html, /<button[^>]*aria-label="Gestionar trayectos de Unidad 1"[^>]*>[\s\S]*?1 trayecto[\s\S]*?<\/button>/)
+    assert.match(html, /<button[^>]*aria-label="Gestionar trayectos de Unidad 2"[^>]*>[\s\S]*?2 trayectos[\s\S]*?<\/button>/)
     assert.doesNotMatch(html, /aria-label="Asignar trayectos a Unidad/)
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+})
+
+test('oculta el botón de asignar conductor en la tabla si la unidad ya tiene conductores', () => {
+  const clave = 'ciudad-limpia:camiones'
+  const base = {
+    plate: 'AE 123 CD',
+    brand: 'Iveco',
+    model: 'Tector',
+    year: 2022,
+    status: 'OPERATIVO',
+    trayectos: [],
+  }
+  const unidades = [
+    { ...base, id: '1', code: 'Con conductor', conductores: [{ nombre: 'Ana Pérez' }] },
+    { ...base, id: '2', code: 'Sin conductor', conductores: [] },
+  ]
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: { getItem: (key: string) => key === clave ? JSON.stringify(unidades) : null },
+  })
+
+  try {
+    const html = renderToStaticMarkup(createElement(AdminCamiones))
+    assert.doesNotMatch(html, /aria-label="Asignar conductor a Con conductor"/)
+    assert.match(html, /aria-label="Asignar conductor a Sin conductor"/)
   } finally {
     if (original) Object.defineProperty(globalThis, 'localStorage', original)
     else Reflect.deleteProperty(globalThis, 'localStorage')

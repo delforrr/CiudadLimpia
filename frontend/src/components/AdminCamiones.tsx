@@ -8,14 +8,12 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   FormControlLabel,
   FormHelperText,
   IconButton,
   InputAdornment,
   InputLabel,
-  Menu,
   MenuItem,
   Select,
   Snackbar,
@@ -43,6 +41,11 @@ import SearchIcon from '@mui/icons-material/Search'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import type { Localidad, Trayecto as TrayectoGuardado } from '../services/trayectosService'
 import { DetalleTrayecto } from './AdminTrayectos'
+import { AsignarConductorDialog } from './AsignarConductorDialog'
+import {
+  asignacionesCamion, asignarConductor, formatoContrato, quitarConductor,
+  type AsignacionConductor, type ContratoConductor,
+} from '../utils/contratoConductor'
 import './AdminCamiones.css'
 
 export type TruckStatus = 'OPERATIVO' | 'MANTENIMIENTO' | 'INACTIVO'
@@ -53,7 +56,7 @@ export interface Trayecto {
   name: string
 }
 
-// Modelo de Camion: asociado a Trayectos y Conductor (no a Zona directamente)
+// Modelo de Camion: asociado a Trayectos y a varios Conductores (uno por contrato)
 export interface Truck {
   id: string
   code: string // Identificador interno / IdCamion
@@ -61,7 +64,7 @@ export interface Truck {
   brand: string // Marca
   model: string // Modelo
   year: number // Año
-  assignedDriver: string // Conductor asignado (IdConductor)
+  conductores: AsignacionConductor[] // Conductores con su contrato (inicio y fin opcional)
   status: TruckStatus // Estado
   trayectos: Trayecto[] // Lista de trayectos asignados al camión
 }
@@ -85,7 +88,7 @@ const INITIAL_TRUCKS: Truck[] = [
     brand: 'Iveco',
     model: 'Tector 170E28',
     year: 2022,
-    assignedDriver: 'Carlos González',
+    conductores: [{ nombre: 'Carlos González' }],
     status: 'OPERATIVO',
     trayectos: [],
   },
@@ -96,7 +99,7 @@ const INITIAL_TRUCKS: Truck[] = [
     brand: 'Mercedes-Benz',
     model: 'Atego 1726',
     year: 2023,
-    assignedDriver: 'Miguel Rodríguez',
+    conductores: [{ nombre: 'Miguel Rodríguez' }],
     status: 'OPERATIVO',
     trayectos: [],
   },
@@ -107,7 +110,7 @@ const INITIAL_TRUCKS: Truck[] = [
     brand: 'Volkswagen',
     model: 'Constellation 17.280',
     year: 2021,
-    assignedDriver: 'Roberto López',
+    conductores: [{ nombre: 'Roberto López' }],
     status: 'OPERATIVO',
     trayectos: [],
   },
@@ -118,18 +121,10 @@ const INITIAL_TRUCKS: Truck[] = [
     brand: 'Ford',
     model: 'Cargo 1722',
     year: 2019,
-    assignedDriver: 'Sin asignar',
+    conductores: [],
     status: 'MANTENIMIENTO',
     trayectos: [],
   },
-]
-
-const AVAILABLE_DRIVERS = [
-  'Sin asignar',
-  'Carlos González',
-  'Miguel Rodríguez',
-  'Jorge Fernández',
-  'Roberto López',
 ]
 
 function loadSystemDrivers(): string[] {
@@ -163,6 +158,7 @@ function loadTrucks(): Truck[] {
     if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_TRUCKS
     return parsed.map((t) => ({
       ...t,
+      conductores: asignacionesCamion(t),
       trayectos: Array.isArray(t.trayectos)
         ? t.trayectos.filter((trayecto) => !trayectosDeEjemplo.has(trayecto.id))
         : [],
@@ -177,6 +173,37 @@ function saveTrucks(trucks: Truck[]) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(trucks))
   } catch {
     // ignorar errores de almacenamiento
+  }
+}
+
+function sincronizarChoferes(flota: Truck[]) {
+  try {
+    const raw = localStorage.getItem('ciudad-limpia:choferes')
+    if (!raw) return
+    const choferes = JSON.parse(raw)
+    if (!Array.isArray(choferes)) return
+    const porNombre = new Map<string, { codigo: string; contrato?: ContratoConductor }>()
+    for (const camion of flota) {
+      for (const { nombre, contrato } of asignacionesCamion(camion)) {
+        porNombre.set(nombre, { codigo: camion.code, contrato })
+      }
+    }
+    const actualizados = choferes.map((chofer: {
+      firstName?: string; lastName?: string; assignedTruck?: string | null; contrato?: ContratoConductor; status?: string
+    }) => {
+      const nombre = `${chofer.firstName ?? ''} ${chofer.lastName ?? ''}`.trim()
+      const asignacion = porNombre.get(nombre)
+      if (asignacion) {
+        return { ...chofer, status: 'ACTIVO', assignedTruck: asignacion.codigo, contrato: asignacion.contrato }
+      }
+      if (chofer.assignedTruck || chofer.contrato) {
+        return { ...chofer, status: 'INACTIVO', assignedTruck: null, contrato: undefined }
+      }
+      return { ...chofer, status: chofer.assignedTruck ? 'ACTIVO' : 'INACTIVO' }
+    })
+    localStorage.setItem('ciudad-limpia:choferes', JSON.stringify(actualizados))
+  } catch {
+    // Mantener el comportamiento local si el navegador no permite almacenamiento.
   }
 }
 
@@ -198,7 +225,6 @@ type TruckFormState = {
   brand: string
   model: string
   year: number | string
-  assignedDriver: string
   status: TruckStatus
 }
 
@@ -208,7 +234,6 @@ const DEFAULT_FORM: TruckFormState = {
   brand: '',
   model: '',
   year: new Date().getFullYear(),
-  assignedDriver: 'Sin asignar',
   status: 'OPERATIVO',
 }
 
@@ -231,8 +256,7 @@ export function AdminCamiones({
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTruck, setEditingTruck] = useState<Truck | null>(null)
   const [pendingDeleteTruck, setPendingDeleteTruck] = useState<Truck | null>(null)
-  const [assignAnchor, setAssignAnchor] = useState<null | HTMLElement>(null)
-  const [targetTruck, setTargetTruck] = useState<Truck | null>(null)
+  const [asignacionPendiente, setAsignacionPendiente] = useState<Truck | null>(null)
   const systemDrivers = useMemo(() => loadSystemDrivers(), [])
 
   // Formulario
@@ -303,7 +327,7 @@ export function AdminCamiones({
       truck.plate.toLowerCase().includes(term) ||
       truck.brand.toLowerCase().includes(term) ||
       truck.model.toLowerCase().includes(term) ||
-      truck.assignedDriver.toLowerCase().includes(term)
+      asignacionesCamion(truck).some(({ nombre }) => nombre.toLowerCase().includes(term))
 
     const matchesStatus =
       statusFilter === 'TODOS' || truck.status === statusFilter
@@ -319,7 +343,6 @@ export function AdminCamiones({
       brand: '',
       model: '',
       year: new Date().getFullYear(),
-      assignedDriver: 'Sin asignar',
       status: 'OPERATIVO',
     })
     setFormErrors({})
@@ -334,7 +357,6 @@ export function AdminCamiones({
       brand: truck.brand,
       model: truck.model,
       year: truck.year,
-      assignedDriver: truck.assignedDriver,
       status: truck.status,
     })
     setFormErrors({})
@@ -370,26 +392,24 @@ export function AdminCamiones({
     }
 
     if (editingTruck) {
-      // Actualizar camión existente conservando trayectos
-      const updated = trucks.map((t) =>
-        t.id === editingTruck.id
-          ? {
-              ...t,
-              code: form.code.trim(),
-              plate: form.plate.trim().toUpperCase(),
-              brand: form.brand.trim(),
-              model: form.model.trim(),
-              year: parsedYear,
-              assignedDriver: form.assignedDriver,
-              status: form.status,
-            }
-          : t,
-      )
+      // Actualizar camión existente conservando conductores y trayectos
+      const updated = trucks.map((camion) => camion.id === editingTruck.id ? {
+        ...camion,
+        code: editingTruck.code,
+        plate: form.plate.trim().toUpperCase(),
+        brand: form.brand.trim(),
+        model: form.model.trim(),
+        year: parsedYear,
+        status: form.status,
+      } : camion)
+      const actualizado = updated.find((camion) => camion.id === editingTruck.id) ?? editingTruck
       setTrucks(updated)
       saveTrucks(updated)
-      setNotice(`Se actualizaron los datos de ${form.code}.`)
+      setDetailTruck((detalle) => detalle?.id === actualizado.id ? actualizado : detalle)
+      sincronizarChoferes(updated)
+      setNotice(`Se actualizaron los datos de ${editingTruck.code}.`)
     } else {
-      // Crear nuevo camión: por defecto activo/operativo
+      // Crear nuevo camión: sin conductores, se asignan después desde el listado.
       const newTruck: Truck = {
         id: `t-${Date.now()}`,
         code: form.code.trim(),
@@ -397,7 +417,7 @@ export function AdminCamiones({
         brand: form.brand.trim(),
         model: form.model.trim(),
         year: parsedYear,
-        assignedDriver: form.assignedDriver,
+        conductores: [],
         status: 'OPERATIVO',
         trayectos: [],
       }
@@ -427,63 +447,27 @@ export function AdminCamiones({
     setStatusFilter('TODOS')
   }
 
-  const handleQuickAssignDriver = (truck: Truck, driverName: string) => {
-    const updatedTruck = { ...truck, assignedDriver: driverName }
-    const updated = trucks.map((t) => (t.id === truck.id ? updatedTruck : t))
+  const confirmarAsignacionConductor = (truck: Truck, nombre: string, contrato: ContratoConductor) => {
+    const updated = asignarConductor(trucks, truck, nombre, contrato)
+    const updatedTruck = updated.find((camion) => camion.id === truck.id) ?? truck
+    setTrucks(updated)
+    saveTrucks(updated)
+    setDetailTruck((detalle) => detalle?.id === truck.id ? updatedTruck : detalle)
+    sincronizarChoferes(updated)
+    setNotice(`Se asignó a ${nombre} a ${truck.code}.`)
+  }
+
+  const handleQuitarConductor = (truck: Truck, nombre: string) => {
+    const updated = quitarConductor(trucks, truck.id, nombre)
+    const updatedTruck = updated.find((camion) => camion.id === truck.id) ?? truck
     setTrucks(updated)
     saveTrucks(updated)
     setDetailTruck(updatedTruck)
-
-    // Sincronizar con el almacenamiento de choferes si existe
-    try {
-      const raw = localStorage.getItem('ciudad-limpia:choferes')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) {
-          const updatedDrivers = parsed.map((d: { firstName?: string; lastName?: string; assignedTruck?: string | null }) => {
-            const fullName = `${d.firstName ?? ''} ${d.lastName ?? ''}`.trim()
-            if (driverName !== 'Sin asignar' && fullName === driverName) {
-              return { ...d, assignedTruck: truck.code }
-            }
-            if (d.assignedTruck === truck.code && (driverName === 'Sin asignar' || fullName !== driverName)) {
-              return { ...d, assignedTruck: null }
-            }
-            return d
-          })
-          localStorage.setItem('ciudad-limpia:choferes', JSON.stringify(updatedDrivers))
-        }
-      }
-    } catch {
-      // ignorar errores de almacenamiento
-    }
-
-    if (driverName === 'Sin asignar') {
-      setNotice(`Se desvinculó el conductor de ${truck.code}.`)
-    } else {
-      setNotice(`Se asignó a ${driverName} a ${truck.code}.`)
-    }
+    sincronizarChoferes(updated)
+    setNotice(`Se desvinculó a ${nombre} de ${truck.code}.`)
   }
 
-  const handleOpenAssignMenu = (
-    event: React.MouseEvent<HTMLElement>,
-    truck: Truck,
-  ) => {
-    event.stopPropagation()
-    setAssignAnchor(event.currentTarget)
-    setTargetTruck(truck)
-  }
-
-  const handleCloseAssignMenu = () => {
-    setAssignAnchor(null)
-    setTargetTruck(null)
-  }
-
-  const handleSelectDriver = (driverName: string) => {
-    if (targetTruck) {
-      handleQuickAssignDriver(targetTruck, driverName)
-    }
-    handleCloseAssignMenu()
-  }
+  const abrirAsignacion = (truck: Truck) => setAsignacionPendiente(truck)
 
   return (
     <section className="admin-trucks" aria-labelledby="admin-trucks-title">
@@ -593,9 +577,9 @@ export function AdminCamiones({
             )}
           </div>
         ) : (
-          <TableContainer>
+          <TableContainer className="admin-module-table-scroll">
             <Table
-              className="admin-trucks-table"
+              className="admin-trucks-table admin-module-table"
               aria-label="Tabla de camiones"
             >
               <TableHead>
@@ -634,25 +618,29 @@ export function AdminCamiones({
                       <span className="admin-trucks-cell-subtext">{truck.year}</span>
                     </TableCell>
                     <TableCell>
-                      {truck.assignedDriver !== 'Sin asignar' ? (
-                        <div className="admin-trucks-driver">
-                          <PersonIcon fontSize="small" aria-hidden="true" />
-                          <span>{truck.assignedDriver}</span>
-                        </div>
-                      ) : (
-                        <Tooltip title={`Asignar conductor a ${truck.code}`}>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="success"
-                            startIcon={<AddIcon />}
-                            className="admin-trucks-assign-btn"
-                            onClick={(event) => handleOpenAssignMenu(event, truck)}
-                          >
-                            Asignar
-                          </Button>
-                        </Tooltip>
-                      )}
+                      <div className="admin-trucks-drivers-cell">
+                        {asignacionesCamion(truck).map(({ nombre }) => (
+                          <span className="admin-trucks-driver" key={nombre}>
+                            <PersonIcon fontSize="small" aria-hidden="true" />
+                            {nombre}
+                          </span>
+                        ))}
+                        {asignacionesCamion(truck).length === 0 && (
+                          <Tooltip title={`Asignar conductor a ${truck.code}`}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="success"
+                              startIcon={<AddIcon />}
+                              className="admin-trucks-assign-btn"
+                              aria-label={`Asignar conductor a ${truck.code}`}
+                              onClick={() => abrirAsignacion(truck)}
+                            >
+                              Asignar
+                            </Button>
+                          </Tooltip>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {truck.trayectos.length === 0 ? (
@@ -662,9 +650,16 @@ export function AdminCamiones({
                           Asignar
                         </Button>
                       ) : (
-                        <span className="admin-trucks-cell-text">
+                        <Button
+                          size="small"
+                          variant="text"
+                          color="success"
+                          className="admin-trucks-trayectos-count"
+                          aria-label={`Gestionar trayectos de ${truck.code}`}
+                          onClick={() => abrirAsignacionTrayectos(truck)}
+                        >
                           {truck.trayectos.length === 1 ? '1 trayecto' : `${truck.trayectos.length} trayectos`}
-                        </span>
+                        </Button>
                       )}
                     </TableCell>
                     <TableCell>
@@ -714,6 +709,17 @@ export function AdminCamiones({
         )}
       </div>
 
+      {asignacionPendiente && <AsignarConductorDialog
+        key={asignacionPendiente.id}
+        unidad={asignacionPendiente.code}
+        conductores={systemDrivers}
+        onCerrar={() => setAsignacionPendiente(null)}
+        onConfirmar={(nombre, contrato) => {
+          confirmarAsignacionConductor(asignacionPendiente, nombre, contrato)
+          setAsignacionPendiente(null)
+        }}
+      />}
+
       {/* Modal Ficha Detalle: datos generales y sus trayectos asociados */}
       <Dialog
         className="admin-module-dialog"
@@ -744,7 +750,7 @@ export function AdminCamiones({
                 </div>
               </div>
 
-              {/* Datos del camión: Marca/Modelo, Año, Conductor */}
+              {/* Datos del camión: Marca/Modelo, Año y conductores */}
               <div className="admin-trucks-detail-grid">
                 <article className="admin-trucks-detail-card">
                   <h4>Marca y Modelo</h4>
@@ -763,43 +769,48 @@ export function AdminCamiones({
                 </article>
 
                 <article className="admin-trucks-detail-card">
-                  <h4>Conductor asignado</h4>
-                  {detailTruck.assignedDriver !== 'Sin asignar' ? (
-                    <div className="admin-trucks-driver-assigned-row">
-                      <p>
-                        <PersonIcon fontSize="small" />
-                        {detailTruck.assignedDriver}
-                      </p>
-                      <Button
-                        size="small"
-                        color="success"
-                        onClick={(e) => handleOpenAssignMenu(e, detailTruck)}
-                        sx={{
-                          textTransform: 'none',
-                          fontSize: '0.72rem',
-                          minWidth: 'auto',
-                          p: '1px 6px',
-                          ml: 'auto',
-                        }}
-                      >
-                        Cambiar
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="admin-trucks-driver-assigned-row">
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="success"
-                        startIcon={<AddIcon />}
-                        className="admin-trucks-assign-btn"
-                        onClick={(e) => handleOpenAssignMenu(e, detailTruck)}
-                      >
-                        Asignar
-                      </Button>
-                    </div>
-                  )}
+                  <h4>Conductores ({asignacionesCamion(detailTruck).length})</h4>
+                  <p>
+                    <PersonIcon fontSize="small" />
+                    {asignacionesCamion(detailTruck).length > 0
+                      ? 'Asignados a la unidad'
+                      : 'Sin conductores asignados'}
+                  </p>
                 </article>
+              </div>
+
+              <div className="admin-trucks-conductores-section">
+                <div className="admin-trucks-conductores-header">
+                  <h4>Conductores y contratos</h4>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="success"
+                    startIcon={<AddIcon />}
+                    className="admin-trucks-assign-btn"
+                    onClick={() => abrirAsignacion(detailTruck)}
+                  >
+                    Asignar
+                  </Button>
+                </div>
+                {asignacionesCamion(detailTruck).map(({ nombre, contrato }) => (
+                  <div className="admin-trucks-conductor-item" key={nombre}>
+                    <div>
+                      <strong>{nombre}</strong>
+                      <span>{formatoContrato(contrato)}</span>
+                    </div>
+                    <Tooltip title={`Desvincular a ${nombre} de ${detailTruck.code}`}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        aria-label={`Desvincular a ${nombre} de ${detailTruck.code}`}
+                        onClick={() => handleQuitarConductor(detailTruck, nombre)}
+                      >
+                        <DeleteOutlineOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                ))}
               </div>
 
               {/* Sección de Trayectos Asignados */}
@@ -930,8 +941,11 @@ export function AdminCamiones({
               value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value })}
               error={Boolean(formErrors.code)}
-              helperText={formErrors.code}
-              required
+              helperText={formErrors.code || (editingTruck
+                ? 'El identificador es la clave primaria y no se puede cambiar.'
+                : undefined)}
+              disabled={Boolean(editingTruck)}
+              required={!editingTruck}
             />
 
             <TextField
@@ -982,34 +996,6 @@ export function AdminCamiones({
               helperText={formErrors.model}
               required
             />
-
-            <FormControl
-              color="success"
-              fullWidth
-              className={editingTruck ? undefined : 'admin-trucks-form-full'}
-            >
-              <InputLabel id="truck-driver-select-label">
-                Conductor asignado
-              </InputLabel>
-              <Select
-                labelId="truck-driver-select-label"
-                id="truck-driver-select"
-                label="Conductor asignado"
-                value={form.assignedDriver}
-                onChange={(e) =>
-                  setForm({ ...form, assignedDriver: e.target.value })
-                }
-              >
-                {AVAILABLE_DRIVERS.map((driver) => (
-                  <MenuItem key={driver} value={driver}>
-                    {driver}
-                  </MenuItem>
-                ))}
-              </Select>
-              <FormHelperText>
-                Conductor asignado a la unidad.
-              </FormHelperText>
-            </FormControl>
 
             {/* El estado solo aparece cuando se edita un camión existente */}
             {editingTruck && (
@@ -1098,96 +1084,6 @@ export function AdminCamiones({
         </Alert>
       </Snackbar>
 
-      {/* Menú para asignar conductor rápidamente */}
-      <Menu
-        anchorEl={assignAnchor}
-        open={Boolean(assignAnchor)}
-        onClose={handleCloseAssignMenu}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: '12px',
-              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)',
-              minWidth: 240,
-              maxWidth: 320,
-            },
-          },
-        }}
-      >
-        <MenuItem
-          disabled
-          sx={{
-            fontSize: '0.72rem',
-            fontWeight: 700,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            color: '#64748b !important',
-            opacity: '1 !important',
-            py: 0.5,
-          }}
-        >
-          {targetTruck
-            ? `Asignar a ${targetTruck.code}`
-            : 'Asignar conductor'}
-        </MenuItem>
-        <Divider sx={{ my: 0.5 }} />
-
-        {systemDrivers.length === 0 ? (
-          <MenuItem disabled sx={{ fontSize: '0.82rem', fontStyle: 'italic' }}>
-            No hay conductores registrados
-          </MenuItem>
-        ) : (
-          systemDrivers.map((driver) => {
-            const isCurrent = targetTruck?.assignedDriver === driver
-            return (
-              <MenuItem
-                key={driver}
-                selected={isCurrent}
-                onClick={() => handleSelectDriver(driver)}
-                sx={{
-                  fontSize: '0.82rem',
-                  gap: 1,
-                  fontWeight: isCurrent ? 600 : 400,
-                }}
-              >
-                <PersonIcon
-                  fontSize="small"
-                  sx={{ color: isCurrent ? '#1e6000' : '#64748b' }}
-                />
-                <span
-                  style={{
-                    flex: 1,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {driver}
-                </span>
-              </MenuItem>
-            )
-          })
-        )}
-
-        {targetTruck?.assignedDriver &&
-          targetTruck.assignedDriver !== 'Sin asignar' && (
-            <>
-              <Divider sx={{ my: 0.5 }} />
-              <MenuItem
-                onClick={() => handleSelectDriver('Sin asignar')}
-                sx={{ fontSize: '0.82rem', color: '#dc2626' }}
-              >
-                <DeleteOutlineOutlinedIcon
-                  fontSize="small"
-                  sx={{ mr: 1, color: '#dc2626' }}
-                />
-                Desvincular conductor
-              </MenuItem>
-            </>
-          )}
-      </Menu>
     </section>
   )
 }
