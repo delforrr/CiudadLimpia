@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, LinearProgress, Paper, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Alert, Button, Paper, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -11,21 +11,57 @@ import type { Trayecto } from '../services/trayectosService';
 import { abrirBorrador } from '../utils/trayectoEditor';
 import { PuntosTrayecto, TrayectoEditor } from './TrayectoEditor';
 import { TrayectoMapa } from './TrayectoMapa';
+import { useAdminZonas } from '../hooks/useAdminZonas';
+import { AdminZonas } from './AdminZonas';
+import { ZonaFormulario } from './ZonaFormulario';
 import './AdminTrayectos.css';
 
 export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTrayectos> }) {
+  const zonas = useAdminZonas();
+  const [apartado, setApartado] = useState<'trayectos' | 'zonas'>('trayectos');
+  const listado = admin.vista.tipo === 'lista';
+
+  return <div className="trayectos-modulo">
+    {listado && <ToggleButtonGroup className="trayectos-secciones" exclusive color="success" size="small"
+      value={apartado} aria-label="Ver trayectos o zonas"
+      onChange={(_, valor: typeof apartado | null) => { if (valor) setApartado(valor); }}>
+      <ToggleButton value="trayectos"><RouteOutlinedIcon fontSize="small" />Trayectos</ToggleButton>
+      <ToggleButton value="zonas"><PlaceOutlinedIcon fontSize="small" />Zonas</ToggleButton>
+    </ToggleButtonGroup>}
+    {listado && apartado === 'zonas' ? <AdminZonas admin={zonas} trayectos={admin.trayectos} /> : <>
+      {zonas.error && <Alert severity="error">{zonas.error}</Alert>}
+      {listado && zonas.zonas.length === 0 && !zonas.bloqueado && <Alert severity="info"
+        action={<Button color="inherit" onClick={() => setApartado('zonas')}>Ir a Zonas</Button>}>
+        Podés crear una zona desde Zonas o al cargar un nuevo trayecto.
+      </Alert>}
+      <TrayectosContenido admin={admin} zonas={zonas} />
+      {admin.vista.tipo === 'editor' && <ZonaFormulario admin={zonas} />}
+    </>}
+  </div>;
+}
+
+function TrayectosContenido({ admin, zonas }: {
+  admin: ReturnType<typeof useAdminTrayectos>;
+  zonas: ReturnType<typeof useAdminZonas>;
+}) {
   const { vista, localidades, localidadFija, trayectos, cargando, error, aviso } = admin;
   const nombreLocalidad = (id: string) => localidades.find((localidad) => localidad.id === id)?.nombre ?? id;
+  const nombreZona = (id: string) => zonas.zonas.find((zona) => zona.id === zonas.asignaciones[id])?.nombre ?? 'Sin zona asignada';
 
   if (vista.tipo === 'editor') {
-    return <TrayectoEditor inicial={vista.borrador}
-      onCancelar={admin.volver} onGuardado={admin.guardado} />;
+    return <TrayectoEditor inicial={{ ...vista.borrador, zonaId: vista.borrador.id ? zonas.asignaciones[vista.borrador.id] : undefined }}
+      zonas={zonas.zonas} onAgregarZona={(alCrear) => zonas.abrirFormulario(undefined, alCrear)}
+      onCancelar={admin.volver} onGuardado={(trayecto, zonaId) => {
+        zonas.asignar(trayecto.id, zonaId);
+        admin.guardado(trayecto);
+      }} />;
   }
 
   if (vista.tipo === 'detalle') {
     const { trayecto } = vista;
     return (
       <DetalleTrayecto key={trayecto.id} trayecto={trayecto} localidad={nombreLocalidad(trayecto.localidadId)}
+        zona={nombreZona(trayecto.id)}
         cargando={cargando} error={error} aviso={aviso} volver={admin.volver}
         editar={() => void admin.abrir(trayecto.id, true)} />
     );
@@ -41,11 +77,10 @@ export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTra
             {!cargando && !error && trayectos.length > 0 && <p>{trayectos.length === 1 ? '1 recorrido' : `${trayectos.length} recorridos`}</p>}
           </div>
         </div>
-        <Button variant="contained" color="success" startIcon={<AddIcon />} disabled={cargando || !localidadFija}
+        <Button variant="contained" color="success" startIcon={<AddIcon />} disabled={cargando || !localidadFija || zonas.bloqueado}
           onClick={admin.nuevo}>Nuevo trayecto</Button>
       </div>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => void admin.cargar()}>Reintentar</Button>}>{error}</Alert>}
-      {cargando && <LinearProgress aria-label="Cargando trayectos" />}
       {!cargando && !error && trayectos.length === 0 && (
         <div className="trayectos-vacio">
           <span className="trayectos-icono"><PlaceOutlinedIcon /></span>
@@ -61,7 +96,7 @@ export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTra
               <span className="trayectos-icono"><RouteOutlinedIcon fontSize="small" /></span>
               <div>
                 <h4>{trayecto.nombre}</h4>
-                <p className="trayectos-localidad"><PlaceOutlinedIcon />{nombreLocalidad(trayecto.localidadId)}</p>
+                <p className="trayectos-localidad"><PlaceOutlinedIcon />{nombreZona(trayecto.id)}</p>
               </div>
             </div>
             <div className="trayectos-tarjeta-pie">
@@ -80,9 +115,10 @@ export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTra
   );
 }
 
-export function DetalleTrayecto({ trayecto, localidad, cargando = false, aviso, error, volver, editar }: {
+export function DetalleTrayecto({ trayecto, localidad, zona, cargando = false, aviso, error, volver, editar }: {
   trayecto: Trayecto;
   localidad: string;
+  zona?: string;
   cargando?: boolean;
   aviso?: string;
   error?: string;
@@ -109,6 +145,7 @@ export function DetalleTrayecto({ trayecto, localidad, cargando = false, aviso, 
               <div>
                 <h3>{trayecto.nombre}</h3>
                 <p className="trayectos-localidad"><PlaceOutlinedIcon />{localidad}</p>
+                {zona && <p className="trayectos-localidad">Zona: {zona}</p>}
               </div>
             </div>
             {(volver || editar) && <div className="trayectos-acciones">
@@ -120,7 +157,6 @@ export function DetalleTrayecto({ trayecto, localidad, cargando = false, aviso, 
           </div>
           {aviso && <Alert severity="success">{aviso}</Alert>}
           {error && <Alert severity="error">{error}</Alert>}
-          {cargando && <LinearProgress aria-label="Cargando trayecto" />}
           <div className="trayectos-vista-puntos">
             <h4>Puntos de paso</h4>
             <PuntosTrayecto puntos={abrirBorrador(trayecto).puntos} />

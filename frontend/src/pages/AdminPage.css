@@ -251,69 +251,10 @@
   display: none;
 }
 
-.admin-body:has(> :is(.trayectos-editor, .trayectos-detalle)) {
+.admin-body:has(> :is(.trayectos-editor, .trayectos-detalle), > .trayectos-modulo :is(.trayectos-editor, .trayectos-detalle)) {
   min-height: 0;
   max-width: none;
   padding: clamp(0.5rem, 1.5vw, 1.25rem);
-}
-
-.admin-dashboard h3 {
-  margin: 0 0 0.85rem;
-  font-size: 1.05rem;
-  color: var(--admin-verde);
-}
-
-.admin-dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  gap: 0.75rem;
-}
-
-.admin-dashboard .admin-dashboard-card.MuiButtonBase-root {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.7rem;
-  padding: clamp(0.75rem, 2vw, 1rem);
-  border: 1px solid var(--admin-borde);
-  border-radius: 14px;
-  background: #fff;
-  color: var(--admin-verde);
-  font-family: inherit;
-  text-align: left;
-  transition: background-color 140ms ease, border-color 140ms ease;
-}
-
-.admin-dashboard-icono {
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 10px;
-  background: #e7f2ea;
-}
-
-.admin-dashboard-texto {
-  display: grid;
-  gap: 0.25rem;
-  overflow-wrap: anywhere;
-}
-
-.admin-dashboard-texto > span {
-  color: #496355;
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-.admin-dashboard-flecha {
-  color: #46735d;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .admin-dashboard .admin-dashboard-card.MuiButtonBase-root:hover {
-    background: #f3f8f4;
-    border-color: #a6c6b1;
-  }
 }
 
 .admin-wrapper .MuiButtonBase-root.Mui-focusVisible {

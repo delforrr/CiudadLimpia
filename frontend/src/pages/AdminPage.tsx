@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { ButtonBase, MenuItem, Select } from '@mui/material';
 import { Navigate } from 'react-router-dom';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import CategoryIcon from '@mui/icons-material/Category';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import RouteIcon from '@mui/icons-material/Route';
 import PeopleIcon from '@mui/icons-material/People';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import iconoCiudadLimpia from '../assets/icono-ciudad-limpia.png';
 import { AdminUsuarios } from '../components/AdminUsuarios';
 import { AdminChoferes } from '../components/AdminChoferes';
@@ -21,13 +19,9 @@ import type { User } from '../services/authService';
 import './AdminPage.css';
 import './AdminModules.css';
 
-type AdminTab = 'dashboard' | 'puntos' | 'tipos' | 'recoleccion' | 'camiones' | 'choferes' | 'usuarios';
+type AdminTab = 'puntos' | 'tipos' | 'recoleccion' | 'camiones' | 'choferes' | 'usuarios';
 
 const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
-  dashboard: {
-    titulo: 'Panel de Control',
-    descripcion: 'Municipalidad de Trenque Lauquen',
-  },
   puntos: {
     titulo: 'Puntos Limpios',
     descripcion: 'Gestión y estado de estaciones de reciclaje',
@@ -37,8 +31,8 @@ const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
     descripcion: 'Categorías disponibles y los materiales que recibe cada una',
   },
   recoleccion: {
-    titulo: 'Trayectos de recolección',
-    descripcion: 'Recorridos de recolección domiciliaria',
+    titulo: 'Trayectos y zonas',
+    descripcion: 'Zonas y recorridos de recolección domiciliaria',
   },
   camiones: {
     titulo: 'Camiones',
@@ -55,10 +49,9 @@ const SECCIONES: Record<AdminTab, { titulo: string; descripcion: string }> = {
 };
 
 const NAVEGACION = [
-  { id: 'dashboard', nombre: 'Panel de Control', icono: DashboardIcon },
   { id: 'puntos', nombre: 'Puntos Limpios', icono: LocationOnIcon },
   { id: 'tipos', nombre: 'Tipos de Puntos', icono: CategoryIcon },
-  { id: 'recoleccion', nombre: 'Trayectos', icono: RouteIcon },
+  { id: 'recoleccion', nombre: 'Trayectos y zonas', icono: RouteIcon },
   { id: 'camiones', nombre: 'Camiones', icono: LocalShippingIcon },
   { id: 'choferes', nombre: 'Choferes', icono: PeopleIcon },
   { id: 'usuarios', nombre: 'Usuarios', icono: PeopleIcon },
@@ -72,7 +65,7 @@ export function AdminPage() {
 
 function AdminPanel({ user }: { user: User }) {
   const trayectos = useAdminTrayectos();
-  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<AdminTab>('puntos');
 
   const adminName = user.cliente
     ? `${user.cliente.name} ${user.cliente.lastName}`
@@ -164,25 +157,7 @@ function AdminPanel({ user }: { user: User }) {
             <AdminTiposPuntosLimpios />
           ) : activeTab === 'recoleccion' ? (
             <AdminTrayectos admin={trayectos} />
-          ) : (
-            <section className="admin-dashboard" aria-labelledby="admin-dashboard-title">
-              <h3 id="admin-dashboard-title">Accesos directos</h3>
-              <div className="admin-dashboard-grid">
-                {NAVEGACION.filter(({ id }) => id !== 'dashboard').map(({ id, nombre, icono: Icono }) => (
-                  <ButtonBase key={id} className="admin-dashboard-card" onClick={() => setActiveTab(id)}>
-                    <span className="admin-dashboard-icono">
-                      {id === 'choferes' ? <span className="admin-nav-chofer-icon" aria-hidden="true" /> : <Icono />}
-                    </span>
-                    <span className="admin-dashboard-texto">
-                      <strong>{nombre}</strong>
-                      <span>{SECCIONES[id].descripcion}</span>
-                    </span>
-                    <ArrowForwardIcon className="admin-dashboard-flecha" fontSize="small" />
-                  </ButtonBase>
-                ))}
-              </div>
-            </section>
-          )}
+          ) : null}
         </div>
       </main>
     </div>

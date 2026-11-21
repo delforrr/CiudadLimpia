@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { trayectosService, type Coordenadas, type Referencia, type SugerenciaTrayecto, type Trayecto, type UbicacionSugerida } from '../services/trayectosService';
 import { lineaManual, prepararTrayecto, tienePosicionesDistintas, type BorradorTrayecto, type PuntoEditor } from '../utils/trayectoEditor';
+import type { Zona } from '../services/zonasService';
 
 type Pin = Coordenadas & { origen?: PuntoEditor; referencia?: Referencia };
 type Consulta<T> = { cargando: boolean; error?: string; resultado?: T };
 
 const mensaje = (error: unknown) => error instanceof Error ? error.message : 'No se pudo completar la solicitud.';
 
-export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayecto: Trayecto) => void) {
+export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayecto: Trayecto, zonaId: string) => void, zonas: Zona[]) {
   const [borrador, setBorrador] = useState(inicial);
   const [pin, setPin] = useState<Pin | null>(null);
   const [centrarEn, setCentrarEn] = useState<Coordenadas | null>(null);
@@ -148,6 +149,11 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
   const linea = useMemo(() => borrador.lineaElegida ?? lineaManual(borrador.puntos), [borrador.lineaElegida, borrador.puntos]);
   const guardar = async () => {
     if (guardando || pin || sugerencia.cargando || sugerencia.resultado) return;
+    const zonaId = borrador.zonaId;
+    if (!zonaId || !zonas.some((zona) => zona.id === zonaId)) {
+      setError('Elegí una zona para el trayecto. Si todavía no hay zonas, creá una desde el apartado Zonas.');
+      return;
+    }
     if (!borrador.nombre.trim() || !borrador.localidadId || (!borrador.lineaElegida && !tieneLinea)) {
       setError('Ingresá un nombre, elegí una localidad y confirmá al menos dos puntos distintos.');
       return;
@@ -155,7 +161,7 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     setGuardando(true);
     setError('');
     try {
-      onGuardado(await trayectosService.guardar(prepararTrayecto(borrador), borrador.id));
+      onGuardado(await trayectosService.guardar(prepararTrayecto(borrador), borrador.id), zonaId);
     } catch (error) {
       setError(mensaje(error));
     } finally {
@@ -168,6 +174,7 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     marcarEnMapa, editarPunto, confirmarPin, descartarPin,
     quitarPunto: (clave: string) => cambiarPuntos(borrador.puntos.filter((punto) => punto.clave !== clave)),
     actualizarNombre: (nombre: string) => setBorrador((previo) => ({ ...previo, nombre })),
+    actualizarZona: (zonaId: string) => setBorrador((previo) => ({ ...previo, zonaId })),
     calle, altura, busqueda, actualizarBusqueda, buscarDireccion, usarUbicacion,
     tieneLinea, linea, sugerencia, calcular, elegirLinea, descartarSugerencia, guardar, guardando, error,
   };
