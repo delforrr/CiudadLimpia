@@ -167,13 +167,6 @@ export class TrayectosService {
       } catch (error: unknown) {
         if (!(error instanceof Prisma.PrismaClientKnownRequestError))
           throw error;
-        if (error.code === 'P2025')
-          throw new NotFoundException('Trayecto no encontrado');
-        if (error.code === 'P2003') {
-          throw new BadRequestException(
-            'La localidad o la dirección indicadas no existen',
-          );
-        }
         // Una escritura concurrente puede invalidar la búsqueda de un pin.
         if (error.code !== 'P2034') throw error;
         if (intento >= 2) {

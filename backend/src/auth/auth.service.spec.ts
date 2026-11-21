@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
@@ -50,14 +50,13 @@ describe('AuthService', () => {
     expect(result).toEqual(user);
   });
 
-  it('handles a duplicate email even when registrations race', async () => {
-    db.user.create.mockRejectedValue(
-      new Prisma.PrismaClientKnownRequestError('Duplicate email', {
-        code: 'P2002',
-        clientVersion: '7.10.1',
-      }),
-    );
-    await expect(service.register(dto)).rejects.toThrow(ConflictException);
+  it('propagates a duplicate email error from Prisma', async () => {
+    const error = new Prisma.PrismaClientKnownRequestError('Duplicate email', {
+      code: 'P2002',
+      clientVersion: '7.10.1',
+    });
+    db.user.create.mockRejectedValue(error);
+    await expect(service.register(dto)).rejects.toBe(error);
   });
 
   it.each([

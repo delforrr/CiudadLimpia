@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -17,26 +16,22 @@ export class UserService {
 
   async create(dto: Omit<CreateUserInput, 'role'>, role: Role) {
     const { password, cliente, ...account } = dto;
-    try {
-      const user = await this.prisma.user.create({
-        data: {
-          ...account,
-          role,
-          passwordHash: await bcrypt.hash(password, 12),
-          cliente: {
-            create: {
-              name: cliente.name,
-              lastName: cliente.lastName,
-              domicilios: { create: cliente.domicilios },
-            },
+    const user = await this.prisma.user.create({
+      data: {
+        ...account,
+        role,
+        passwordHash: await bcrypt.hash(password, 12),
+        cliente: {
+          create: {
+            name: cliente.name,
+            lastName: cliente.lastName,
+            domicilios: { create: cliente.domicilios },
           },
         },
-        select: publicUserSelect,
-      });
-      return toUserResponse(user);
-    } catch (error: unknown) {
-      this.rethrow(error);
-    }
+      },
+      select: publicUserSelect,
+    });
+    return toUserResponse(user);
   }
 
   async findAll() {
@@ -75,53 +70,35 @@ export class UserService {
         );
       }
     }
-    try {
-      const data: Prisma.UserUpdateInput = { ...account };
-      if (password !== undefined) {
-        data.passwordHash = await bcrypt.hash(password, 12);
-      }
-      if (cliente) {
-        const profile = { name: cliente.name, lastName: cliente.lastName };
-        if (domicilios === undefined) {
-          data.cliente = { update: profile };
-        } else {
-          data.cliente = {
-            upsert: {
-              create: { ...profile, domicilios: { create: domicilios } },
-              update: {
-                ...profile,
-                domicilios: { deleteMany: {}, create: domicilios },
-              },
-            },
-          };
-        }
-      }
-      const user = await this.prisma.user.update({
-        where: { id },
-        data,
-        select: publicUserSelect,
-      });
-      return toUserResponse(user);
-    } catch (error: unknown) {
-      this.rethrow(error);
+    const data: Prisma.UserUpdateInput = { ...account };
+    if (password !== undefined) {
+      data.passwordHash = await bcrypt.hash(password, 12);
     }
+    if (cliente) {
+      const profile = { name: cliente.name, lastName: cliente.lastName };
+      if (domicilios === undefined) {
+        data.cliente = { update: profile };
+      } else {
+        data.cliente = {
+          upsert: {
+            create: { ...profile, domicilios: { create: domicilios } },
+            update: {
+              ...profile,
+              domicilios: { deleteMany: {}, create: domicilios },
+            },
+          },
+        };
+      }
+    }
+    const user = await this.prisma.user.update({
+      where: { id },
+      data,
+      select: publicUserSelect,
+    });
+    return toUserResponse(user);
   }
 
   async remove(id: string) {
-    try {
-      await this.prisma.user.delete({ where: { id } });
-    } catch (error: unknown) {
-      this.rethrow(error);
-    }
-  }
-
-  private rethrow(error: unknown): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002')
-        throw new ConflictException('Ya existe una cuenta con ese email');
-      if (error.code === 'P2025')
-        throw new NotFoundException('Usuario no encontrado');
-    }
-    throw error;
+    await this.prisma.user.delete({ where: { id } });
   }
 }

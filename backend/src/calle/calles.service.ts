@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { claveCalle } from './calle.dto';
 
@@ -30,45 +25,21 @@ export class CallesService {
   }
 
   async create(calle: string) {
-    try {
-      return await this.prisma.calle.create({
-        data: { calle, clave: claveCalle(calle) },
-        select,
-      });
-    } catch (error: unknown) {
-      this.rethrow(error);
-    }
+    return this.prisma.calle.create({
+      data: { calle, clave: claveCalle(calle) },
+      select,
+    });
   }
 
   async update(id: string, calle: string) {
-    try {
-      return await this.prisma.calle.update({
-        where: { id },
-        data: { calle, clave: claveCalle(calle) },
-        select,
-      });
-    } catch (error: unknown) {
-      this.rethrow(error);
-    }
+    return this.prisma.calle.update({
+      where: { id },
+      data: { calle, clave: claveCalle(calle) },
+      select,
+    });
   }
 
   async remove(id: string) {
-    try {
-      await this.prisma.calle.delete({ where: { id } });
-    } catch (error: unknown) {
-      this.rethrow(error);
-    }
-  }
-
-  private rethrow(error: unknown): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002')
-        throw new ConflictException('La calle ya existe');
-      if (error.code === 'P2003')
-        throw new ConflictException('La calle está en uso');
-      if (error.code === 'P2025')
-        throw new NotFoundException('Calle no encontrada');
-    }
-    throw error;
+    await this.prisma.calle.delete({ where: { id } });
   }
 }

@@ -1,4 +1,3 @@
-import { ConflictException } from '@nestjs/common';
 import { Estado } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { camionSelect } from './camiones.select';
@@ -54,15 +53,11 @@ describe('CamionesService', () => {
       });
     });
 
-    it('debe lanzar ConflictException si la patente ya existe (error P2002)', async () => {
-      prisma.camion.create.mockRejectedValue({ code: 'P2002' });
+    it('propaga el error de Prisma si la patente ya existe', async () => {
+      const error = { code: 'P2002' };
+      prisma.camion.create.mockRejectedValue(error);
 
-      await expect(service.create(mockCamionDto)).rejects.toThrow(
-        ConflictException,
-      );
-      await expect(service.create(mockCamionDto)).rejects.toThrow(
-        'Ya existe un camión con esa patente',
-      );
+      await expect(service.create(mockCamionDto)).rejects.toBe(error);
     });
 
     it('debe propagar otros errores inesperados', async () => {

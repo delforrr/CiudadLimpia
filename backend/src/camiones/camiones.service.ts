@@ -1,5 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { camionSelect, type CamionRecord } from './camiones.select';
 import { CreateCamionDto } from './dto/create-camion.dto';
@@ -8,28 +7,27 @@ import { CreateCamionDto } from './dto/create-camion.dto';
 export class CamionesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(body: CreateCamionDto): Promise<CamionRecord> {
-    try {
-      return await this.prisma.camion.create({
-        data: body,
-        select: camionSelect,
-      });
-    } catch (error: unknown) {
-      this.rethrow(error);
-    }
+  async findAll(): Promise<CamionRecord[]> {
+    return await this.prisma.camion.findMany({ select: camionSelect });
   }
 
-  private rethrow(error: unknown): never {
-    if (
-      (error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002') ||
-      (typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        error.code === 'P2002')
-    ) {
-      throw new ConflictException('Ya existe un camión con esa patente');
-    }
-    throw error;
+  async findOne(id: string): Promise<CamionRecord> {
+    const camion = await this.prisma.camion.findUnique({
+      where: { id },
+      select: camionSelect,
+    });
+    if (!camion) throw new NotFoundException('Camion no encontrado');
+    return camion;
+  }
+
+  async create(body: CreateCamionDto): Promise<CamionRecord> {
+    return this.prisma.camion.create({
+      data: body,
+      select: camionSelect,
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.camion.delete({ where: { id } });
   }
 }

@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import { DireccionesService } from './direcciones.service';
@@ -69,10 +65,11 @@ describe('DireccionesService', () => {
     );
   });
 
-  it('informa un conflicto al registrar una dirección duplicada', async () => {
-    db.direccion.create.mockRejectedValue(errorPrisma('P2002'));
+  it('propaga el error de Prisma al registrar una dirección duplicada', async () => {
+    const error = errorPrisma('P2002');
+    db.direccion.create.mockRejectedValue(error);
 
-    await expect(service.create(dto)).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.create(dto)).rejects.toBe(error);
   });
 
   it('mantiene la calle al editar solo la altura', async () => {
@@ -136,15 +133,13 @@ describe('DireccionesService', () => {
     await expect(service.remove(id)).resolves.toBeUndefined();
   });
 
-  it.each([
-    ['P2003', ConflictException],
-    ['P2025', NotFoundException],
-  ])(
-    'traduce el error %s al intentar eliminar una dirección',
-    async (code, tipo) => {
-      db.direccion.delete.mockRejectedValue(errorPrisma(code));
+  it.each(['P2003', 'P2025'])(
+    'propaga el error %s al intentar eliminar una dirección',
+    async (code) => {
+      const error = errorPrisma(code);
+      db.direccion.delete.mockRejectedValue(error);
 
-      await expect(service.remove(id)).rejects.toBeInstanceOf(tipo);
+      await expect(service.remove(id)).rejects.toBe(error);
     },
   );
 });
