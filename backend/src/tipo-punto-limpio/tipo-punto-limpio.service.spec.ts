@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TipoPuntoLimpioResiduoService } from '../tipo-punto-limpio-residuo/tipo-punto-limpio-residuo.service';
 import { TipoPuntoLimpioService } from './tipo-punto-limpio.service';
 
 describe('TipoPuntoLimpioService', () => {
@@ -37,7 +38,10 @@ describe('TipoPuntoLimpioService', () => {
         delete: jest.fn(),
       },
     };
-    service = new TipoPuntoLimpioService(prisma as unknown as PrismaService);
+    service = new TipoPuntoLimpioService(
+      prisma as unknown as PrismaService,
+      new TipoPuntoLimpioResiduoService(),
+    );
   });
 
   it('creates a tipo with its residuos', async () => {

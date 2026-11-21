@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TipoPuntoLimpioResiduoService } from '../tipo-punto-limpio-residuo/tipo-punto-limpio-residuo.service';
 import { CreateTipoPuntoLimpioDto } from './dto/create-tipo-punto-limpio.dto';
 import { UpdateTipoPuntoLimpioDto } from './dto/update-tipo-punto-limpio.dto';
 import {
@@ -9,20 +10,17 @@ import {
 
 @Injectable()
 export class TipoPuntoLimpioService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vinculosResiduos: TipoPuntoLimpioResiduoService,
+  ) {}
 
   async create(dto: CreateTipoPuntoLimpioDto) {
     const { residuos, ...data } = dto;
     const tipo = await this.prisma.tipoPuntoLimpio.create({
       data: {
         ...data,
-        ...(residuos?.length
-          ? {
-              residuos: {
-                create: residuos.map((residuoId) => ({ residuoId })),
-              },
-            }
-          : {}),
+        ...this.vinculosResiduos.paraAlta(residuos),
       },
       select: tipoPuntoLimpioSelect,
     });
@@ -53,14 +51,7 @@ export class TipoPuntoLimpioService {
       where: { id },
       data: {
         ...data,
-        ...(residuos !== undefined
-          ? {
-              residuos: {
-                deleteMany: {},
-                create: residuos.map((residuoId) => ({ residuoId })),
-              },
-            }
-          : {}),
+        ...this.vinculosResiduos.paraReemplazo(residuos),
       },
       select: tipoPuntoLimpioSelect,
     });
