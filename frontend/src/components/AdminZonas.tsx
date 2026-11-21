@@ -1,4 +1,5 @@
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, TextField } from '@mui/material';
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper } from '@mui/material';
+import { ZonaFormulario } from './ZonaFormulario';
 import AddIcon from '@mui/icons-material/Add';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
 import type { useAdminZonas } from '../hooks/useAdminZonas';
@@ -39,21 +40,7 @@ export function AdminZonas({ admin, trayectos }: { admin: ReturnType<typeof useA
         </div>
       </li>)}
     </ul>}
-    <Dialog className="admin-module-dialog" open={Boolean(admin.formulario)} onClose={admin.cerrarFormulario} fullWidth maxWidth="sm" aria-labelledby="zona-form-title">
-      <DialogTitle id="zona-form-title">{admin.formulario?.id ? 'Editar zona' : 'Nueva zona'}</DialogTitle>
-      <DialogContent dividers>
-        <form id="zona-form" className="zonas-formulario" noValidate onSubmit={(event) => { event.preventDefault(); admin.guardar(); }}>
-          {admin.errorForm && <Alert severity="error">{admin.errorForm}</Alert>}
-          {admin.error && <Alert severity="error">{admin.error}</Alert>}
-          <TextField label="Nombre de la zona" required autoFocus fullWidth color="success" value={admin.formulario?.nombre ?? ''}
-            slotProps={{ htmlInput: { maxLength: 100 } }} onChange={(event) => admin.cambiarCampo('nombre', event.target.value)} />
-          <TextField label="Descripción (opcional)" fullWidth multiline minRows={2} color="success" value={admin.formulario?.descripcion ?? ''}
-            slotProps={{ htmlInput: { maxLength: 300 } }} onChange={(event) => admin.cambiarCampo('descripcion', event.target.value)} />
-        </form>
-      </DialogContent>
-      <DialogActions><Button color="inherit" onClick={admin.cerrarFormulario}>Cancelar</Button>
-        <Button color="success" variant="contained" type="submit" form="zona-form">Guardar zona</Button></DialogActions>
-    </Dialog>
+    <ZonaFormulario admin={admin} />
     <Dialog className="admin-module-dialog" open={Boolean(admin.detalle)} onClose={() => admin.setDetalle(null)} fullWidth maxWidth="sm" aria-labelledby="zona-detail-title">
       <DialogTitle id="zona-detail-title">{admin.detalle?.nombre}</DialogTitle>
       <DialogContent dividers>

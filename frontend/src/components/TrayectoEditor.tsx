@@ -4,6 +4,7 @@ import {
   ToggleButton, ToggleButtonGroup, MenuItem,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
 import AddLocationAltOutlinedIcon from '@mui/icons-material/AddLocationAltOutlined';
 import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -24,9 +25,10 @@ type Props = {
   onCancelar: () => void;
   onGuardado: (trayecto: Trayecto, zonaId: string) => void;
   zonas: Zona[];
+  onAgregarZona: (alCrear: (zona: Zona) => void) => void;
 };
 
-export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas }: Props) {
+export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgregarZona }: Props) {
   const editor = useTrayectoEditor(inicial, onGuardado, zonas);
   const idPuntos = useId();
   const opciones = useRef<HTMLElement>(null);
@@ -139,12 +141,16 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas }: Props
           {mostrarDatos && <TextField label="Nombre del trayecto" required size="small" value={borrador.nombre}
             disabled={guardando} slotProps={{ htmlInput: { maxLength: 100 } }}
             onChange={(event) => editor.actualizarNombre(event.target.value)} />}
-          {mostrarDatos && <TextField label="Zona" select required size="small" color="success"
+          {mostrarDatos && <div className="trayectos-zona-selector">
+            <TextField label="Zona" select required size="small" color="success"
             value={borrador.zonaId ?? ''} disabled={guardando || zonas.length === 0}
-            helperText={zonas.length === 0 ? 'Creá una zona desde el apartado Zonas antes de guardar el trayecto.' : 'Zona a la que pertenece este trayecto.'}
+            helperText={zonas.length === 0 ? 'Usá Agregar zona para crear la primera.' : 'Zona a la que pertenece este trayecto.'}
             onChange={(event) => editor.actualizarZona(event.target.value)}>
             {zonas.map((zona) => <MenuItem key={zona.id} value={zona.id}>{zona.nombre}</MenuItem>)}
-          </TextField>}
+            </TextField>
+            <Button variant="outlined" color="success" startIcon={<AddIcon />} disabled={guardando}
+              onClick={() => onAgregarZona((zona) => editor.actualizarZona(zona.id))}>Agregar zona</Button>
+          </div>}
           {!borrador.localidadId && <Alert severity="warning">Trenque Lauquen no está disponible en el catálogo de localidades.</Alert>}
           {editandoRecorrido && (
             <>

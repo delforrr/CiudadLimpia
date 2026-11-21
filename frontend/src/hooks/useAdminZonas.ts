@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { asignarZona, eliminarZona, guardarZona, zonasService, type CatalogoZonas, type Zona } from '../services/zonasService';
 
 function cargar() {
@@ -18,6 +18,7 @@ export function useAdminZonas() {
   const [errorForm, setErrorForm] = useState('');
   const [detalle, setDetalle] = useState<Zona | null>(null);
   const [pendienteEliminar, setPendienteEliminar] = useState<Zona | null>(null);
+  const alGuardar = useRef<((zona: Zona) => void) | undefined>(undefined);
 
   const persistir = (nuevo: CatalogoZonas) => {
     if (inicial.error) return false;
@@ -35,17 +36,27 @@ export function useAdminZonas() {
   return {
     ...catalogo, error, formulario, errorForm, detalle, setDetalle, pendienteEliminar, setPendienteEliminar,
     bloqueado: Boolean(inicial.error),
-    abrirFormulario: (zona?: Zona) => {
+    abrirFormulario: (zona?: Zona, onGuardada?: (zona: Zona) => void) => {
+      alGuardar.current = onGuardada;
       setErrorForm('');
       setFormulario(zona ?? { nombre: '', descripcion: '' });
     },
-    cerrarFormulario: () => setFormulario(null),
+    cerrarFormulario: () => {
+      alGuardar.current = undefined;
+      setFormulario(null);
+    },
     cambiarCampo: (campo: 'nombre' | 'descripcion', valor: string) =>
       setFormulario((actual) => actual ? { ...actual, [campo]: valor } : actual),
     guardar: () => {
       if (!formulario) return;
       try {
-        if (persistir(guardarZona(catalogo, formulario, formulario.id))) setFormulario(null);
+        const nuevo = guardarZona(catalogo, formulario, formulario.id);
+        if (persistir(nuevo)) {
+          const guardada = formulario.id ? nuevo.zonas.find((zona) => zona.id === formulario.id) : nuevo.zonas.at(-1);
+          if (guardada) alGuardar.current?.(guardada);
+          alGuardar.current = undefined;
+          setFormulario(null);
+        }
       } catch (error) {
         setErrorForm(error instanceof Error ? error.message : 'Revisá los datos.');
       }

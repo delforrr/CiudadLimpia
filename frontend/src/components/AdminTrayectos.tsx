@@ -13,6 +13,7 @@ import { PuntosTrayecto, TrayectoEditor } from './TrayectoEditor';
 import { TrayectoMapa } from './TrayectoMapa';
 import { useAdminZonas } from '../hooks/useAdminZonas';
 import { AdminZonas } from './AdminZonas';
+import { ZonaFormulario } from './ZonaFormulario';
 import './AdminTrayectos.css';
 
 export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTrayectos> }) {
@@ -31,9 +32,10 @@ export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTra
       {zonas.error && <Alert severity="error">{zonas.error}</Alert>}
       {listado && zonas.zonas.length === 0 && !zonas.bloqueado && <Alert severity="info"
         action={<Button color="inherit" onClick={() => setApartado('zonas')}>Ir a Zonas</Button>}>
-        Creá una zona antes de agregar un trayecto.
+        Podés crear una zona desde Zonas o al cargar un nuevo trayecto.
       </Alert>}
       <TrayectosContenido admin={admin} zonas={zonas} />
+      {admin.vista.tipo === 'editor' && <ZonaFormulario admin={zonas} />}
     </>}
   </div>;
 }
@@ -48,7 +50,8 @@ function TrayectosContenido({ admin, zonas }: {
 
   if (vista.tipo === 'editor') {
     return <TrayectoEditor inicial={{ ...vista.borrador, zonaId: vista.borrador.id ? zonas.asignaciones[vista.borrador.id] : undefined }}
-      zonas={zonas.zonas} onCancelar={admin.volver} onGuardado={(trayecto, zonaId) => {
+      zonas={zonas.zonas} onAgregarZona={(alCrear) => zonas.abrirFormulario(undefined, alCrear)}
+      onCancelar={admin.volver} onGuardado={(trayecto, zonaId) => {
         zonas.asignar(trayecto.id, zonaId);
         admin.guardado(trayecto);
       }} />;
@@ -74,7 +77,7 @@ function TrayectosContenido({ admin, zonas }: {
             {!cargando && !error && trayectos.length > 0 && <p>{trayectos.length === 1 ? '1 recorrido' : `${trayectos.length} recorridos`}</p>}
           </div>
         </div>
-        <Button variant="contained" color="success" startIcon={<AddIcon />} disabled={cargando || !localidadFija || zonas.zonas.length === 0 || zonas.bloqueado}
+        <Button variant="contained" color="success" startIcon={<AddIcon />} disabled={cargando || !localidadFija || zonas.bloqueado}
           onClick={admin.nuevo}>Nuevo trayecto</Button>
       </div>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => void admin.cargar()}>Reintentar</Button>}>{error}</Alert>}

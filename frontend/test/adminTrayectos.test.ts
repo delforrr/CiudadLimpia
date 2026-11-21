@@ -30,10 +30,10 @@ const admin: Admin = {
   abrir: async () => {}, cargar: () => {}, nuevo: () => {}, volver: () => {}, guardado: () => {},
 };
 
-function render(catalogo: CatalogoZonas) {
+function render(catalogo: CatalogoZonas, estado: Admin = admin) {
   Object.defineProperty(globalThis, 'localStorage', { configurable: true,
     value: { getItem: () => JSON.stringify(catalogo) } });
-  return renderToStaticMarkup(createElement(AdminTrayectos, { admin }));
+  return renderToStaticMarkup(createElement(AdminTrayectos, { admin: estado }));
 }
 
 test('ofrece el cambio entre trayectos y zonas y muestra la zona en las tarjetas', () => {
@@ -45,11 +45,25 @@ test('ofrece el cambio entre trayectos y zonas y muestra la zona en las tarjetas
   assert.doesNotMatch(html, /Trenque Lauquen/);
 });
 
-test('conserva trayectos antiguos y pide crear una zona antes de dar de alta uno nuevo', () => {
+test('conserva trayectos antiguos y permite iniciar un trayecto aunque todavía no haya zonas', () => {
   const html = render({ zonas: [], asignaciones: {} });
   assert.match(html, /Sin zona asignada/);
   assert.match(html, /Ir a Zonas/);
-  assert.match(html, /<button[^>]*disabled=""[^>]*>.*?Nuevo trayecto/s);
+  const boton = Array.from(html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g))
+    .find((partes) => partes[2].includes('Nuevo trayecto'));
+  assert.ok(boton);
+  assert.doesNotMatch(boton[1], /disabled/);
+});
+
+test('el editor ofrece agregar una zona junto al selector sin abandonar los datos del trayecto', () => {
+  const html = render({ zonas: [], asignaciones: {} }, {
+    ...admin, vista: { tipo: 'editor', borrador: {
+      nombre: 'Recorrido en preparación', localidadId: localidad.id, puntos: [], lineaElegida: null,
+    } },
+  });
+  assert.match(html, /Agregar zona/);
+  assert.match(html, /Usá Agregar zona para crear la primera/);
+  assert.match(html, /value="Recorrido en preparación"/);
 });
 
 test('un cambio de nombre de zona se refleja en la tarjeta sin cambiar su asignación', () => {

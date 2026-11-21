@@ -29,6 +29,23 @@
   gap: 1rem;
 }
 
+.trayectos-zona-selector {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem;
+}
+
+.trayectos-zona-selector > .MuiButton-root {
+  min-height: 40px;
+}
+
+@media (max-width: 480px) {
+  .trayectos-zona-selector {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .trayectos-panel.MuiPaper-root {
   --trayectos-verde: var(--admin-verde, #013a27);
   --trayectos-borde: var(--admin-borde, #dce6df);
