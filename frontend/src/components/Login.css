@@ -87,6 +87,10 @@
   gap: 1.1rem;
 }
 
+.login-form input:is(:autofill, :-webkit-autofill) {
+  -webkit-text-fill-color: #222222;
+}
+
 .login-card.register-card .login-form {
   gap: 0.75rem;
 }
