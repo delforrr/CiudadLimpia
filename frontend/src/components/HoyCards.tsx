@@ -1,254 +1,124 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Alert, Button } from '@mui/material';
 import { useAuthContext } from '../hooks/useAuthContext';
+import { useDomicilioActual } from '../hooks/useDomicilioActual';
+import { useMapaHoy } from '../hooks/useMapaHoy';
+import type { User } from '../services/authService';
 import camionRecolector from '../assets/camion-recolector.png';
 import residuosReciclables from '../assets/residuos-reciclables.png';
 import residuosNoReciclables from '../assets/residuos-no-reciclables.png';
 import { TrayectoMapa } from './TrayectoMapa';
 import HoyDomicilio from './HoyDomicilio';
-import type { LineaTrayecto } from '../services/trayectosService';
 import './HoyCards.css';
 
-// Geometría del trayecto S guardado en la base, usada para la presentación de Hoy.
-const recorridoHoy: LineaTrayecto = {
-  type: 'LineString',
-  coordinates: [
-    [-62.73001310788618, -35.96452604612285],
-    [-62.722567249663484, -35.97433784493321],
-    [-62.7192147643791, -35.97878286674923],
-    [-62.72636501344357, -35.982364154033725],
-    [-62.730495561739076, -35.9770214786803],
-    [-62.742544109998676, -35.983124777477315],
-  ],
-};
-const [longCamion, latCamion] = recorridoHoy.coordinates[2];
-const camionHoy = { nombre: 'Camión recolector', posicion: { lat: latCamion, long: longCamion } };
-const [longSiguiente, latSiguiente] = recorridoHoy.coordinates[3];
-const domicilioHoy = {
-  lat: latCamion + (latSiguiente - latCamion) * 0.35,
-  long: longCamion + (longSiguiente - longCamion) * 0.35,
-};
+const fotosBanner = [
+  { src: residuosReciclables, alt: 'Lunes y jueves: Reciclables' },
+  { src: residuosNoReciclables, alt: 'Martes, miércoles, viernes y domingo: No Reciclables' },
+];
+const puntosVacios: [] = [];
 
-export const HoyCards: React.FC = () => {
-  const { isAuthenticated, user } = useAuthContext();
-  const navigate = useNavigate();
-  const [recordatorioActivo, setRecordatorioActivo] = useState(true);
-  const [mostrarTrayecto, setMostrarTrayecto] = useState(true);
-  const [fotoActiva, setFotoActiva] = useState(0);
-
+function SeguimientoHoy({ user }: { user: User }) {
+  const domicilio = useDomicilioActual(user);
+  const { actual } = domicilio;
+  const { mapa, cargando, error } = useMapaHoy(actual?.id);
+  const [visible, setVisible] = useState(true);
   const mapaRef = useRef<HTMLDivElement>(null);
   const botonRef = useRef<HTMLDivElement>(null);
-  const desplazarAlCambiar = useRef(false);
+  const desplazar = useRef(false);
+  const cantidad = mapa?.camiones.length ?? 0;
 
   useEffect(() => {
-    if (!desplazarAlCambiar.current) return;
-    desplazarAlCambiar.current = false;
-    const destino = mostrarTrayecto ? mapaRef.current : botonRef.current;
-    destino?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [mostrarTrayecto]);
+    if (!desplazar.current) return;
+    desplazar.current = false;
+    const destino = visible ? mapaRef.current : botonRef.current;
+    const animar = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    destino?.scrollIntoView({ behavior: animar ? 'smooth' : 'instant', block: 'center' });
+  }, [visible]);
 
-  const alternarTrayecto = () => {
-    desplazarAlCambiar.current = true;
-    setMostrarTrayecto((visible) => !visible);
-  };
+  return (
+    <section className="tarjeta-blanca-wrapper" aria-label="Seguimiento de recolección">
+      <div className="saludo-header">
+        <h2 className="saludo-titulo">Hola, {user.cliente?.name || user.email}</h2>
+        <HoyDomicilio {...domicilio} />
+      </div>
+      <div className="tarjeta-blanca-card">
+        <div className="tarjeta-blanca-cuerpo">
+          <div className="estado-fila-principal">
+            <div className="estado-textos">
+              <h3 className="estado-alerta">Recolección en vivo</h3>
+              <p className="estado-descripcion" role="status">
+                {!actual ? 'Elegí un domicilio para consultar los recorridos.' :
+                  cargando ? 'Buscando camiones para tu domicilio…' :
+                  error ? 'La posición de los camiones no está disponible.' :
+                  cantidad === 0 ? 'Sin camiones activos para tu domicilio.' :
+                  cantidad === 1 ? '1 camión en el recorrido de tu domicilio.' :
+                  `${cantidad} camiones en los recorridos de tu domicilio.`}
+              </p>
+            </div>
+            <div className="camion-badge" aria-hidden="true">
+              <img src={camionRecolector} alt="" className="tarjeta-camion-img" />
+            </div>
+          </div>
+          {error && <Alert severity="warning">El mapa se volverá a consultar automáticamente.</Alert>}
+          {mapa && (
+            <>
+              <div className="trayecto-boton-fila" ref={botonRef}>
+                <Button type="button" className="btn-ver-trayecto" aria-expanded={visible}
+                  aria-controls="mapa-recoleccion-hoy" onClick={() => {
+                    desplazar.current = true;
+                    setVisible((anterior) => !anterior);
+                  }}>
+                  {visible ? 'Ocultar mapa' : 'Ver mapa'}
+                </Button>
+              </div>
+              <div id="mapa-recoleccion-hoy" className="mapa-trayecto-card" ref={mapaRef} hidden={!visible}>
+                <div className="hoy-mapa">
+                  <TrayectoMapa key={actual?.id} puntos={puntosVacios}
+                    lineas={mapa.trayectos.map(({ geometria }) => geometria)}
+                    camiones={mapa.camiones} domicilio={mapa.domicilio} zoomInicial={16} />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-  const fotosBanner = [
-    {
-      id: 'reciclables',
-      src: residuosReciclables,
-      alt: 'Lunes y jueves: Reciclables',
-    },
-    {
-      id: 'no-reciclables',
-      src: residuosNoReciclables,
-      alt: 'Martes, miércoles, viernes y domingo: No Reciclables',
-    },
-  ];
+export function HoyCards() {
+  const { user } = useAuthContext();
+  const [fotoActiva, setFotoActiva] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setFotoActiva((prev) => (prev + 1) % fotosBanner.length);
-    }, 7000);
-
+    const timer = setInterval(() => setFotoActiva((prev) => (prev + 1) % fotosBanner.length), 7000);
     return () => clearInterval(timer);
-  }, [fotosBanner.length]);
+  }, []);
 
   return (
     <div className="hoy-container">
-      {/* 1. Tarjeta Blanca: se muestra ÚNICAMENTE cuando se inició sesión */}
-      {isAuthenticated ? (
-        <section className="tarjeta-blanca-wrapper">
-          {/* Encabezado con saludo y dirección */}
-          <div className="saludo-header">
-            <h2 className="saludo-titulo">Hola, {user?.cliente?.name || user?.email}</h2>
-
-            {user && <HoyDomicilio key={user.id} user={user} />}
-          </div>
-
-        {/* Tarjeta de estado de recolección */}
-        <div className="tarjeta-blanca-card">
-          <div className="tarjeta-blanca-cuerpo">
-            <div className="estado-fila-principal">
-              <div className="estado-textos">
-                <span className="estado-pregunta">¿YA PASÓ POR TU PUERTA?</span>
-                <h3 className="estado-alerta">NO HA PASADO</h3>
-                <p className="estado-descripcion">El recolector está en camino hacia tu cuadra</p>
-                <p className="estado-distancia"><strong>350 m</strong> de tu domicilio</p>
-              </div>
-
-              <div className="camion-badge">
-                <img
-                  src={camionRecolector}
-                  alt="Camión recolector"
-                  className="tarjeta-camion-img"
-                />
-              </div>
+      {user ? <SeguimientoHoy key={user.id} user={user} /> : (
+        <section className="tarjeta-login-invitacion">
+          <div className="invitacion-cuerpo">
+            <div className="invitacion-textos">
+              <h3 className="invitacion-titulo">Recolección en vivo</h3>
+              <p className="invitacion-desc">Iniciá sesión para ver los camiones que recorren la calle de tu domicilio.</p>
             </div>
-
-
-
-            {/* Botón Ver Trayecto */}
-            <div className="trayecto-boton-fila" ref={botonRef}>
-              <button
-                type="button"
-                className={`btn-ver-trayecto ${mostrarTrayecto ? 'activo' : ''}`}
-                onClick={alternarTrayecto}
-              >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-                  <line x1="8" y1="2" x2="8" y2="18" />
-                  <line x1="16" y1="6" x2="16" y2="22" />
-                </svg>
-                <span>{mostrarTrayecto ? 'Ocultar trayecto' : 'Ver trayecto'}</span>
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ transform: mostrarTrayecto ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-            </div>
-
-            {mostrarTrayecto && (
-              <div className="mapa-trayecto-card" ref={mapaRef}>
-                <div className="mapa-header-fila">
-                  <span className="mapa-header-tag">Recorrido del recolector</span>
-                </div>
-                <div className="hoy-mapa">
-                  <TrayectoMapa puntos={[]} linea={recorridoHoy} camion={camionHoy}
-                    domicilio={domicilioHoy} centrarEn={domicilioHoy} zoomInicial={16} />
-                </div>
-              </div>
-            )}
-            {/* Se retiraron los botones de '¿Pasó recién?' y 'Compartir' según lo solicitado */}
+            <Button component={Link} to="/perfil" className="btn-ir-iniciar-sesion">Iniciar sesión</Button>
           </div>
-        </div>
-      </section>
-    ) : (
-      <section className="tarjeta-login-invitacion">
-        <div className="invitacion-cuerpo">
-          <div className="invitacion-textos">
-            <span className="invitacion-pregunta">¿YA PASÓ POR TU PUERTA?</span>
-            <h3 className="invitacion-titulo">Seguimiento en vivo del recolector</h3>
-            <p className="invitacion-desc">
-              Iniciá sesión para ver si el camión ya pasó por tu cuadra y consultar el mapa en tiempo real según tu domicilio.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="btn-ir-iniciar-sesion"
-            onClick={() => navigate('/perfil')}
-          >
-            <span>Iniciar sesión</span>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </button>
-        </div>
-      </section>
-    )}
-
-      {/* 2. Tarjeta Verde (Abajo) */}
-      <section className="tarjeta-verde-card">
-        {/* Marca de agua del tacho de basura en el fondo */}
-        <div className="marca-agua-tacho" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12z" />
-          </svg>
-        </div>
-
-        {/* Fila superior de badges */}
-        <div className="verde-fila-superior">
-          <div className="badge-hoy-toca">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            <span>HOY TOCA</span>
-          </div>
-
-          <div className="badge-hora-19">
-            19:00 h
-          </div>
-        </div>
-
-        {/* Título y descripción */}
-        <h3 className="verde-titulo">NO RECICLABLES</h3>
-        <p className="verde-descripcion">
-          Orgánicos, restos de comida, yerba y desecho sanitario común.
-        </p>
-
-        {/* Caja de recordatorio con switch */}
-        <div className="recordatorio-fila">
-          <div className="recordatorio-info">
-            <div className="campana-icono">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#bef264" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-            </div>
-            <div>
-              <span className="recordatorio-titulo">Recordatorio de salida</span>
-              <span className="recordatorio-subtitulo">Avisar a las 18:45 h</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className={`switch-verde ${recordatorioActivo ? 'activo' : ''}`}
-            onClick={() => setRecordatorioActivo(!recordatorioActivo)}
-            aria-label="Alternar recordatorio de salida"
-          >
-            <span className="switch-perilla"></span>
-          </button>
-        </div>
-      </section>
-
-      {/* 3. Carrusel con las 2 fotos abajo del todo (rotación automática cada 7 segundos) */}
+        </section>
+      )}
       <section className="carrusel-fotos-wrapper" aria-label="Información de recolección">
         <div className="carrusel-fotos-card">
           <div className="carrusel-slide-container">
             {fotosBanner.map((foto, index) => (
-              <img
-                key={foto.id}
-                src={foto.src}
-                alt={foto.alt}
-                className={`carrusel-foto-img ${index === fotoActiva ? 'visible' : ''}`}
-              />
+              <img key={foto.src} src={foto.src} alt={foto.alt} aria-hidden={index !== fotoActiva}
+                className={`carrusel-foto-img ${index === fotoActiva ? 'visible' : ''}`} />
             ))}
           </div>
         </div>
       </section>
     </div>
   );
-};
+}

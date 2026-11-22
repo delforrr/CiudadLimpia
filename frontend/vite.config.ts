@@ -8,7 +8,7 @@ export default defineConfig({
     host: true,
     port: 5173,
     proxy: {
-      "^/(api|auth|users)([/?]|$)": "http://localhost:3000",
+      "^/(api|auth|users)([/?]|$)": process.env.CIUDAD_LIMPIA_API_URL || "http://localhost:3000",
     },
   },
 });

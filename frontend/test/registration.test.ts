@@ -11,7 +11,6 @@ import type { DomicilioForm } from '../src/schemas/profileSchema.ts'
 let server: ViteDevServer
 let PerfilPage: ComponentType<{ initialRegister?: boolean }>
 let AdminPage: ComponentType
-let HoyDomicilio: ComponentType<{ user: User }>
 let HoyCards: ComponentType
 let DomiciliosCard: ComponentType<{
   domicilios: DomicilioForm[]; onChange: () => void; readOnly?: boolean; expanded?: boolean
@@ -27,7 +26,6 @@ before(async () => {
   })
   ;({ PerfilPage } = await server.ssrLoadModule('/src/pages/PerfilPage.tsx'))
   ;({ AdminPage } = await server.ssrLoadModule('/src/pages/AdminPage.tsx'))
-  ;({ default: HoyDomicilio } = await server.ssrLoadModule('/src/components/HoyDomicilio.tsx'))
   ;({ HoyCards } = await server.ssrLoadModule('/src/components/HoyCards.tsx'))
   ;({ default: DomiciliosCard } = await server.ssrLoadModule('/src/components/DomiciliosCard.tsx'))
   ;({ AuthContext } = await server.ssrLoadModule('/src/context/auth-context.ts'))
@@ -42,13 +40,19 @@ function render(initialRegister = false, user: User | null = null, path = initia
       admin ? createElement(AdminPage) : createElement(PerfilPage, { initialRegister }))))
 }
 
+function renderHoy(user: User) {
+  const session = { user, checking: false, isAuthenticated: true, loggingOut: false,
+    logoutError: '', onAuthenticated: () => {}, logout: async () => {} }
+  return renderToStaticMarkup(createElement(AuthContext.Provider, { value: session },
+    createElement(MemoryRouter, { initialEntries: ['/hoy'] }, createElement(HoyCards))))
+}
+
 test('shows one current address in Hoy and opens the new address form directly from its link', () => {
   const user: User = { id: 'user-1', email: 'ana@example.com', role: 'USER',
     cliente: { id: 'cliente-1', name: 'Ana', lastName: 'Pérez',
       domicilios: [{ id: 'domicilio-1', direccion: 'san Martín 123' },
         { id: 'domicilio-2', direccion: 'Belgrano 456' }] } }
-  const hoy = renderToStaticMarkup(createElement(MemoryRouter, { initialEntries: ['/hoy'] },
-    createElement(HoyDomicilio, { user })))
+  const hoy = renderHoy(user)
   assert.match(hoy, /aria-haspopup="menu"/)
   assert.doesNotMatch(hoy, /Agregar domicilio/)
   assert.match(hoy, /San Martín 123/)
@@ -61,19 +65,14 @@ test('shows one current address in Hoy and opens the new address form directly f
   assert.doesNotMatch(perfil, /Guardar cambios/)
 })
 
-test('Hoy muestra distancia, estado de paso y mapa sin explicaciones técnicas', () => {
+test('Hoy muestra la carga de posiciones sin anticipar distancia, paso ni horarios', () => {
   const user: User = { id: 'user-1', email: 'ana@example.com', role: 'USER',
     cliente: { id: 'cliente-1', name: 'Ana', lastName: 'Pérez',
       domicilios: [{ id: 'domicilio-1', direccion: 'San Martín 123' }] } }
-  const session = { user, checking: false, isAuthenticated: true, loggingOut: false,
-    logoutError: '', onAuthenticated: () => {}, logout: async () => {} }
-  const html = renderToStaticMarkup(createElement(AuthContext.Provider, { value: session },
-    createElement(MemoryRouter, null, createElement(HoyCards))))
-  assert.match(html, /350 m/)
-  assert.match(html, /NO HA PASADO/)
-  assert.match(html, /Recorrido del recolector/)
-  assert.match(html, /aria-label="Mapa del trayecto"/)
-  assert.doesNotMatch(html, /simulad|esquinas|backend|OSRM|GeoRef/)
+  const html = renderHoy(user)
+  assert.match(html, /Recolección en vivo/)
+  assert.match(html, /Buscando camiones para tu domicilio/)
+  assert.doesNotMatch(html, /350 m|NO HA PASADO|19:00 h|18:45 h/)
 })
 
 test('opens registration with all fields required by the current API', () => {

@@ -4,15 +4,13 @@ import PlaceIcon from '@mui/icons-material/Place';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Link } from 'react-router-dom';
 import { useDomicilioActual } from '../hooks/useDomicilioActual';
-import type { User } from '../services/authService';
 import { capitalizarInicial } from '../utils/capitalizarInicial';
 import './DomiciliosCard.css';
 
-export default function HoyDomicilio({ user }: { user: User }) {
+export default function HoyDomicilio({ actual, domicilios, elegir }: ReturnType<typeof useDomicilioActual>) {
   const buttonId = useId();
   const menuId = useId();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const { actual, domicilios, elegir } = useDomicilioActual(user);
 
   return (
     <>

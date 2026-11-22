@@ -167,6 +167,15 @@ Usá una instancia local conectada a una base de prueba. Configurá `TELEMETRIA_
 node scripts/demo-recoleccion.mjs
 ```
 
-El script crea o reutiliza **Demo Ciudad Limpia · Roca**, dos camiones activos y `demo-recoleccion@ciudadlimpia.test` con el domicilio **Casa demo**. Envía cinco muestras por camión, una cada cinco segundos, y comprueba la respuesta de la API después de cada muestra. Cada ejecución crea dos prestaciones nuevas. El script imprime el endpoint para Swagger y las posiciones, y termina con error si falta un camión o su posición no avanza.
+El script prepara **Demo Ciudad Limpia · Roca**, dos camiones activos y `demo-recoleccion@ciudadlimpia.test` con el domicilio **Casa demo**. La primera pasada verifica el mapa y guarda los identificadores en `backend/.tmp/demo/recorrido.json`. Las pasadas siguientes usan esos IDs y el token de telemetría. Envía cinco muestras por camión, una cada cinco segundos, y cada ejecución crea dos prestaciones nuevas. Si cambia la base o se borran los datos, volvé a ejecutar el script con `--preparar`.
 
 Si ya está preparada la instancia aislada en el puerto 3101, desde `backend/` se puede repetir la demo con `node --env-file=.tmp/demo/.env scripts/demo-recoleccion.mjs`. En Swagger, iniciá sesión con el vecino de prueba mientras corre el script y consultá la ruta que imprime. Para esta demo, mantené el envío push real deshabilitado.
+
+Para verla en la app con la instancia aislada, iniciá Vite desde `frontend/` en PowerShell.
+
+```powershell
+$env:CIUDAD_LIMPIA_API_URL = 'http://127.0.0.1:3101'
+node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5174 --strictPort
+```
+
+Abrí [Hoy](http://127.0.0.1:5174/hoy), iniciá sesión como `demo-recoleccion@ciudadlimpia.test` y volvé a Hoy antes de ejecutar el script. El mapa consulta posiciones cada cinco segundos mientras la página está visible. Después de la última muestra, la API deja de devolver cada camión cuando vence su posición.

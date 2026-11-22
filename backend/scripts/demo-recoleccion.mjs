@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as esperar } from 'node:timers/promises';
 
 const base = new URL(process.env.TELEMETRIA_URL || 'http://127.0.0.1:3101');
@@ -10,21 +11,12 @@ if (
   throw new Error('La demo solo se ejecuta contra una API local.');
 }
 
-const emailAdmin = process.env.DEMO_ADMIN_EMAIL;
-const passwordAdmin = process.env.DEMO_ADMIN_PASSWORD;
-const passwordVecino = process.env.DEMO_VECINO_PASSWORD;
 const token = process.env.TELEMETRIA_TOKEN;
-if (!emailAdmin || !passwordAdmin || !passwordVecino || !token) {
-  throw new Error(
-    'Definí DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD, DEMO_VECINO_PASSWORD y TELEMETRIA_TOKEN.',
-  );
-}
-if (passwordVecino.length < 8 || Buffer.byteLength(passwordVecino) > 72) {
-  throw new Error(
-    'DEMO_VECINO_PASSWORD debe tener al menos 8 caracteres y hasta 72 bytes.',
-  );
-}
+if (!token) throw new Error('Definí TELEMETRIA_TOKEN.');
 
+const carpetaDemo = new URL('../.tmp/demo/', import.meta.url);
+const archivoDemo = new URL('recorrido.json', carpetaDemo);
+const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const nombre = 'Demo Ciudad Limpia · Roca';
 const calle = 'Roca Demo Ciudad Limpia';
 const emailVecino = 'demo-recoleccion@ciudadlimpia.test';
@@ -54,8 +46,15 @@ async function solicitar(
     redirect: 'error',
     signal: AbortSignal.timeout(10000),
   });
-  if (!respuesta.ok)
-    throw new Error(`${metodo} ${ruta} devolvió HTTP ${respuesta.status}.`);
+  if (!respuesta.ok) {
+    const espera = respuesta.headers.get('Retry-After');
+    throw new Error(
+      `${metodo} ${ruta} devolvió HTTP ${respuesta.status}.` +
+        (respuesta.status === 429 && espera
+          ? ` Podés reintentar en ${espera} s.`
+          : ''),
+    );
+  }
   return {
     datos: respuesta.status === 204 ? null : await respuesta.json(),
     cookie: respuesta.headers
@@ -68,7 +67,43 @@ async function solicitar(
 const login = (email, password) =>
   solicitar('/auth/login', { metodo: 'POST', cuerpo: { email, password } });
 
-async function demo() {
+async function leerDemo() {
+  try {
+    const datos = JSON.parse(await readFile(archivoDemo, 'utf8'));
+    if (datos.origen !== base.origin) return null;
+    assert(
+      uuid.test(datos.trayectoId) &&
+        uuid.test(datos.domicilioId) &&
+        Array.isArray(datos.camiones) &&
+        datos.camiones.length === 2 &&
+        datos.camiones.every(
+          ({ id, patente }) => uuid.test(id) && typeof patente === 'string',
+        ),
+    );
+    return datos;
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw new Error(
+      'No se pudo leer el recorrido guardado. Ejecutá la demo con --preparar para regenerarlo.',
+    );
+  }
+}
+
+async function prepararDemo() {
+  const emailAdmin = process.env.DEMO_ADMIN_EMAIL;
+  const passwordAdmin = process.env.DEMO_ADMIN_PASSWORD;
+  const passwordVecino = process.env.DEMO_VECINO_PASSWORD;
+  if (!emailAdmin || !passwordAdmin || !passwordVecino) {
+    throw new Error(
+      'Para preparar la demo definí DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD y DEMO_VECINO_PASSWORD.',
+    );
+  }
+  if (passwordVecino.length < 8 || Buffer.byteLength(passwordVecino) > 72) {
+    throw new Error(
+      'DEMO_VECINO_PASSWORD debe tener al menos 8 caracteres y hasta 72 bytes.',
+    );
+  }
+
   const admin = await login(emailAdmin, passwordAdmin);
   assert(
     admin.cookie && admin.datos.role === 'ADMIN',
@@ -115,7 +150,7 @@ async function demo() {
       'ACTIVO',
       `El camión ${patente} debe estar activo.`,
     );
-    camiones.push({ ...camion, servicioId: randomUUID() });
+    camiones.push({ id: camion.id, patente });
   }
 
   const { datos: usuarios } = await solicitar('/users', { cookie });
@@ -145,46 +180,73 @@ async function demo() {
     vecino.cookie && domicilio,
     'La cuenta de demo debe tener el domicilio Casa demo.',
   );
-  const mapa = `/api/hoy/domicilios/${domicilio.id}/mapa`;
-  console.log(`Trayecto: ${trayecto.nombre} (${trayecto.id})`);
+  return {
+    configuracion: {
+      origen: base.origin,
+      trayectoId: trayecto.id,
+      domicilioId: domicilio.id,
+      camiones,
+    },
+    cookie: vecino.cookie,
+  };
+}
+
+async function demo() {
+  const guardada = process.argv.includes('--preparar')
+    ? null
+    : await leerDemo();
+  const { configuracion, cookie } = guardada
+    ? { configuracion: guardada }
+    : await prepararDemo();
+  const { trayectoId, domicilioId } = configuracion;
+  const camiones = configuracion.camiones.map((camion) => ({
+    ...camion,
+    servicioId: randomUUID(),
+  }));
+  const mapa = `/api/hoy/domicilios/${domicilioId}/mapa`;
+  console.log(`Trayecto: ${nombre} (${trayectoId})`);
   console.log(`Vecino: ${emailVecino}`);
   console.log(`Consulta para Swagger: GET ${mapa}`);
+  if (guardada) console.log('Reproduciendo el recorrido guardado.');
 
   let posicionesAnteriores;
   for (let paso = 0; paso < 5; paso++) {
     if (paso) await esperar(5000);
     const registradoEn = new Date().toISOString();
+    const muestras = camiones.map(({ id: camionId, servicioId }, indice) => ({
+      camionId,
+      servicioId,
+      trayectoId,
+      ...posicion(200 - 80 * indice + 70 * paso),
+      registradoEn,
+      precisionM: 5,
+    }));
     await Promise.all(
-      camiones.map(({ id: camionId, servicioId }, indice) =>
+      muestras.map((cuerpo) =>
         solicitar('/api/telemetria/posiciones', {
           metodo: 'POST',
           bearer: token,
-          cuerpo: {
-            camionId,
-            servicioId,
-            trayectoId: trayecto.id,
-            ...posicion(200 - 80 * indice + 70 * paso),
-            registradoEn,
-            precisionM: 5,
-          },
+          cuerpo,
         }),
       ),
     );
-    const { datos } = await solicitar(mapa, { cookie: vecino.cookie });
-    assert(
-      datos.trayectos.some(({ id }) => id === trayecto.id),
-      'La consulta no encontró el trayecto de demo.',
-    );
-    const posiciones = camiones.map(({ id, patente }) => {
-      const camion = datos.camiones.find(
-        (item) => item.camionId === id && item.registradoEn === registradoEn,
-      );
+    const posiciones = muestras.map(({ long }) => long);
+    if (cookie) {
+      const { datos } = await solicitar(mapa, { cookie });
       assert(
-        camion,
-        `La consulta no devolvió la nueva posición de ${patente}.`,
+        datos.trayectos.some(({ id }) => id === trayectoId),
+        'La consulta no encontró el trayecto de demo.',
       );
-      return camion.posicion.long;
-    });
+      for (const { id, patente } of camiones) {
+        assert(
+          datos.camiones.some(
+            (item) =>
+              item.camionId === id && item.registradoEn === registradoEn,
+          ),
+          `La consulta no devolvió la nueva posición de ${patente}.`,
+        );
+      }
+    }
     if (posicionesAnteriores) {
       assert(
         posiciones.every((long, indice) => long > posicionesAnteriores[indice]),
@@ -195,6 +257,10 @@ async function demo() {
     console.log(
       `Muestra ${paso + 1}: dos camiones en avance (${posiciones.map((long) => long.toFixed(6)).join(', ')})`,
     );
+  }
+  if (!guardada) {
+    await mkdir(carpetaDemo, { recursive: true });
+    await writeFile(archivoDemo, `${JSON.stringify(configuracion, null, 2)}\n`);
   }
 }
 

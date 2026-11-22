@@ -1,13 +1,16 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import type { LatLngTuple, LayerGroup, Map as LeafletMap } from 'leaflet';
+import type { LatLngTuple, LayerGroup, Map as LeafletMap, Marker } from 'leaflet';
 import type { Coordenadas, LineaTrayecto } from '../services/trayectosService';
 import 'leaflet/dist/leaflet.css';
 import './DomicilioMapa.css';
 import camionRecolector from '../assets/icono-camion-hoy.png';
 
+type CamionMapa = { servicioId: string; nombre: string; posicion: Coordenadas };
+
 type Props = {
   puntos: Coordenadas[];
-  linea: LineaTrayecto;
+  linea?: LineaTrayecto;
+  lineas?: readonly LineaTrayecto[];
   sugerida?: LineaTrayecto;
   pin?: Coordenadas | null;
   indicePin?: number;
@@ -17,7 +20,7 @@ type Props = {
   onEditarPunto?: (indice: number) => void;
   zoomInicial?: number;
   zoomFijo?: boolean;
-  camion?: { nombre: string; posicion: Coordenadas };
+  camiones?: readonly CamionMapa[];
   domicilio?: Coordenadas;
   onMoverDomicilio?: (posicion: Coordenadas) => void;
   onDescartarDomicilio?: () => void;
@@ -28,11 +31,14 @@ const centro: [number, number] = [-35.973, -62.734];
 const limitesTrenqueLauquen: [LatLngTuple, LatLngTuple] = [[-36.04, -62.82], [-35.90, -62.64]];
 const zoomMinimo = 12;
 const zoomMaximo = 18;
+const sinCamiones: readonly CamionMapa[] = [];
 const posiciones = (linea: LineaTrayecto): [number, number][] =>
   linea.coordinates.map(([long, lat]) => [lat, long]);
 
-export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto, zoomInicial = 14, zoomFijo = false, camion, domicilio, onMoverDomicilio, onDescartarDomicilio }: Props) {
+export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto, zoomInicial = 14, zoomFijo = false, camiones = sinCamiones, domicilio, onMoverDomicilio, onDescartarDomicilio }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
+  const marcadoresCamiones = useRef(new Map<string, Marker>());
+  const encuadreEnVivo = useRef(false);
   const vistaAnterior = useRef<{ centro: LatLngTuple; zoom: number } | null>(null);
   const vistaDomicilioAnterior = useRef<{ centro: LatLngTuple; zoom: number } | null>(null);
   const [instancia, setInstancia] = useState<Mapa | null>(null);
@@ -55,14 +61,20 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
   const encuadrar = useEffectEvent((mapa: LeafletMap, L: Mapa['L']) => {
     const limites = L.latLngBounds(limitesTrenqueLauquen);
     puntos.forEach(({ lat, long }) => limites.extend([lat, long]));
+    const recorrido = L.latLngBounds((lineas ?? (linea ? [linea] : [])).flatMap(posiciones));
+    if (domicilio && lineas && recorrido.isValid()) recorrido.extend([domicilio.lat, domicilio.long]);
     // Los recorridos guardados fuera del área inicial también se pueden consultar.
-    if (linea.coordinates.length >= 2) {
-      const recorrido = L.latLngBounds(posiciones(linea));
+    if (recorrido.isValid()) {
+      if (lineas) encuadreEnVivo.current = true;
       limites.extend(recorrido);
       mapa.setMaxBounds(limites);
       if (mapaFijo()) mapa.setView(recorrido.getCenter(), zoomMapa(), { animate: false });
       else mapa.fitBounds(recorrido, { padding: [24, 24], maxZoom: 17, animate: false });
     } else {
+      if (lineas && domicilio) {
+        limites.extend([domicilio.lat, domicilio.long]);
+        mapa.setView([domicilio.lat, domicilio.long], zoomMapa(), { animate: false });
+      }
       mapa.setMaxBounds(limites);
     }
   });
@@ -99,18 +111,26 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
       if (!desmontado) setError(true);
     });
 
+    const marcadores = marcadoresCamiones.current;
     return () => {
       desmontado = true;
       observador?.disconnect();
       mapa?.remove();
+      marcadores.clear();
     };
   }, []);
+
+  useEffect(() => {
+    if (instancia && lineas?.length && !encuadreEnVivo.current) encuadrar(instancia.mapa, instancia.L);
+  }, [instancia, lineas]);
 
   useEffect(() => {
     if (!instancia) return;
     const { L, capa } = instancia;
     capa.clearLayers();
-    if (linea.coordinates.length >= 2) L.polyline(posiciones(linea), { color: '#166044', weight: 5, interactive: false }).addTo(capa);
+    for (const recorrido of lineas ?? (linea ? [linea] : [])) {
+      if (recorrido.coordinates.length >= 2) L.polyline(posiciones(recorrido), { color: '#166044', weight: 5, interactive: false }).addTo(capa);
+    }
     if (domicilio) {
       const marcadorDomicilio = L.marker([domicilio.lat, domicilio.long], {
         title: 'Tu domicilio',
@@ -130,20 +150,6 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
       }).addTo(capa);
       if (domicilioDescartable) marcadorDomicilio.on('click', descartarDomicilio);
       else marcadorDomicilio.bindPopup('Tu domicilio', { autoPan: false, closeButton: false });
-    }
-    if (camion) {
-      L.marker([camion.posicion.lat, camion.posicion.long], {
-        title: camion.nombre,
-        icon: L.divIcon({
-          className: 'hoy-camion-marcador',
-          html: `<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
-            <circle cx="20" cy="20" r="18" fill="#1e6000" opacity="0.22" />
-            <circle cx="20" cy="20" r="14" fill="white" stroke="#1e6000" stroke-width="2.2" />
-            <image href="${camionRecolector}" x="10" y="10" width="20" height="20" />
-          </svg>`,
-          iconSize: [40, 40], iconAnchor: [20, 20],
-        }),
-      }).addTo(capa);
     }
     if (sugerida) L.polyline(posiciones(sugerida), { color: '#185da8', weight: 5, dashArray: '8 7', interactive: false }).addTo(capa);
     puntos.forEach(({ lat, long }, indice) => {
@@ -168,7 +174,39 @@ export function TrayectoMapa({ puntos, linea, sugerida, pin, indicePin, centrarE
         marcar(lat, lng);
       }).on('click', descartarPin).addTo(capa);
     }
-  }, [instancia, puntos, linea, sugerida, pin, indicePin, interactivo, descartable, puedeEditarPunto, camion, domicilio, domicilioMovible, domicilioDescartable]);
+  }, [instancia, puntos, linea, lineas, sugerida, pin, indicePin, interactivo, descartable, puedeEditarPunto, domicilio, domicilioMovible, domicilioDescartable]);
+
+  useEffect(() => {
+    if (!instancia) return;
+    const { L, mapa } = instancia;
+    const marcadores = marcadoresCamiones.current;
+    const vigentes = new Set(camiones.map(({ servicioId }) => servicioId));
+    for (const [id, marcador] of marcadores) {
+      if (vigentes.has(id)) continue;
+      marcador.remove();
+      marcadores.delete(id);
+    }
+    for (const { servicioId, nombre, posicion } of camiones) {
+      const coordenadas: LatLngTuple = [posicion.lat, posicion.long];
+      const marcador = marcadores.get(servicioId);
+      if (marcador) {
+        marcador.setLatLng(coordenadas);
+        continue;
+      }
+      marcadores.set(servicioId, L.marker(coordenadas, {
+        title: nombre,
+        icon: L.divIcon({
+          className: 'hoy-camion-marcador',
+          html: `<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+            <circle cx="20" cy="20" r="18" fill="#1e6000" opacity="0.22" />
+            <circle cx="20" cy="20" r="14" fill="white" stroke="#1e6000" stroke-width="2.2" />
+            <image href="${camionRecolector}" x="10" y="10" width="20" height="20" />
+          </svg>`,
+          iconSize: [40, 40], iconAnchor: [20, 20],
+        }),
+      }).addTo(mapa));
+    }
+  }, [instancia, camiones]);
 
   useEffect(() => {
     if (!instancia) return;
