@@ -2,6 +2,7 @@ import { Alert, Button, TextField } from '@mui/material';
 import type { FormEvent } from 'react';
 import type { NuevoDomicilioForm } from '../schemas/profileSchema';
 import { DomicilioMapa } from './DomicilioMapa';
+import { SelectorCalle } from './SelectorCalle';
 
 type PerfilNuevoDomicilioProps = {
   domicilio: NuevoDomicilioForm;
@@ -20,17 +21,12 @@ export default function PerfilNuevoDomicilio({
   return (
     <form className="perfil-edit-form perfil-nuevo-domicilio" onSubmit={paso === 'datos' ? onContinuar : onSubmit} noValidate>
       {paso === 'datos' ? <>
-      <TextField
-        label="Calle"
-        size="small"
-        color="success"
+      <SelectorCalle
         autoFocus
         required
-        value={domicilio.calle}
-        slotProps={{ htmlInput: { maxLength: 200 } }}
-        error={Boolean(errores.calle)}
-        helperText={errores.calle?.[0]}
-        onChange={(event) => onChange({ ...domicilio, calle: event.target.value })}
+        calle={domicilio.calle}
+        error={errores.calle?.[0]}
+        onChange={(opcion) => onChange({ ...domicilio, calle: opcion?.calle ?? '' })}
       />
       <TextField
         label="Altura"

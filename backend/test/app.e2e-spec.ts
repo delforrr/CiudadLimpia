@@ -6,6 +6,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import type { OpenAPIObject } from '@nestjs/swagger';
 import { configureApp } from '../src/configure-app';
 import { AppModule } from '../src/app.module';
+import { JwtService } from '@nestjs/jwt';
 
 describe('Public API and documentation (HTTP)', () => {
   let app: INestApplication<App>;
@@ -13,7 +14,10 @@ describe('Public API and documentation (HTTP)', () => {
     process.env.JWT_SECRET = 'test-only-secret-at-least-32-characters';
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
-      .useValue({})
+      .useValue({
+        user: { findUnique: () => ({ id: 'vecino', role: 'USER' }) },
+        calle: { findMany: () => [{ id: 'roca', calle: 'Roca' }] },
+      })
       .compile();
     app = module.createNestApplication();
     configureApp(app);
@@ -30,6 +34,21 @@ describe('Public API and documentation (HTTP)', () => {
       .get('/health')
       .expect(200)
       .expect({ status: 'ok' }));
+
+  it('permite buscar calles como vecino y reserva la edición al administrador', async () => {
+    const api = () => request(app.getHttpServer());
+    const token = await app.get(JwtService).signAsync({ sub: 'vecino' });
+    await api().get('/calles?buscar=Roca').expect(401);
+    await api()
+      .get('/calles?buscar=Roca')
+      .auth(token, { type: 'bearer' })
+      .expect(200, [{ id: 'roca', calle: 'Roca' }]);
+    await api()
+      .post('/calles')
+      .auth(token, { type: 'bearer' })
+      .send({ calle: 'Roca' })
+      .expect(403);
+  });
 
   it('documents the executable schemas, authentication and public responses', async () => {
     await request(app.getHttpServer())

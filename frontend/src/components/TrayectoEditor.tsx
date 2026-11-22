@@ -18,6 +18,7 @@ import type { Referencia, Trayecto } from '../services/trayectosService';
 import type { BorradorTrayecto } from '../utils/trayectoEditor';
 import { TrayectoMapa } from './TrayectoMapa';
 import { TramosTrayecto } from './TramosTrayecto';
+import { SelectorCalle } from './SelectorCalle';
 import type { Zona } from '../services/zonasService';
 
 const referenciaTexto = ({ calle, altura }: Referencia) => `${calle} ${altura ?? '· sin altura'}`;
@@ -227,9 +228,8 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
                   event.preventDefault();
                   void editor.buscarDireccion();
                 }}>
-                  <TextField label="Calle" size="small" value={editor.calle} disabled={guardando}
-                    slotProps={{ htmlInput: { maxLength: 180 } }}
-                    onChange={(event) => editor.actualizarBusqueda('calle', event.target.value)} />
+                  <SelectorCalle calle={editor.calle} disabled={guardando}
+                    onChange={(opcion) => editor.actualizarBusqueda('calle', opcion?.calle ?? '')} />
                   <TextField label="Altura" size="small" value={editor.altura} disabled={guardando}
                     slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 10 } }}
                     onChange={(event) => editor.actualizarBusqueda('altura', event.target.value)} />

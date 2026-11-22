@@ -1,4 +1,5 @@
-import type { CalleCatalogo, Coordenadas, LadoRecoleccion, LineaTrayecto } from '../services/trayectosService.ts';
+import type { Coordenadas, LadoRecoleccion, LineaTrayecto } from '../services/trayectosService.ts';
+import type { CalleCatalogo } from '../services/callesService.ts';
 import type { BorradorTrayecto, PuntoEditor } from './trayectoEditor.ts';
 
 export type TramoEditor = { desde: number; hasta: number; calle?: CalleCatalogo; lado?: LadoRecoleccion };

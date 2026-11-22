@@ -1,9 +1,9 @@
 import { httpRequest } from './http.ts';
+import type { CalleCatalogo } from './callesService.ts';
 
 export type Coordenadas = { lat: number; long: number };
 export type Referencia = { calle: string; altura: number | null };
 export type LineaTrayecto = { type: 'LineString'; coordinates: [number, number][] };
-export type CalleCatalogo = { id: string; calle: string };
 export type LadoRecoleccion = 'AMBOS' | 'IZQUIERDA' | 'DERECHA';
 export type TramoConfirmado = { desde: number; hasta: number; calleId: string; calle: CalleCatalogo; lado?: LadoRecoleccion };
 export type Localidad = { id: string; nombre: string };
@@ -35,8 +35,6 @@ const geo = '/api/geocodificacion';
 export const trayectosService = {
   listar: (signal?: AbortSignal) => httpRequest<Trayecto[]>(ruta, { signal }),
   localidades: (signal?: AbortSignal) => httpRequest<Localidad[]>('/api/localidades', { signal }),
-  buscarCalles: (buscar: string, signal: AbortSignal) =>
-    httpRequest<CalleCatalogo[]>(`/calles?${new URLSearchParams({ buscar })}`, { signal }),
   consultar: (id: string, signal?: AbortSignal) =>
     httpRequest<Trayecto>(`${ruta}/${encodeURIComponent(id)}`, { signal }),
   eliminar: (id: string) =>

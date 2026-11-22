@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { trayectosService, type CalleCatalogo, type Coordenadas, type LadoRecoleccion, type Referencia, type SugerenciaTrayecto, type Trayecto, type UbicacionSugerida } from '../services/trayectosService';
+import { trayectosService, type Coordenadas, type LadoRecoleccion, type Referencia, type SugerenciaTrayecto, type Trayecto, type UbicacionSugerida } from '../services/trayectosService';
+import type { CalleCatalogo } from '../services/callesService';
 import { completarAltura, lineaManual, prepararTrayecto, tienePosicionesDistintas, type BorradorTrayecto, type PuntoEditor } from '../utils/trayectoEditor';
 import type { Zona } from '../services/zonasService';
 import { dividirTramo, tramosDeLinea, type TramoEditor } from '../utils/tramosTrayecto';

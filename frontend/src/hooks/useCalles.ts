@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { trayectosService, type CalleCatalogo } from '../services/trayectosService';
+import { callesService, type CalleCatalogo } from '../services/callesService';
 
-export function useCallesTrayecto() {
+export function useCalles() {
   const [consulta, setConsulta] = useState('');
   const [resultado, setResultado] = useState<{ calles: CalleCatalogo[]; error: boolean } | null>(null);
 
   useEffect(() => {
     const solicitud = new AbortController();
     const id = setTimeout(() => {
-      void trayectosService.buscarCalles(consulta.trim(), solicitud.signal).then((calles) => {
+      void callesService.buscar(consulta.trim(), solicitud.signal).then((calles) => {
         if (!solicitud.signal.aborted) setResultado({ calles, error: false });
       }).catch(() => {
         if (!solicitud.signal.aborted) setResultado({ calles: [], error: true });

@@ -22,6 +22,7 @@ const props: Props = { domicilio: { calle: 'Roca', altura: '860' }, errores: {},
 test('primero muestra calle y altura sin adelantar el mapa', () => {
   const html = renderToStaticMarkup(createElement(PerfilNuevoDomicilio, props));
   assert.match(html, /Calle/);
+  assert.match(html, /role="combobox"/);
   assert.match(html, /Altura/);
   assert.match(html, /Continuar/);
   assert.doesNotMatch(html, /Mapa del trayecto|Confirmar domicilio/);

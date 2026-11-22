@@ -40,15 +40,13 @@ import { CallesService } from './calles.service';
 @ApiCookieAuth('session')
 @ApiBearerAuth()
 @ApiUnauthorizedResponse()
-@ApiForbiddenResponse()
-@Roles([Role.ADMIN])
 @UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
 @Controller('calles')
 export class CallesController {
   constructor(private readonly calles: CallesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Listar calles del catálogo (ADMIN)' })
+  @ApiOperation({ summary: 'Buscar calles del catálogo con una sesión activa' })
   @ApiQuery({
     name: 'buscar',
     required: false,
@@ -61,6 +59,8 @@ export class CallesController {
   }
 
   @Get(':id')
+  @Roles([Role.ADMIN])
+  @ApiForbiddenResponse()
   @ApiOperation({ summary: 'Consultar una calle por ID (ADMIN)' })
   @ApiOkResponse({ type: CalleResponseDto })
   @ApiBadRequestResponse()
@@ -70,6 +70,8 @@ export class CallesController {
   }
 
   @Post()
+  @Roles([Role.ADMIN])
+  @ApiForbiddenResponse()
   @ApiOperation({
     summary: 'Registrar una calle (ADMIN)',
     description:
@@ -85,6 +87,8 @@ export class CallesController {
   }
 
   @Patch(':id')
+  @Roles([Role.ADMIN])
+  @ApiForbiddenResponse()
   @ApiOperation({
     summary: 'Renombrar una calle (ADMIN)',
     description: 'Las direcciones vinculadas se muestran con el nuevo nombre.',
@@ -100,6 +104,8 @@ export class CallesController {
   }
 
   @Delete(':id')
+  @Roles([Role.ADMIN])
+  @ApiForbiddenResponse()
   @ApiOperation({
     summary: 'Eliminar una calle sin direcciones ni tramos vinculados (ADMIN)',
   })

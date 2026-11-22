@@ -1,6 +1,7 @@
-import { Autocomplete, Button, MenuItem, TextField } from '@mui/material';
-import { useCallesTrayecto } from '../hooks/useCallesTrayecto';
-import type { CalleCatalogo, LadoRecoleccion, LineaTrayecto } from '../services/trayectosService';
+import { Button, MenuItem, TextField } from '@mui/material';
+import type { LadoRecoleccion, LineaTrayecto } from '../services/trayectosService';
+import type { CalleCatalogo } from '../services/callesService';
+import { SelectorCalle } from './SelectorCalle';
 import type { PuntoEditor } from '../utils/trayectoEditor';
 import { referenciaEnVertice, type TramoEditor } from '../utils/tramosTrayecto';
 import './TramosTrayecto.css';
@@ -17,30 +18,6 @@ type Props = {
   cambiarLado: (lado: LadoRecoleccion) => void;
   alternarDivision: () => void;
 };
-
-function CalleDelTramo({ calle, guardando, asignar }: Pick<Props, 'guardando' | 'asignar'> & { calle?: CalleCatalogo }) {
-  const catalogo = useCallesTrayecto();
-  const opciones = calle && !catalogo.calles.some(({ id }) => id === calle.id) ? [calle, ...catalogo.calles] : catalogo.calles;
-  return (
-    <Autocomplete
-      size="small"
-      value={calle ?? null}
-      options={opciones}
-      getOptionLabel={(opcion) => opcion.calle}
-      isOptionEqualToValue={(a, b) => a.id === b.id}
-      filterOptions={(resultados) => resultados}
-      loading={catalogo.cargando}
-      loadingText="Buscando calles…"
-      noOptionsText={catalogo.error ? 'No se pudo consultar el catálogo.' : 'No se encontraron calles.'}
-      disabled={guardando}
-      onInputChange={(_, texto, motivo) => {
-        if (motivo === 'input' || motivo === 'clear') catalogo.buscar(texto);
-      }}
-      onChange={(_, opcion) => asignar(opcion)}
-      renderInput={(params) => <TextField {...params} label="Calle cubierta" error={catalogo.error} />}
-    />
-  );
-}
 
 export function TramosTrayecto({ tramos, activo, linea, puntos, guardando, dividiendo, seleccionar, asignar, cambiarLado, alternarDivision }: Props) {
   const extremos = [
@@ -75,7 +52,7 @@ export function TramosTrayecto({ tramos, activo, linea, puntos, guardando, divid
         <dt>Desde</dt><dd>{etiquetaExtremo(0)}</dd>
         <dt>Hasta</dt><dd>{etiquetaExtremo(1)}</dd>
       </dl>
-      <CalleDelTramo key={activo.desde} calle={activo.calle} guardando={guardando} asignar={asignar} />
+      <SelectorCalle key={activo.desde} label="Calle cubierta" calle={activo.calle} disabled={guardando} onChange={asignar} />
       {activo.calle && (
         <TextField select size="small" label="Veredas atendidas" value={activo.lado ?? 'AMBOS'} disabled={guardando}
           helperText="Izquierda y derecha según el sentido de marcha."

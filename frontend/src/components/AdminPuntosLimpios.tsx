@@ -34,6 +34,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn'
 import RecyclingIcon from '@mui/icons-material/Recycling'
 import SearchIcon from '@mui/icons-material/Search'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import { SelectorCalle } from './SelectorCalle'
 import {
   usePuntosLimpios,
   type EstadoFilter,
@@ -570,18 +571,13 @@ export function AdminPuntosLimpios() {
               </FormControl>
             )}
 
-            <TextField
-              label="Calle"
+            <SelectorCalle
               required
-              color="success"
-              placeholder="Pasteur"
-              slotProps={{ htmlInput: { maxLength: 200 } }}
               disabled={puntos.saving}
-              error={Boolean(puntos.fieldErrors.direccion)}
-              helperText={puntos.fieldErrors.direccion?.[0]}
-              value={puntos.calle}
-              onChange={(event) =>
-                { setUbicacionConfirmada(false); puntos.actualizarDireccion(event.target.value, puntos.altura) }
+              error={puntos.fieldErrors.direccion?.[0]}
+              calle={puntos.calle}
+              onChange={(opcion) =>
+                { setUbicacionConfirmada(false); puntos.actualizarDireccion(opcion?.calle ?? '', puntos.altura) }
               }
             />
             <TextField label="Altura" required color="success" placeholder="1200"
