@@ -17,24 +17,26 @@ export function useAdminTrayectos() {
   const [intento, setIntento] = useState(0);
   const [pendienteEliminar, setPendienteEliminar] = useState<Trayecto | null>(null);
   const [errorEliminar, setErrorEliminar] = useState('');
+  const [eliminando, setEliminando] = useState(false);
+  const listadoActivo = useRef<AbortController | null>(null);
   const solicitudActiva = useRef<AbortController | null>(null);
   const localidadFija = localidades.find(({ id }) => id === idTrenqueLauquen);
 
   useEffect(() => {
-
     const solicitud = new AbortController();
+    listadoActivo.current = solicitud;
     const { signal } = solicitud;
     void Promise.all([trayectosService.listar(signal), trayectosService.localidades(signal)])
       .then(([registros, catalogo]) => {
         if (signal.aborted) return;
-        const eliminados = new Set(trayectosLocalesService.eliminados());
-        setTrayectos(registros.filter(({ id }) => !eliminados.has(id)));
+        setTrayectos(registros);
         setLocalidades(catalogo);
       })
       .catch((error: unknown) => {
         if (!signal.aborted) setError(error instanceof Error ? error.message : 'No se pudo consultar la API.');
       })
       .finally(() => {
+        if (listadoActivo.current === solicitud) listadoActivo.current = null;
         if (!signal.aborted) setCargando(false);
       });
     return () => solicitud.abort();
@@ -66,23 +68,41 @@ export function useAdminTrayectos() {
 
   return {
     trayectos, localidades, localidadFija, vista, cargando, error, aviso, abrir,
-    pendienteEliminar, errorEliminar,
+    pendienteEliminar, errorEliminar, eliminando,
     solicitarEliminar: (trayecto: Trayecto) => { setErrorEliminar(''); setPendienteEliminar(trayecto); },
-    cancelarEliminar: () => { setErrorEliminar(''); setPendienteEliminar(null); },
-    confirmarEliminar: () => {
-      if (!pendienteEliminar) return null;
+    cancelarEliminar: () => {
+      if (eliminando) return;
+      setErrorEliminar('');
+      setPendienteEliminar(null);
+    },
+    confirmarEliminar: async () => {
+      if (!pendienteEliminar || eliminando) return null;
+      const { id } = pendienteEliminar;
+      setEliminando(true);
+      setErrorEliminar('');
       try {
-        trayectosLocalesService.eliminar(pendienteEliminar.id);
-        setTrayectos((anteriores) => anteriores.filter(({ id }) => id !== pendienteEliminar.id));
-        if (vista.tipo !== 'lista') setVista({ tipo: 'lista' });
-        setAviso('Trayecto eliminado.');
-        setPendienteEliminar(null);
-        setErrorEliminar('');
-        return pendienteEliminar.id;
+        await trayectosService.eliminar(id);
       } catch {
         setErrorEliminar('No se pudo eliminar el trayecto. Intentá nuevamente.');
         return null;
+      } finally {
+        setEliminando(false);
       }
+
+      if (listadoActivo.current) {
+        listadoActivo.current.abort();
+        setIntento((previo) => previo + 1);
+      }
+      setTrayectos((anteriores) => anteriores.filter((trayecto) => trayecto.id !== id));
+      setVista({ tipo: 'lista' });
+      setPendienteEliminar(null);
+      try {
+        trayectosLocalesService.quitarAsignaciones(id);
+        setAviso('Trayecto eliminado.');
+      } catch {
+        setAviso('Trayecto eliminado. No se pudieron actualizar las asignaciones guardadas en este navegador.');
+      }
+      return id;
     },
     cargar: () => {
       setCargando(true);

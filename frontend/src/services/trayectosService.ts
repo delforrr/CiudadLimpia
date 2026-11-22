@@ -32,6 +32,8 @@ export const trayectosService = {
   localidades: (signal?: AbortSignal) => httpRequest<Localidad[]>('/api/localidades', { signal }),
   consultar: (id: string, signal?: AbortSignal) =>
     httpRequest<Trayecto>(`${ruta}/${encodeURIComponent(id)}`, { signal }),
+  eliminar: (id: string) =>
+    httpRequest<void>(`${ruta}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   guardar: (datos: TrayectoEnvio, id?: string) =>
     httpRequest<Trayecto>(id ? `${ruta}/${encodeURIComponent(id)}` : ruta, {
       method: id ? 'PATCH' : 'POST',

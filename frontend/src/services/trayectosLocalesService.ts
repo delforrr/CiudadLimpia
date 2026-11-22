@@ -1,17 +1,6 @@
-const clave = 'ciudad-limpia:trayectos-eliminados';
-
 export const trayectosLocalesService = {
-  eliminados(): string[] {
-    const raw = localStorage.getItem(clave);
-    if (!raw) return [];
-    const ids: unknown = JSON.parse(raw);
-    if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) throw new Error('No se pudo leer el listado local de trayectos eliminados.');
-    return ids;
-  },
-  eliminar(id: string) {
+  quitarAsignaciones(id: string) {
     const valores = new Map<string, string>();
-    const ids = [...new Set([...this.eliminados(), id])];
-    valores.set(clave, JSON.stringify(ids));
     const rawZonas = localStorage.getItem('ciudad-limpia:zonas');
     if (rawZonas) {
       const zonas = JSON.parse(rawZonas);
@@ -33,7 +22,7 @@ export const trayectosLocalesService = {
         try {
           if (valor === null) localStorage.removeItem(key);
           else localStorage.setItem(key, valor);
-        } catch { /* Se informa el fallo y se conserva el listado visible. */ }
+        } catch { /* Se informa el fallo original. */ }
       });
       throw error;
     }

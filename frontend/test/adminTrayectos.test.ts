@@ -28,7 +28,8 @@ const admin: Admin = {
     geometria: { type: 'LineString', coordinates: [[-62.73, -35.97], [-62.74, -35.98]] }, puntos: [] }],
   localidades: [localidad], localidadFija: localidad, vista: { tipo: 'lista' }, cargando: false, error: '', aviso: '',
   abrir: async () => {}, cargar: () => {}, nuevo: () => {}, volver: () => {}, guardado: () => {},
-  pendienteEliminar: null, errorEliminar: '', solicitarEliminar: () => {}, cancelarEliminar: () => {}, confirmarEliminar: () => null,
+  pendienteEliminar: null, errorEliminar: '', eliminando: false,
+  solicitarEliminar: () => {}, cancelarEliminar: () => {}, confirmarEliminar: async () => null,
 };
 
 function render(catalogo: CatalogoZonas, estado: Admin = admin) {

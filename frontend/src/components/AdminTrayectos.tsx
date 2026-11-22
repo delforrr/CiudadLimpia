@@ -29,9 +29,9 @@ export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTra
         {admin.errorEliminar && <Alert severity="error">{admin.errorEliminar}</Alert>}
       </DialogContent>
       <DialogActions>
-        <Button color="inherit" onClick={admin.cancelarEliminar}>Cancelar</Button>
-        <Button color="error" variant="contained" onClick={() => {
-          const id = admin.confirmarEliminar();
+        <Button color="inherit" disabled={admin.eliminando} onClick={admin.cancelarEliminar}>Cancelar</Button>
+        <Button color="error" variant="contained" loading={admin.eliminando} onClick={async () => {
+          const id = await admin.confirmarEliminar();
           if (id) zonas.quitarTrayecto(id);
         }}>Eliminar</Button>
       </DialogActions>
