@@ -26,7 +26,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
+import ArchiveOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import EditIcon from '@mui/icons-material/Edit'
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'
@@ -282,15 +282,14 @@ export function AdminChoferes() {
                           </IconButton>
                         </Tooltip>
 
-                        <Tooltip title="Dar de baja al chofer">
+                        <Tooltip title="Archivar chofer">
                           <IconButton
                             size="small"
-                            color="error"
-                            aria-label={`Dar de baja a ${driverFullName(driver)}`}
-                            onClick={() => drivers.requestDelete(driver)}
+                            aria-label={`Archivar a ${driverFullName(driver)}`}
+                            onClick={() => drivers.solicitarArchivo(driver)}
                             disabled={!driver.activo}
                           >
-                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                            <ArchiveOutlinedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       </div>
@@ -458,40 +457,40 @@ export function AdminChoferes() {
 
       <Dialog
         className="admin-module-dialog"
-        open={Boolean(drivers.pendingDelete)}
-        onClose={drivers.cancelDelete}
+        open={Boolean(drivers.pendienteArchivar)}
+        onClose={drivers.cancelarArchivo}
         fullWidth
         maxWidth="xs"
-        aria-labelledby="admin-drivers-delete-title"
+        aria-labelledby="admin-drivers-archive-title"
       >
-        <DialogTitle id="admin-drivers-delete-title">
-          Dar de baja al chofer
+        <DialogTitle id="admin-drivers-archive-title">
+          Archivar chofer
         </DialogTitle>
         <DialogContent dividers>
-          {drivers.deleteError && <Alert severity="error">{drivers.deleteError}</Alert>}
+          {drivers.errorArchivo && <Alert severity="error">{drivers.errorArchivo}</Alert>}
           <p>
-            ¿Querés dar de baja a{' '}
+            ¿Querés archivar a{' '}
             <strong>
-              {drivers.pendingDelete ? driverFullName(drivers.pendingDelete) : ''}
+              {drivers.pendienteArchivar ? driverFullName(drivers.pendienteArchivar) : ''}
             </strong>
-            ? El chofer quedará inactivo.
+            ? El chofer quedará inactivo y seguirá en el listado.
           </p>
         </DialogContent>
         <DialogActions>
           <Button
             color="inherit"
-            onClick={drivers.cancelDelete}
-            disabled={drivers.deleting}
+            onClick={drivers.cancelarArchivo}
+            disabled={drivers.archivando}
           >
             Cancelar
           </Button>
           <Button
-            color="error"
+            color="success"
             variant="contained"
-            onClick={drivers.confirmDelete}
-            disabled={drivers.deleting}
+            onClick={drivers.confirmarArchivo}
+            disabled={drivers.archivando}
           >
-            {drivers.deleting ? 'Guardando…' : 'Dar de baja'}
+            {drivers.archivando ? 'Guardando…' : 'Archivar'}
           </Button>
         </DialogActions>
       </Dialog>

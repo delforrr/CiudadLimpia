@@ -62,19 +62,13 @@ export function useFlota() {
       const conductor = await flotaService.guardarConductor(datos, id)
       setFlota((actual) => ({ ...actual, conductores: reemplazar(actual.conductores, conductor) }))
     },
-    darDeBajaCamion: async (id: string) => {
-      await flotaService.darDeBajaCamion(id)
-      setFlota((actual) => ({
-        ...actual,
-        camiones: actual.camiones.map((camion) => camion.id === id ? { ...camion, estado: 'INACTIVO' } : camion),
-      }))
+    archivarCamion: async (id: string) => {
+      const camion = await flotaService.archivarCamion(id)
+      setFlota((actual) => ({ ...actual, camiones: reemplazar(actual.camiones, camion) }))
     },
-    darDeBajaConductor: async (id: string) => {
-      await flotaService.darDeBajaConductor(id)
-      setFlota((actual) => ({
-        ...actual,
-        conductores: actual.conductores.map((conductor) => conductor.id === id ? { ...conductor, activo: false } : conductor),
-      }))
+    archivarConductor: async (id: string) => {
+      const conductor = await flotaService.archivarConductor(id)
+      setFlota((actual) => ({ ...actual, conductores: reemplazar(actual.conductores, conductor) }))
     },
     asignar: async (idCamion: string, idConductor: string, fechas: ContratoConductor) => {
       const contrato = await flotaService.asignar(idCamion, idConductor, fechas)

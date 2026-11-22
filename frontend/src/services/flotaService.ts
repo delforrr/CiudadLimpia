@@ -43,10 +43,8 @@ export const flotaService = {
   contratos: (signal?: AbortSignal) => httpRequest<ContratoApi[]>(contratosUrl, { signal }),
   guardarCamion: (datos: CamionDatos, id?: string) => guardar<CamionApi>(camionesUrl, datos, id),
   guardarConductor: (datos: ConductorDatos, id?: string) => guardar<ConductorApi>(conductoresUrl, datos, id),
-  darDeBajaCamion: (id: string) =>
-    httpRequest<void>(`${camionesUrl}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  darDeBajaConductor: (id: string) =>
-    httpRequest<void>(`${conductoresUrl}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  archivarCamion: (id: string) => guardar<CamionApi>(camionesUrl, { estado: 'INACTIVO' }, id),
+  archivarConductor: (id: string) => guardar<ConductorApi>(conductoresUrl, { activo: false }, id),
   asignar: (idCamion: string, idConductor: string, { inicio, fin }: ContratoConductor) =>
     guardar<ContratoApi>(contratosUrl, {
       idCamion, idConductor,

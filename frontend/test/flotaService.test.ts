@@ -14,13 +14,12 @@ test('acepta listas vacías y propaga los errores del servidor', async (t) => {
   await assert.rejects(cargarFlota(), /Acceso denegado/)
 })
 
-test('envía altas, cambios y bajas al CRUD con la sesión y datos del DTO', async (t) => {
+test('archiva camiones y choferes cambiando solo su estado', async (t) => {
   const solicitudes: unknown[][] = []
   t.mock.method(globalThis, 'fetch', async (url: string, req: RequestInit) => {
     assert.equal(req.credentials, 'same-origin')
     assert.equal(new Headers(req.headers).get('Content-Type'), 'application/json')
     solicitudes.push([url, req.method, req.body && JSON.parse(String(req.body))])
-    if (req.method === 'DELETE') return new Response(null, { status: 204 })
     return Response.json({ id: 'id-servidor', ...JSON.parse(String(req.body)) })
   })
 
@@ -28,17 +27,17 @@ test('envía altas, cambios y bajas al CRUD con la sesión y datos del DTO', asy
   const conductor = { nombre: 'Ana', apellido: 'Pérez', activo: true }
   assert.equal((await flotaService.guardarCamion(camion)).id, 'id-servidor')
   await flotaService.guardarCamion(camion, 'camion')
-  await flotaService.darDeBajaCamion('camion')
+  await flotaService.archivarCamion('camion')
   assert.equal((await flotaService.guardarConductor(conductor)).id, 'id-servidor')
   await flotaService.guardarConductor(conductor, 'conductor')
-  await flotaService.darDeBajaConductor('conductor')
+  await flotaService.archivarConductor('conductor')
   assert.deepEqual(solicitudes, [
     ['/api/camiones', 'POST', camion],
     ['/api/camiones/camion', 'PATCH', camion],
-    ['/api/camiones/camion', 'DELETE', undefined],
+    ['/api/camiones/camion', 'PATCH', { estado: 'INACTIVO' }],
     ['/api/conductores', 'POST', conductor],
     ['/api/conductores/conductor', 'PATCH', conductor],
-    ['/api/conductores/conductor', 'DELETE', undefined],
+    ['/api/conductores/conductor', 'PATCH', { activo: false }],
   ])
 })
 

@@ -13,14 +13,14 @@ export function useAdminCamiones() {
   const [statusFilter, setStatusFilter] = useState<'TODOS' | CamionDatos['estado']>('TODOS')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTruck, setEditingTruck] = useState<CamionApi | null>(null)
-  const [pendingDeleteTruck, setPendingDeleteTruck] = useState<CamionApi | null>(null)
+  const [pendienteArchivar, setPendienteArchivar] = useState<CamionApi | null>(null)
   const [form, setForm] = useState(formularioInicial)
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof TruckForm, string>>>({})
   const [formError, setFormError] = useState('')
-  const [deleteError, setDeleteError] = useState('')
+  const [errorArchivo, setErrorArchivo] = useState('')
   const [contratoError, setContratoError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [archivando, setArchivando] = useState(false)
   const [finalizando, setFinalizando] = useState(false)
   const [notice, setNotice] = useState('')
 
@@ -63,23 +63,23 @@ export function useAdminCamiones() {
     }
   }
 
-  const abrirBaja = (truck: CamionApi | null) => {
-    if (deleting) return
-    setDeleteError('')
-    setPendingDeleteTruck(truck)
+  const solicitarArchivo = (truck: CamionApi | null) => {
+    if (archivando) return
+    setErrorArchivo('')
+    setPendienteArchivar(truck)
   }
-  const handleDelete = async () => {
-    if (!pendingDeleteTruck || deleting) return
-    setDeleting(true)
-    setDeleteError('')
+  const confirmarArchivo = async () => {
+    if (!pendienteArchivar || archivando) return
+    setArchivando(true)
+    setErrorArchivo('')
     try {
-      await flota.darDeBajaCamion(pendingDeleteTruck.id)
-      setNotice(`Se dio de baja el camión ${pendingDeleteTruck.patente}.`)
-      setPendingDeleteTruck(null)
+      await flota.archivarCamion(pendienteArchivar.id)
+      setNotice(`Se archivó el camión ${pendienteArchivar.patente}.`)
+      setPendienteArchivar(null)
     } catch (fallo) {
-      setDeleteError(fallo instanceof Error ? fallo.message : 'No se pudo dar de baja el camión.')
+      setErrorArchivo(fallo instanceof Error ? fallo.message : 'No se pudo archivar el camión.')
     } finally {
-      setDeleting(false)
+      setArchivando(false)
     }
   }
   const finalizarContrato = async (contrato: ContratoApi) => {
@@ -114,7 +114,7 @@ export function useAdminCamiones() {
     search, setSearch, statusFilter, setStatusFilter,
     isFormOpen, editingTruck, abrirFormulario, handleCloseForm, handleSave,
     form, setForm, formErrors, formError, saving,
-    pendingDeleteTruck, abrirBaja, handleDelete, deleteError, deleting,
+    pendienteArchivar, solicitarArchivo, confirmarArchivo, errorArchivo, archivando,
     contratoError, setContratoError, finalizarContrato, finalizando, notice, setNotice,
   }
 }

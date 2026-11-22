@@ -22,9 +22,9 @@ export function useDrivers() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof ConductorDatos, string[]>>>({})
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [pendingDelete, setPendingDelete] = useState<ConductorApi | null>(null)
-  const [deleteError, setDeleteError] = useState('')
-  const [deleting, setDeleting] = useState(false)
+  const [pendienteArchivar, setPendienteArchivar] = useState<ConductorApi | null>(null)
+  const [errorArchivo, setErrorArchivo] = useState('')
+  const [archivando, setArchivando] = useState(false)
   const [contratoError, setContratoError] = useState('')
   const [finalizando, setFinalizando] = useState(false)
   const [notice, setNotice] = useState('')
@@ -75,18 +75,18 @@ export function useDrivers() {
     }
   }
 
-  const confirmDelete = async () => {
-    if (!pendingDelete || deleting) return
-    setDeleteError('')
-    setDeleting(true)
+  const confirmarArchivo = async () => {
+    if (!pendienteArchivar || archivando) return
+    setErrorArchivo('')
+    setArchivando(true)
     try {
-      await flota.darDeBajaConductor(pendingDelete.id)
-      setPendingDelete(null)
-      setNotice('Se dio de baja al chofer.')
+      await flota.archivarConductor(pendienteArchivar.id)
+      setPendienteArchivar(null)
+      setNotice('El chofer quedó inactivo.')
     } catch (fallo) {
-      setDeleteError(fallo instanceof Error ? fallo.message : 'No se pudo dar de baja al chofer.')
+      setErrorArchivo(fallo instanceof Error ? fallo.message : 'No se pudo archivar al chofer.')
     } finally {
-      setDeleting(false)
+      setArchivando(false)
     }
   }
 
@@ -122,13 +122,13 @@ export function useDrivers() {
     editing, isCreating, closeForm, form, fieldErrors, formError, saving, save,
     updateField: <K extends keyof ConductorDatos>(field: K, value: ConductorDatos[K]) =>
       setForm((previous) => ({ ...previous, [field]: value })),
-    pendingDelete,
-    requestDelete: (conductor: ConductorApi) => {
-      setDeleteError('')
-      setPendingDelete(conductor)
+    pendienteArchivar,
+    solicitarArchivo: (conductor: ConductorApi) => {
+      setErrorArchivo('')
+      setPendienteArchivar(conductor)
     },
-    cancelDelete: () => { if (!deleting) setPendingDelete(null) },
-    confirmDelete, deleting, deleteError,
+    cancelarArchivo: () => { if (!archivando) setPendienteArchivar(null) },
+    confirmarArchivo, archivando, errorArchivo,
     finalizarContrato, finalizando, contratoError, setContratoError,
     notice, setNotice, dismissNotice: () => setNotice(''),
   }

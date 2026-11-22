@@ -27,6 +27,7 @@ import {
 import AddIcon from '@mui/icons-material/Add'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import EditIcon from '@mui/icons-material/Edit'
@@ -266,15 +267,14 @@ export function AdminCamiones() {
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Dar de baja camión">
+                        <Tooltip title="Archivar camión">
                           <IconButton
                             size="small"
-                            color="error"
-                            aria-label={`Dar de baja ${truck.patente}`}
-                            onClick={() => admin.abrirBaja(truck)}
+                            aria-label={`Archivar ${truck.patente}`}
+                            onClick={() => admin.solicitarArchivo(truck)}
                             disabled={truck.estado === "INACTIVO"}
                           >
-                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                            <ArchiveOutlinedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       </div>
@@ -532,31 +532,31 @@ export function AdminCamiones() {
         </DialogActions>
       </Dialog>
 
-      {/* Modal Confirmación de Eliminación */}
+      {/* Confirmar archivo */}
       <Dialog
         className="admin-module-dialog"
-        open={Boolean(admin.pendingDeleteTruck)}
-        onClose={() => admin.abrirBaja(null)}
+        open={Boolean(admin.pendienteArchivar)}
+        onClose={() => admin.solicitarArchivo(null)}
         maxWidth="xs"
         fullWidth
-        aria-labelledby="delete-truck-dialog-title"
+        aria-labelledby="archive-truck-dialog-title"
       >
-        <DialogTitle id="delete-truck-dialog-title">Dar de baja camión</DialogTitle>
+        <DialogTitle id="archive-truck-dialog-title">Archivar camión</DialogTitle>
         <DialogContent dividers>
-          {admin.deleteError && <Alert severity="error">{admin.deleteError}</Alert>}
-          {admin.pendingDeleteTruck && (
+          {admin.errorArchivo && <Alert severity="error">{admin.errorArchivo}</Alert>}
+          {admin.pendienteArchivar && (
             <p className="admin-trucks-delete-confirm-text">
-              ¿Querés dar de baja el camión{' '}
-              <strong>{admin.pendingDeleteTruck.patente}</strong>? La unidad quedará fuera de servicio.
+              ¿Querés archivar el camión{' '}
+              <strong>{admin.pendienteArchivar.patente}</strong>? El camión quedará inactivo y seguirá en el listado.
             </p>
           )}
         </DialogContent>
         <DialogActions>
-          <Button color="inherit" onClick={() => admin.abrirBaja(null)} disabled={admin.deleting}>
+          <Button color="inherit" onClick={() => admin.solicitarArchivo(null)} disabled={admin.archivando}>
             Cancelar
           </Button>
-          <Button color="error" variant="contained" onClick={admin.handleDelete} disabled={admin.deleting}>
-            {admin.deleting ? "Guardando…" : "Dar de baja"}
+          <Button color="success" variant="contained" onClick={admin.confirmarArchivo} disabled={admin.archivando}>
+            {admin.archivando ? "Guardando…" : "Archivar"}
           </Button>
         </DialogActions>
       </Dialog>
