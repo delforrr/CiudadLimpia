@@ -51,7 +51,7 @@ En el panel de administración, el operador elige una localidad, nombra el traye
 - Verificar en el panel el flujo completo de crear, recargar, editar y reabrir un trayecto. Usar las pruebas de servicios y formularios existentes como referencia. Incluir una comprobación del mapa en escritorio y móvil, reordenamiento por teclado y conservación de la edición si falla el guardado.
 - Contrastar una sugerencia por calles con un recorrido conocido. La prueba verifica el trazado devuelto y la capacidad de corregirlo en el editor.
 
-## Fuera de alcance
+## Fuera de alcance del editor
 
 - Mapa público y consulta por domicilio.
 - Clasificación de segmentos como recolección o traslado. Toda la circulación queda representada por una línea.
@@ -68,3 +68,47 @@ En el panel de administración, el operador elige una localidad, nombra el traye
 | 04. Conectar por calles | [B04](backend/04-sugerir-trazado.md) | [F04](frontend/04-revisar-sugerencia.md) | Calcular, corregir, guardar y reabrir la línea confirmada. |
 
 La entrega 01 establece el formato que comparten las otras tres. Los tickets de frontend pueden prepararse con el contrato acordado y se cierran al verificar su integración con la API. Las dependencias de cada archivo indican qué tiene que estar disponible para completar ese ticket.
+
+## Cobertura por domicilio
+
+Un trayecto cubre un frente cuando recorre su misma calle y la posición del frente cae dentro de la porción efectivamente recorrida de su cuadra. El cálculo recibe la `LineString` completa, la localidad del trayecto, el domicilio (`calleId`, altura y pin) y una versión de la red vial de referencia. La regla es la misma para líneas manuales y sugeridas.
+
+### Red vial para la primera prueba
+
+Usar como candidata la capa de cuadras de GeoRef/INDEC para la localidad censal `06826050`. El modelo publicado incluye geometría, identificador de cuadra e identificador de calle. Vincular el código de calle de GeoRef con `Calle.id` dentro de la localidad. La coincidencia de nombre normalizado sirve para proponer el vínculo inicial. Las variantes, homónimos y calles sin identificar requieren revisión. Verificar si la descarga local incluye rangos de altura confiables por cuadra antes de usarlos. [Descarga oficial de GeoRef](https://www.argentina.gob.ar/georef/descarga-de-la-base-completa) · [Modelo de cuadras](https://georef-ar-api.readthedocs.io/es/stable/etl-data/#cuadras-cuadras-ndjson)
+
+### Regla de coincidencia
+
+1. **Ubicar el frente.** Buscar cuadras de la calle del domicilio y proyectar el pin sobre el eje en un sistema métrico local. Usar la altura para resolver una esquina cuando existan rangos verificados. Si la altura contradice la ubicación, el pin resulta demasiado lejano o hay más de una cuadra plausible, devolver datos insuficientes.
+2. **Ubicar el trazado.** Recorrer la línea completa, incluidos los interiores de los segmentos largos. Para cada porción, evaluar las cuadras cercanas de todas las calles. Exigir continuidad sobre la cuadra, alineación con su dirección local en cualquiera de los dos sentidos y avance a lo largo de su eje. Considerar los cambios entre cuadras en cruces compatibles. Los cruces puntuales quedan afuera. Marcar las porciones con varias asignaciones plausibles o sin correspondencia vial para revisión del operador.
+3. **Comparar las posiciones.** Representar cada porción confirmada como un intervalo entre dos distancias medidas sobre el eje de su cuadra. Conservar los huecos cuando el camión sale de la calle y vuelve más adelante. El frente está cubierto si su proyección cae en un intervalo confirmado de esa misma cuadra. Incluir el extremo exacto cuando la asignación sea inequívoca. Mantener la tolerancia lateral separada del límite longitudinal para que una casa después de un corte a mitad de cuadra quede afuera.
+
+Para la primera versión se propone cubrir ambas veredas de una calle con calzada simple. Las avenidas con calzadas separadas quedan en revisión hasta confirmar con Recolección qué frentes atiende cada mano. Los umbrales de distancia, alineación y ambigüedad se fijan con la muestra local antes de habilitar el aviso.
+
+### Resultado para Hoy
+
+El backend verifica que el domicilio seleccionado esté vinculado a la cuenta y devuelve todos los trayectos con cobertura confirmada. Por cada trayecto, el cálculo distingue tres resultados.
+
+| Resultado | Condición |
+| --- | --- |
+| Cubierto | El frente cae dentro de un intervalo confirmado de su cuadra. |
+| Sin cobertura | El frente está resuelto y las porciones que podrían cubrirlo están resueltas fuera de su posición o en otra calle. |
+| Datos insuficientes | Falta ubicar el frente o hay una porción sin resolver que podría cambiar el resultado para ese frente. |
+
+Hoy puede mostrar la cobertura confirmada del domicilio. El horario y los avisos de paso requieren un dato operativo que indique cuándo se presta el servicio.
+
+### Muestra para validar la regla
+
+Usar el plano municipal para seleccionar la muestra. El cruce de Uriburu y Villegas y el tramo de Uriburu entre Roca y San Martín son referencias documentadas. Probar también una recta larga del casco urbano, una paralela, un corte a mitad de cuadra, una línea dibujada sobre el interior de una manzana y una avenida con rambla. La geometría y la completitud de GeoRef en esos casos quedan pendientes de verificación. Ejecutar estas pruebas con una copia local de la muestra antes de elegir tablas o índices. [Plano municipal](https://www.trenquelauquen.gov.ar/mapas/) · [Referencia de Uriburu y Villegas](https://www.trenquelauquen.gov.ar/noticias/el-municipio-trabaja-en-la-repavimentacion-de-la-avenida-villegas-en-interseccion-con-tte-gral-uriburu-donde-se-realizo-una-obra-de-cloacas/)
+
+| Caso | Resultado esperado |
+| --- | --- |
+| Recta de varias cuadras con dos vértices y un frente en una cuadra intermedia | Cubierto. |
+| Calle paralela o cruce perpendicular cerca del frente | Sin cobertura para ese frente. |
+| Fin a mitad de cuadra | Cubierto antes del extremo. Sin cobertura después. |
+| Ida y vuelta por el mismo tramo o dos porciones con un hueco | La repetición conserva la cobertura. El hueco queda fuera. |
+| Líneas manual y sugerida que recorren las mismas porciones | Mismos frentes cubiertos. |
+| Frente en esquina con dos cuadras plausibles sin una altura que resuelva el empate | Datos insuficientes. |
+| Diagonal por una manzana o asignación ambigua que podría afectar el frente | Datos insuficientes para ese frente. Porción para revisión del operador. |
+| Dos vecinos comparten frente | Misma cobertura para ambos. Cada consulta comprueba el vínculo del domicilio con su cuenta. |
+| Dos trayectos cubren el mismo frente | Ambos aparecen como coincidencias. |

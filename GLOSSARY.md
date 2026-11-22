@@ -11,3 +11,13 @@ Referencia de calle y, cuando está disponible, altura, que se puede corregir an
 **Pin**
 
 Ubicación elegida en el mapa para situar un punto limpio.
+
+## Recolección domiciliaria
+
+**Frente**
+
+Lugar de acceso de un domicilio sobre la calle y a la altura declaradas. Los vecinos de un mismo edificio pueden compartir el frente.
+
+**Cobertura del trayecto**
+
+Conjunto de frentes por los que pasa la recolección a lo largo del trayecto registrado.
