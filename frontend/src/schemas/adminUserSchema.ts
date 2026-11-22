@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { profileSchema } from './profileSchema.ts'
+import { profileUpdateSchema } from './profileSchema.ts'
 import { passwordSchema } from './authSchema.ts'
 
-export const adminUserSchema = profileSchema.extend({
+export const adminUserSchema = profileUpdateSchema.extend({
   role: z.enum(['USER', 'ADMIN']),
 })
 

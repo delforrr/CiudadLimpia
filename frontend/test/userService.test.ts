@@ -11,7 +11,7 @@ test('creates users and administrators without changing the session', async () =
       role,
       email: 'nueva@example.com',
       password: 'clave-de-prueba',
-      cliente: { name: 'Ana', lastName: 'Pérez', domicilios: [{ direccion: 'San Martín 123' }] },
+      cliente: { name: 'Ana', lastName: 'Pérez', domicilios: [{ direccion: { calle: 'San Martín', altura: 123, lat: -35.97, long: -62.73 }, etiqueta: 'Casa' }] },
     }
     const saved = { id: 'new-user', role, email: input.email, cliente: { id: 'new-cliente', ...input.cliente } }
     mock.method(globalThis, 'fetch', async (url: string, options: RequestInit) => {
@@ -31,7 +31,7 @@ test('preserves duplicate-email errors during user creation', async () => {
   mock.method(globalThis, 'fetch', async () => Response.json({ message: 'Ya existe una cuenta con ese email' }, { status: 409 }))
   await assert.rejects(userService.create({
     role: 'USER', email: 'duplicado@example.com', password: 'clave-de-prueba',
-    cliente: { name: 'Ana', lastName: 'Pérez', domicilios: [{ direccion: 'San Martín 123' }] },
+    cliente: { name: 'Ana', lastName: 'Pérez', domicilios: [{ direccion: { calle: 'San Martín', altura: 123, lat: -35.97, long: -62.73 }, etiqueta: 'Casa' }] },
   }), /Ya existe una cuenta con ese email/)
 })
 
@@ -111,7 +111,7 @@ test('updates an account, its addresses and role from the admin panel', async ()
     cliente: {
       name: 'Ana',
       lastName: 'Pérez',
-      domicilios: [{ direccion: 'Belgrano 456', etiqueta: 'Trabajo' }],
+      domicilios: [{ direccionId: 'd2', etiqueta: 'Trabajo' }],
     },
   }
   const saved = {

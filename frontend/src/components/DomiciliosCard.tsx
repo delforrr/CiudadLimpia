@@ -10,6 +10,7 @@ interface DomiciliosCardProps {
   onChange: (domicilios: DomicilioForm[]) => void;
   onAgregar?: () => void;
   onEliminar?: (domicilio: DomicilioForm) => void;
+  onEditarUbicacion?: (domicilio: DomicilioForm) => void;
   readOnly?: boolean;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
@@ -24,6 +25,7 @@ export default function DomiciliosCard({
   onChange,
   onAgregar = () => onChange([...domicilios, { direccion: '', etiqueta: '' }]),
   onEliminar,
+  onEditarUbicacion,
   readOnly = false,
   expanded,
   onExpandedChange,
@@ -67,7 +69,7 @@ export default function DomiciliosCard({
                 <TextField label="Dirección" required fullWidth disabled={disabled}
                   type="text" id={`direccion-${index}`} name="direccion"
                   autoComplete="street-address" placeholder="Calle y número · Barrio"
-                  value={domicilio.direccion} slotProps={{ htmlInput: { maxLength: 200 } }}
+                  value={domicilio.direccion} slotProps={{ htmlInput: { maxLength: 200, readOnly: Boolean(onEditarUbicacion) } }}
                   onChange={(event) => onChange(domicilios.map((item, i) => i === index ? { ...item, direccion: event.target.value } : item))} />
                 <TextField label="Etiqueta (opcional)" fullWidth disabled={disabled}
                   type="text" id={`etiqueta-${index}`} name="etiqueta"
@@ -75,6 +77,13 @@ export default function DomiciliosCard({
                   slotProps={{ htmlInput: { maxLength: 100 } }}
                   onChange={(event) => onChange(domicilios.map((item, i) => i === index ? { ...item, etiqueta: event.target.value } : item))} />
               </>
+            )}
+            {onEditarUbicacion && (
+              <Button type="button" disabled={disabled} color="success"
+                aria-label={`Corregir ubicación de ${domicilio.direccion}`}
+                onClick={() => onEditarUbicacion(domicilio)}>
+                Corregir ubicación
+              </Button>
             )}
             {readOnly ? (
               <IconButton type="button" size="small" disabled={disabled} color="success"

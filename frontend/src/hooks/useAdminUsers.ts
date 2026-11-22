@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { z } from 'zod'
 import { adminUserCreateSchema, adminUserSchema } from '../schemas/adminUserSchema.ts'
-import type { Domicilio, User } from '../services/authService.ts'
+import type { DomicilioForm } from '../schemas/profileSchema.ts'
+import type { User } from '../services/authService.ts'
 import { userService } from '../services/userService.ts'
 import { userFullName } from '../utils/userFormat.ts'
 
@@ -12,12 +13,10 @@ export type AdminUserForm = {
   lastName: string
   email: string
   role: User['role']
-  domicilios: Domicilio[]
+  domicilios: DomicilioForm[]
   password: string
   repeatedPassword: string
 }
-
-const EMPTY_ADDRESS: Domicilio = { direccion: '', etiqueta: '' }
 
 // Lista ya pedida al servidor; se conserva mientras dure la pestaña.
 // Si se quiere actualizar, se recarga la página o se usa el botón de refrescar.
@@ -49,7 +48,7 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
     lastName: '',
     email: '',
     role: 'USER',
-    domicilios: [EMPTY_ADDRESS],
+    domicilios: [],
     password: '',
     repeatedPassword: '',
   })
@@ -137,12 +136,9 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
       role: user.role,
       password: '',
       repeatedPassword: '',
-      domicilios: user.cliente?.domicilios.length
-        ? user.cliente.domicilios.map(({ direccion, etiqueta }) => ({
-            direccion,
-            etiqueta,
-          }))
-        : [{ ...EMPTY_ADDRESS }],
+      domicilios: user.cliente?.domicilios.map(({ id, direccion, etiqueta }) => ({
+        id, direccion, etiqueta,
+      })) ?? [],
     })
     setFieldErrors({})
     setFormError('')
@@ -153,7 +149,7 @@ export function useAdminUsers(onUpdated?: (user: User) => void) {
     setIsCreating(true)
     setForm({
       name: '', lastName: '', email: '', role: 'USER',
-      domicilios: [{ ...EMPTY_ADDRESS }], password: '', repeatedPassword: '',
+      domicilios: [], password: '', repeatedPassword: '',
     })
     setFieldErrors({})
     setFormError('')

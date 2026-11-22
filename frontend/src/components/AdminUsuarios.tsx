@@ -39,6 +39,9 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 import SearchIcon from '@mui/icons-material/Search'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import DomiciliosCard from './DomiciliosCard'
+import { DomicilioMapa } from './DomicilioMapa'
+import PerfilNuevoDomicilio from './PerfilNuevoDomicilio'
+import { useAdminDomicilio } from '../hooks/useAdminDomicilio'
 import { useAdminUsers, type RoleFilter } from '../hooks/useAdminUsers'
 import { useAuthContext } from '../hooks/useAuthContext'
 import type { User } from '../services/authService'
@@ -55,6 +58,13 @@ export function AdminUsuarios() {
   const admin = useAdminUsers((updated) => {
     if (updated.id === sessionUser?.id) onAuthenticated(updated)
   })
+  const domicilio = useAdminDomicilio((confirmado, anterior) => {
+    const existentes = admin.form.domicilios
+    admin.updateField('domicilios', anterior
+      ? existentes.map((item) => item === anterior ? confirmado : item)
+      : [...existentes, confirmado])
+  })
+  const editorDomicilio = domicilio.editor
   const isEditingSelf = admin.editing?.id === sessionUser?.id
 
   const stats = [
@@ -149,7 +159,7 @@ export function AdminUsuarios() {
             color="success"
             className="admin-users-add"
             startIcon={<AddIcon />}
-            onClick={admin.openCreate}
+            onClick={() => { domicilio.limpiarAviso(); admin.openCreate() }}
             disabled={admin.loading || admin.saving}
           >
             Agregar usuario
@@ -293,7 +303,7 @@ export function AdminUsuarios() {
                             <IconButton
                               size="small"
                               aria-label={`Editar a ${fullName}`}
-                              onClick={() => admin.startEdit(user)}
+                              onClick={() => { domicilio.limpiarAviso(); admin.startEdit(user) }}
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
@@ -400,15 +410,42 @@ export function AdminUsuarios() {
       <Dialog
         className="admin-module-dialog"
         open={Boolean(admin.editing) || admin.isCreating}
-        onClose={admin.closeEdit}
+        onClose={editorDomicilio ? domicilio.cerrar : admin.closeEdit}
         fullWidth
         maxWidth="md"
         aria-labelledby="admin-users-edit-title"
       >
         <DialogTitle id="admin-users-edit-title">
-          {admin.isCreating ? 'Agregar usuario' : 'Editar usuario'}
+          {editorDomicilio?.tipo === 'correccion' ? 'Corregir ubicación' : editorDomicilio
+            ? 'Agregar domicilio' : admin.isCreating ? 'Agregar usuario' : 'Editar usuario'}
         </DialogTitle>
         <DialogContent dividers>
+          {editorDomicilio?.tipo === 'correccion' ? (
+            <div className="admin-users-domicilio-mapa">
+              <strong>{editorDomicilio.domicilio.direccion}</strong>
+              {editorDomicilio.cargando && <p role="status">Cargando ubicación guardada…</p>}
+              {editorDomicilio.error && (
+                <Alert severity="error" action={!editorDomicilio.actual && (
+                  <Button size="small" color="inherit" onClick={() => void domicilio.abrirCorreccion(editorDomicilio.domicilio)}>
+                    Reintentar
+                  </Button>
+                )}>{editorDomicilio.error}</Alert>
+              )}
+              {editorDomicilio.actual && (
+                <>
+                  <DomicilioMapa calle={editorDomicilio.actual.calle}
+                    altura={String(editorDomicilio.actual.altura)} ubicacion={editorDomicilio.ubicacion}
+                    onChange={domicilio.actualizarUbicacion} disabled={editorDomicilio.guardando} />
+                  <p>El cambio se aplica a todos los registros que comparten esta dirección.</p>
+                </>
+              )}
+            </div>
+          ) : editorDomicilio?.tipo === 'nuevo' ? (
+            <PerfilNuevoDomicilio domicilio={editorDomicilio.datos} errores={editorDomicilio.errores}
+              paso={editorDomicilio.paso} onChange={domicilio.actualizarNuevo}
+              onSubmit={domicilio.continuarNuevo} onContinuar={domicilio.continuarNuevo}
+              onVolver={domicilio.volverADatos} onCancel={domicilio.cerrar} />
+          ) : (
           <form
             id="admin-users-form"
             className="admin-users-form"
@@ -419,6 +456,11 @@ export function AdminUsuarios() {
               <div className="admin-users-form-full">
                 <Alert severity="error">{admin.formError}</Alert>
               </div>
+            )}
+            {domicilio.aviso && (
+              <Alert className="admin-users-form-full" severity="success" onClose={domicilio.limpiarAviso}>
+                {domicilio.aviso}
+              </Alert>
             )}
 
             <TextField
@@ -528,6 +570,8 @@ export function AdminUsuarios() {
                 onChange={(domicilios) =>
                   admin.updateField('domicilios', domicilios)
                 }
+                onAgregar={() => domicilio.abrirNuevo()}
+                onEditarUbicacion={(item) => void domicilio.abrirCorreccion(item)}
                 disabled={admin.saving}
                 errors={admin.fieldErrors.domicilios}
                 title="Domicilios del usuario"
@@ -535,7 +579,19 @@ export function AdminUsuarios() {
               />
             </div>
           </form>
+          )}
         </DialogContent>
+        {editorDomicilio?.tipo === 'correccion' ? (
+          <DialogActions>
+            <Button color="inherit" onClick={domicilio.cerrar} disabled={editorDomicilio.guardando}>
+              Cancelar
+            </Button>
+            <Button variant="contained" color="success" disabled={editorDomicilio.guardando || !domicilio.cambioUbicacion}
+              onClick={() => void domicilio.guardarUbicacion()}>
+              {editorDomicilio.guardando ? 'Guardando…' : 'Guardar ubicación'}
+            </Button>
+          </DialogActions>
+        ) : !editorDomicilio && (
         <DialogActions>
           <Button color="inherit" onClick={admin.closeEdit} disabled={admin.saving}>
             Cancelar
@@ -553,6 +609,7 @@ export function AdminUsuarios() {
             {admin.saving ? 'Guardando…' : admin.isCreating ? 'Crear usuario' : 'Guardar cambios'}
           </Button>
         </DialogActions>
+        )}
       </Dialog>
 
       <Dialog
