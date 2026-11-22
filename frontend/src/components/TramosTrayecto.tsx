@@ -76,7 +76,6 @@ export function TramosTrayecto({ tramos, activo, linea, puntos, guardando, divid
         <dt>Hasta</dt><dd>{etiquetaExtremo(1)}</dd>
       </dl>
       <CalleDelTramo key={activo.desde} calle={activo.calle} guardando={guardando} asignar={asignar} />
-      <a className="trayectos-atribucion" href="https://www.argentina.gob.ar/georef">Servicio Georef</a>
       {activo.calle && (
         <TextField select size="small" label="Veredas atendidas" value={activo.lado ?? 'AMBOS'} disabled={guardando}
           helperText="Izquierda y derecha según el sentido de marcha."
