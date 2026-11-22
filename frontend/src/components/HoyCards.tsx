@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, Button } from '@mui/material';
 import { useAuthContext } from '../hooks/useAuthContext';
@@ -21,20 +21,9 @@ const puntosVacios: [] = [];
 function SeguimientoHoy({ user }: { user: User }) {
   const domicilio = useDomicilioActual(user);
   const { actual } = domicilio;
-  const { mapa, cargando, error } = useMapaHoy(actual?.id);
-  const [visible, setVisible] = useState(true);
-  const mapaRef = useRef<HTMLDivElement>(null);
-  const botonRef = useRef<HTMLDivElement>(null);
-  const desplazar = useRef(false);
-  const cantidad = mapa?.camiones.length ?? 0;
-
-  useEffect(() => {
-    if (!desplazar.current) return;
-    desplazar.current = false;
-    const destino = visible ? mapaRef.current : botonRef.current;
-    const animar = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    destino?.scrollIntoView({ behavior: animar ? 'smooth' : 'instant', block: 'center' });
-  }, [visible]);
+  const { mapa, camiones, cargando, errorMapa, errorPosiciones } = useMapaHoy(actual?.id);
+  const lineas = useMemo(() => mapa?.trayectos.map(({ geometria }) => geometria), [mapa]);
+  const cantidad = camiones?.length ?? 0;
 
   return (
     <section className="tarjeta-blanca-wrapper" aria-label="Seguimiento de recolección">
@@ -49,8 +38,11 @@ function SeguimientoHoy({ user }: { user: User }) {
               <h3 className="estado-alerta">Recolección en vivo</h3>
               <p className="estado-descripcion" role="status">
                 {!actual ? 'Elegí un domicilio para consultar los recorridos.' :
-                  cargando ? 'Buscando camiones para tu domicilio…' :
-                  error ? 'La posición de los camiones no está disponible.' :
+                  cargando ? 'Buscando el trayecto de tu domicilio…' :
+                  errorMapa ? 'No se pudo cargar el trayecto. Recargá la página para reintentar.' :
+                  errorPosiciones ? 'La posición de los camiones no está disponible.' :
+                  !mapa?.trayectos.length ? 'Sin trayectos confirmados para tu domicilio.' :
+                  !camiones ? 'Buscando camiones para tu domicilio…' :
                   cantidad === 0 ? 'Sin camiones activos para tu domicilio.' :
                   cantidad === 1 ? '1 camión en el recorrido de tu domicilio.' :
                   `${cantidad} camiones en los recorridos de tu domicilio.`}
@@ -60,26 +52,13 @@ function SeguimientoHoy({ user }: { user: User }) {
               <img src={camionRecolector} alt="" className="tarjeta-camion-img" />
             </div>
           </div>
-          {error && <Alert severity="warning">El mapa se volverá a consultar automáticamente.</Alert>}
           {mapa && (
-            <>
-              <div className="trayecto-boton-fila" ref={botonRef}>
-                <Button type="button" className="btn-ver-trayecto" aria-expanded={visible}
-                  aria-controls="mapa-recoleccion-hoy" onClick={() => {
-                    desplazar.current = true;
-                    setVisible((anterior) => !anterior);
-                  }}>
-                  {visible ? 'Ocultar mapa' : 'Ver mapa'}
-                </Button>
+            <div className="mapa-trayecto-card">
+              <div className="hoy-mapa">
+                <TrayectoMapa key={actual?.id} puntos={puntosVacios} lineas={lineas}
+                  camiones={camiones} domicilio={mapa.domicilio} zoomInicial={16} />
               </div>
-              <div id="mapa-recoleccion-hoy" className="mapa-trayecto-card" ref={mapaRef} hidden={!visible}>
-                <div className="hoy-mapa">
-                  <TrayectoMapa key={actual?.id} puntos={puntosVacios}
-                    lineas={mapa.trayectos.map(({ geometria }) => geometria)}
-                    camiones={mapa.camiones} domicilio={mapa.domicilio} zoomInicial={16} />
-                </div>
-              </div>
-            </>
+            </div>
           )}
         </div>
       </div>

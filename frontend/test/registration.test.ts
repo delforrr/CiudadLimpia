@@ -71,7 +71,8 @@ test('Hoy muestra la carga de posiciones sin anticipar distancia, paso ni horari
       domicilios: [{ id: 'domicilio-1', direccion: 'San Martín 123' }] } }
   const html = renderHoy(user)
   assert.match(html, /Recolección en vivo/)
-  assert.match(html, /Buscando camiones para tu domicilio/)
+  assert.match(html, /Buscando el trayecto de tu domicilio/)
+  assert.doesNotMatch(html, /Activar avisos|Ocultar mapa/)
   assert.doesNotMatch(html, /350 m|NO HA PASADO|19:00 h|18:45 h/)
 })
 

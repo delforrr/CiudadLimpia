@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import type { MapaHoyResponseDto } from '../src/hoy/hoy.dto';
+import type {
+  MapaHoyResponseDto,
+  TrayectosHoyResponseDto,
+} from '../src/hoy/hoy.dto';
 import {
   describePostgres,
   geometria,
@@ -14,6 +17,32 @@ describePostgres('Mapa para Hoy (HTTP y PostgreSQL)', () => {
   });
   afterAll(async () => {
     await f?.cerrar();
+  });
+
+  it('devuelve el trayecto confirmado aun sin camiones y exige el vínculo de domicilio en ambas consultas', async () => {
+    const base = `/api/hoy/domicilios/${f.domicilios[0].id}`;
+    const respuesta = await f
+      .api()
+      .get(`${base}/trayectos`)
+      .set('Authorization', f.vecino)
+      .expect(200);
+    const fijo = respuesta.body as TrayectosHoyResponseDto;
+    expect(fijo.trayectos.map(({ id }) => id)).toEqual([f.trayecto.id]);
+    await f
+      .api()
+      .get(`${base}/camiones`)
+      .set('Authorization', f.vecino)
+      .expect(200, []);
+    await f
+      .api()
+      .get(`${base}/camiones`)
+      .set('Authorization', f.otro)
+      .expect(404);
+    await f
+      .api()
+      .get(`${base}/trayectos`)
+      .set('Authorization', f.otro)
+      .expect(404);
   });
 
   it('exige sesión y domicilio propio, y devuelve listas vacías sin prestaciones', async () => {

@@ -1,10 +1,22 @@
 import { useEffect, useState } from 'react';
-import { consultarMapaHoy, type MapaHoy } from '../services/hoyService';
-
-type Resultado = { direccionId: string; mapa: MapaHoy | null; error: boolean };
+import { consultarCamionesHoy, consultarTrayectosHoy, type CamionHoy, type TrayectosHoy } from '../services/hoyService';
 
 export function useMapaHoy(direccionId?: string) {
-  const [resultado, guardar] = useState<Resultado>();
+  const [trayectos, guardarTrayectos] = useState<{ direccionId: string; mapa: TrayectosHoy | null }>();
+  const [posiciones, guardarPosiciones] = useState<{ direccionId: string; camiones: CamionHoy[]; error: boolean }>();
+
+  useEffect(() => {
+    if (!direccionId) return;
+    const solicitud = new AbortController();
+    const espera = setTimeout(() => {
+      const signal = AbortSignal.any([solicitud.signal, AbortSignal.timeout(8000)]);
+      void consultarTrayectosHoy(direccionId, signal).then(
+        (mapa) => { if (!solicitud.signal.aborted) guardarTrayectos({ direccionId, mapa }); },
+        () => { if (!solicitud.signal.aborted) guardarTrayectos({ direccionId, mapa: null }); },
+      );
+    }, 0);
+    return () => { clearTimeout(espera); solicitud.abort(); };
+  }, [direccionId]);
 
   useEffect(() => {
     if (!direccionId) return;
@@ -16,10 +28,10 @@ export function useMapaHoy(direccionId?: string) {
       const solicitud = new AbortController();
       actual = solicitud;
       try {
-        const mapa = await consultarMapaHoy(id, AbortSignal.any([solicitud.signal, AbortSignal.timeout(8000)]));
-        if (!solicitud.signal.aborted) guardar({ direccionId: id, mapa, error: false });
+        const camiones = await consultarCamionesHoy(id, AbortSignal.any([solicitud.signal, AbortSignal.timeout(8000)]));
+        if (!solicitud.signal.aborted) guardarPosiciones({ direccionId: id, camiones, error: false });
       } catch {
-        if (!solicitud.signal.aborted) guardar({ direccionId: id, mapa: null, error: true });
+        if (!solicitud.signal.aborted) guardarPosiciones({ direccionId: id, camiones: [], error: true });
       } finally {
         if (!solicitud.signal.aborted) {
           actual = undefined;
@@ -39,13 +51,20 @@ export function useMapaHoy(direccionId?: string) {
       if (!document.hidden) void consultar(direccionId);
     };
     document.addEventListener('visibilitychange', actualizarVisibilidad);
-    void consultar(direccionId);
+    espera = setTimeout(() => { void consultar(direccionId); }, 0);
     return () => {
       cancelar();
       document.removeEventListener('visibilitychange', actualizarVisibilidad);
     };
   }, [direccionId]);
 
-  const vigente = resultado?.direccionId === direccionId ? resultado : undefined;
-  return { mapa: vigente?.mapa, error: vigente?.error ?? false, cargando: Boolean(direccionId && !vigente) };
+  const cobertura = trayectos?.direccionId === direccionId ? trayectos : undefined;
+  const vigentes = posiciones?.direccionId === direccionId ? posiciones : undefined;
+  return {
+    mapa: cobertura?.mapa,
+    camiones: vigentes?.camiones,
+    errorMapa: cobertura?.mapa === null,
+    errorPosiciones: vigentes?.error ?? false,
+    cargando: Boolean(direccionId && !cobertura),
+  };
 }

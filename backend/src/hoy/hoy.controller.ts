@@ -9,7 +9,12 @@ import {
 } from '@nestjs/swagger';
 import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
 import type { AuthRequest } from '../auth/auth.guard';
-import { HoyDomicilioParamsDto, MapaHoyResponseDto } from './hoy.dto';
+import {
+  CamionHoyDto,
+  HoyDomicilioParamsDto,
+  MapaHoyResponseDto,
+  TrayectosHoyResponseDto,
+} from './hoy.dto';
 import { HoyService } from './hoy.service';
 
 @ApiTags('hoy')
@@ -19,6 +24,25 @@ import { HoyService } from './hoy.service';
 @Controller('api/hoy/domicilios')
 export class HoyController {
   constructor(private readonly hoy: HoyService) {}
+
+  @Get(':direccionId/trayectos')
+  @ApiOkResponse({ type: TrayectosHoyResponseDto })
+  consultarTrayectos(
+    @Req() req: AuthRequest,
+    @Param() { direccionId }: HoyDomicilioParamsDto,
+  ) {
+    return this.hoy.consultarTrayectos(req.user.id, direccionId);
+  }
+
+  @Get(':direccionId/camiones')
+  @ApiOkResponse({ type: [CamionHoyDto] })
+  async consultarCamiones(
+    @Req() req: AuthRequest,
+    @Param() { direccionId }: HoyDomicilioParamsDto,
+  ) {
+    const { camiones } = await this.hoy.consultarMapa(req.user.id, direccionId);
+    return camiones;
+  }
 
   @Get(':direccionId/mapa')
   @ApiOkResponse({ type: MapaHoyResponseDto })

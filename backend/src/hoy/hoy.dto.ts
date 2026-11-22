@@ -28,8 +28,11 @@ export class CamionHoyDto {
   @ApiProperty({ format: 'date-time' }) registradoEn!: string;
 }
 
-export class MapaHoyResponseDto {
+export class TrayectosHoyResponseDto {
   @ApiProperty({ type: CoordenadasHoyDto }) domicilio!: CoordenadasHoyDto;
   @ApiProperty({ type: [TrayectoHoyDto] }) trayectos!: TrayectoHoyDto[];
+}
+
+export class MapaHoyResponseDto extends TrayectosHoyResponseDto {
   @ApiProperty({ type: [CamionHoyDto] }) camiones!: CamionHoyDto[];
 }
