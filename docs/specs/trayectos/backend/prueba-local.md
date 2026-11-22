@@ -158,3 +158,15 @@ node --env-file=.env scripts/mock-telemetria.mjs posiciones.json CAMION_ID TRAYE
 El mock envía una posición cada cinco segundos. `TELEMETRIA_URL` permite indicar otra URL base local, como `http://localhost:8080` para Compose. Un cuarto argumento permite continuar una prestación con el mismo UUID. Cada pasada distinta usa un UUID nuevo. `GET /api/hoy/domicilios/:direccionId/mapa` requiere la sesión del titular del domicilio y devuelve los camiones vigentes que pasan por su frente.
 
 Los e2e de PostgreSQL usan `TEST_DATABASE_URL` con el esquema ya migrado y un transporte de prueba para Web Push. Mantener `PUSH_HABILITADO=0` hasta validar las tolerancias de cobertura con casos locales. Para pruebas de entrega real, configurar también las tres variables VAPID de `backend/.env.example`; la suscripción del navegador pertenece a la integración de frontend.
+
+## Demo de recolección con dos camiones
+
+Usá una instancia local conectada a una base de prueba. Configurá `TELEMETRIA_URL` con la URL local de la API y `TELEMETRIA_TOKEN` con el mismo valor del backend. Definí `DEMO_ADMIN_EMAIL` y `DEMO_ADMIN_PASSWORD` con una cuenta de administración de prueba, y `DEMO_VECINO_PASSWORD` con la contraseña que usará la cuenta vecinal de demo. Desde `backend/`, ejecutá el script con esas variables ya cargadas.
+
+```sh
+node scripts/demo-recoleccion.mjs
+```
+
+El script crea o reutiliza **Demo Ciudad Limpia · Roca**, dos camiones activos y `demo-recoleccion@ciudadlimpia.test` con el domicilio **Casa demo**. Envía cinco muestras por camión, una cada cinco segundos, y comprueba la respuesta de la API después de cada muestra. Cada ejecución crea dos prestaciones nuevas. El script imprime el endpoint para Swagger y las posiciones, y termina con error si falta un camión o su posición no avanza.
+
+Si ya está preparada la instancia aislada en el puerto 3101, desde `backend/` se puede repetir la demo con `node --env-file=.tmp/demo/.env scripts/demo-recoleccion.mjs`. En Swagger, iniciá sesión con el vecino de prueba mientras corre el script y consultá la ruta que imprime. Para esta demo, mantené el envío push real deshabilitado.
