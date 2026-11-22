@@ -147,10 +147,7 @@ function AdminPanel({ user }: { user: User }) {
           ) : activeTab === 'choferes' ? (
             <AdminChoferes />
           ) : activeTab === 'camiones' ? (
-            <AdminCamiones
-              trayectosDisponibles={trayectos.trayectos} localidades={trayectos.localidades}
-              cargandoTrayectos={trayectos.cargando}
-              errorTrayectos={trayectos.error} recargarTrayectos={trayectos.cargar} />
+            <AdminCamiones />
           ) : activeTab === 'puntos' ? (
             <AdminPuntosLimpios />
           ) : activeTab === 'tipos' ? (

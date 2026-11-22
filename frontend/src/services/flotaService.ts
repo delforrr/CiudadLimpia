@@ -1,7 +1,7 @@
 import { httpRequest } from './http.ts'
+import type { ContratoConductor } from '../utils/contratoConductor.ts'
 
-export type CamionApi = {
-  id: string
+export type CamionDatos = {
   patente: string
   marca: string
   modelo: string
@@ -9,12 +9,15 @@ export type CamionApi = {
   estado: 'ACTIVO' | 'INACTIVO'
 }
 
-export type ConductorApi = {
-  id: string
+export type CamionApi = CamionDatos & { id: string }
+
+export type ConductorDatos = {
   nombre: string
   apellido: string
   activo: boolean
 }
+
+export type ConductorApi = ConductorDatos & { id: string }
 
 export type ContratoApi = {
   idCamion: string
@@ -23,65 +26,38 @@ export type ContratoApi = {
   fechaFin: string | null
 }
 
-type ContratoUI = { inicio: string; fin?: string }
-type AsignacionUI = { nombre: string; contrato?: ContratoUI }
-type TrayectoUI = { id: string; name: string }
+const camionesUrl = '/api/camiones'
+const conductoresUrl = '/api/conductores'
+const contratosUrl = '/api/contratos-conductor'
 
-export type CamionUI = {
-  id: string
-  code: string
-  plate: string
-  brand: string
-  model: string
-  year: number
-  status: 'OPERATIVO' | 'INACTIVO'
-  conductores: AsignacionUI[]
-  trayectos: TrayectoUI[]
-}
-
-export type ConductorUI = {
-  id: string
-  firstName: string
-  lastName: string
-  dni: string
-  phone: string
-  status: 'ACTIVO' | 'INACTIVO'
-  assignedTruck: string | null
-  contrato?: ContratoUI
-}
-
-const CAMIONES_KEY = 'ciudad-limpia:camiones'
-const CONDUCTORES_KEY = 'ciudad-limpia:choferes'
-
-function fecha(value: string) {
-  return value.slice(0, 10)
-}
-
-function vigente(contrato: ContratoApi) {
-  return !contrato.fechaFin || new Date(contrato.fechaFin) > new Date()
-}
-
-function contratoUI(contrato: ContratoApi): ContratoUI {
-  return contrato.fechaFin
-    ? { inicio: fecha(contrato.fechaInicio), fin: fecha(contrato.fechaFin) }
-    : { inicio: fecha(contrato.fechaInicio) }
-}
-
-function guardar(clave: string, datos: unknown) {
-  try {
-    localStorage.setItem(clave, JSON.stringify(datos))
-  } catch {
-    // La sincronización sigue disponible aunque el almacenamiento esté bloqueado.
-  }
+function guardar<T>(url: string, datos: object, id?: string) {
+  return httpRequest<T>(id ? `${url}/${encodeURIComponent(id)}` : url, {
+    method: id ? 'PATCH' : 'POST',
+    body: JSON.stringify(datos),
+  })
 }
 
 export const flotaService = {
-  camiones: (signal?: AbortSignal) =>
-    httpRequest<CamionApi[]>('/api/camiones', { signal }),
-  conductores: (signal?: AbortSignal) =>
-    httpRequest<ConductorApi[]>('/api/conductores', { signal }),
-  contratos: (signal?: AbortSignal) =>
-    httpRequest<ContratoApi[]>('/api/contratos-conductor', { signal }),
+  camiones: (signal?: AbortSignal) => httpRequest<CamionApi[]>(camionesUrl, { signal }),
+  conductores: (signal?: AbortSignal) => httpRequest<ConductorApi[]>(conductoresUrl, { signal }),
+  contratos: (signal?: AbortSignal) => httpRequest<ContratoApi[]>(contratosUrl, { signal }),
+  guardarCamion: (datos: CamionDatos, id?: string) => guardar<CamionApi>(camionesUrl, datos, id),
+  guardarConductor: (datos: ConductorDatos, id?: string) => guardar<ConductorApi>(conductoresUrl, datos, id),
+  darDeBajaCamion: (id: string) =>
+    httpRequest<void>(`${camionesUrl}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  darDeBajaConductor: (id: string) =>
+    httpRequest<void>(`${conductoresUrl}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  asignar: (idCamion: string, idConductor: string, { inicio, fin }: ContratoConductor) =>
+    guardar<ContratoApi>(contratosUrl, {
+      idCamion, idConductor,
+      fechaInicio: `${inicio}T00:00:00-03:00`,
+      fechaFin: fin ? `${fin}T00:00:00-03:00` : null,
+    }),
+  finalizar: ({ idCamion, idConductor, fechaInicio }: ContratoApi, fechaFin = new Date().toISOString()) =>
+    httpRequest<ContratoApi>(
+      `${contratosUrl}/${encodeURIComponent(idCamion)}/${encodeURIComponent(idConductor)}/${encodeURIComponent(fechaInicio)}`,
+      { method: 'PATCH', body: JSON.stringify({ fechaFin }) },
+    ),
 }
 
 export async function cargarFlota(signal?: AbortSignal) {
@@ -90,50 +66,20 @@ export async function cargarFlota(signal?: AbortSignal) {
     flotaService.conductores(signal),
     flotaService.contratos(signal),
   ])
-
-  const camionesPorId = new Map(camiones.map((camion) => [camion.id, camion]))
-  const contratosVigentes = contratos.filter(vigente)
-
-  const trucks: CamionUI[] = camiones.map((camion) => ({
-    id: camion.id,
-    code: camion.patente,
-    plate: camion.patente,
-    brand: camion.marca,
-    model: camion.modelo,
-    year: camion.anio,
-    status: camion.estado === 'ACTIVO' ? 'OPERATIVO' : 'INACTIVO',
-    conductores: contratosVigentes
-      .filter((contrato) => contrato.idCamion === camion.id)
-      .flatMap((contrato): AsignacionUI[] => {
-        const conductor = conductores.find((item) => item.id === contrato.idConductor)
-        return conductor
-          ? [{ nombre: `${conductor.nombre} ${conductor.apellido}`.trim(), contrato: contratoUI(contrato) }]
-          : []
-      }),
-    trayectos: [],
-  }))
-
-  const drivers: ConductorUI[] = conductores.map((conductor) => {
-    const contrato = contratosVigentes.find((item) => item.idConductor === conductor.id)
-    const camion = contrato ? camionesPorId.get(contrato.idCamion) : undefined
-    return {
-      id: conductor.id,
-      firstName: conductor.nombre,
-      lastName: conductor.apellido,
-      dni: '',
-      phone: '',
-      status: conductor.activo ? 'ACTIVO' : 'INACTIVO',
-      assignedTruck: camion?.patente ?? null,
-      contrato: contrato ? contratoUI(contrato) : undefined,
-    }
-  })
-
-  return { trucks, drivers }
+  return { camiones, conductores, contratos }
 }
 
-export async function sincronizarFlota(signal?: AbortSignal) {
-  const flota = await cargarFlota(signal)
-  guardar(CAMIONES_KEY, flota.trucks)
-  guardar(CONDUCTORES_KEY, flota.drivers)
-  return flota
+const fechaLocal = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
+
+export function fechasContrato(contrato?: ContratoApi): ContratoConductor | undefined {
+  return contrato && {
+    inicio: fechaLocal.format(new Date(contrato.fechaInicio)),
+    fin: contrato.fechaFin ? fechaLocal.format(new Date(contrato.fechaFin)) : undefined,
+  }
+}
+
+export function contratosPendientes(contratos: ContratoApi[], ahora = Date.now()) {
+  return contratos
+    .filter(({ fechaFin }) => fechaFin === null || Date.parse(fechaFin) > ahora)
+    .sort((a, b) => Date.parse(a.fechaInicio) - Date.parse(b.fechaInicio))
 }

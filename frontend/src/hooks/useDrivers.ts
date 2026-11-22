@@ -1,358 +1,135 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { z } from 'zod'
-import { sincronizarFlota } from '../services/flotaService.ts'
-import { asignacionesCamion, type ContratoConductor } from '../utils/contratoConductor.ts'
-import { driverSchema } from '../schemas/driverSchema.ts'
-import type { Driver, DriverStatus } from '../utils/driverFormat.ts'
+import { driverSchema } from '../schemas/driverSchema'
+import type { ConductorApi, ConductorDatos, ContratoApi } from '../services/flotaService'
+import { driverFullName, type Driver } from '../utils/driverFormat'
+import { useFlota } from './useFlota'
 
-export type StatusFilter = 'TODOS' | DriverStatus
-
-const STORAGE_KEY = 'ciudad-limpia:choferes'
-
-export type DriverForm = {
-  firstName: string
-  lastName: string
-  dni: string
-  phone: string
-  status: DriverStatus
-  assignedTruck: string
-  inicio: string
-  fin: string
-}
+export type StatusFilter = 'TODOS' | 'ACTIVO' | 'INACTIVO'
+const formularioInicial: ConductorDatos = { nombre: '', apellido: '', activo: true }
 
 function normalize(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-}
-
-function loadDrivers(): Driver[] {
-  let drivers: Driver[] = []
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : null
-    if (Array.isArray(parsed) && parsed.length) drivers = parsed
-    const rawTrucks = localStorage.getItem('ciudad-limpia:camiones')
-    const trucks = rawTrucks ? JSON.parse(rawTrucks) as {
-      code: string; assignedDriver?: string; contrato?: ContratoConductor
-    }[] : []
-    if (!Array.isArray(trucks)) return drivers
-    const asignaciones = trucks.flatMap((unidad) =>
-      asignacionesCamion(unidad).map((asignacion) => ({ ...asignacion, codigo: unidad.code })),
-    )
-    return drivers.map((driver): Driver => {
-      const nombre = `${driver.firstName} ${driver.lastName}`.trim()
-      const asignacion = asignaciones.find((item) => item.nombre === nombre)
-      if (asignacion) {
-        return { ...driver, status: 'ACTIVO', assignedTruck: asignacion.codigo, contrato: asignacion.contrato }
-      }
-      if (trucks.some((unidad) => unidad.code === driver.assignedTruck)) {
-        return { ...driver, status: 'INACTIVO', assignedTruck: null, contrato: undefined }
-      }
-      return { ...driver, status: driver.assignedTruck ? 'ACTIVO' : 'INACTIVO' }
-    })
-  } catch {
-    return drivers
-  }
-}
-
-function saveDrivers(drivers: Driver[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(drivers))
-  } catch {
-    // ignore storage errors
-  }
-}
-
-function sincronizarCamiones(nombre: string, codigo: string | null, contrato?: ContratoConductor, nombreAnterior = nombre) {
-  try {
-    const raw = localStorage.getItem('ciudad-limpia:camiones')
-    if (!raw) return
-    const trucks = JSON.parse(raw)
-    if (!Array.isArray(trucks)) return
-    const actualizados = trucks.map((truck: { code: string; assignedDriver?: string; contrato?: ContratoConductor }) => {
-      const anteriores = asignacionesCamion(truck)
-      const asignaciones = anteriores
-        .filter((asignacion) => asignacion.nombre !== nombreAnterior && asignacion.nombre !== nombre)
-      if (codigo && truck.code === codigo) {
-        asignaciones.push({ nombre, contrato })
-      }
-      return asignaciones.length === 0 && anteriores.length === 0
-        ? truck
-        : { ...truck, conductores: asignaciones }
-    })
-    localStorage.setItem('ciudad-limpia:camiones', JSON.stringify(actualizados))
-  } catch {
-    // La edición del chofer sigue disponible si el almacenamiento está bloqueado.
-  }
+  return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 }
 
 export function useDrivers() {
-  const [drivers, setDrivers] = useState<Driver[]>(loadDrivers)
-  const loading = false
+  const flota = useFlota()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('TODOS')
-  const [editing, setEditing] = useState<Driver | null>(null)
+  const [editing, setEditing] = useState<ConductorApi | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [form, setForm] = useState<DriverForm>({
-    firstName: '',
-    lastName: '',
-    dni: '',
-    phone: '',
-    status: 'ACTIVO',
-    assignedTruck: '',
-    inicio: '',
-    fin: '',
-  })
-  const [fieldErrors, setFieldErrors] = useState<
-    Partial<Record<keyof DriverForm, string[]>>
-  >({})
+  const [form, setForm] = useState(formularioInicial)
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof ConductorDatos, string[]>>>({})
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [pendingDelete, setPendingDelete] = useState<Driver | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<ConductorApi | null>(null)
+  const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [contratoError, setContratoError] = useState('')
+  const [finalizando, setFinalizando] = useState(false)
   const [notice, setNotice] = useState('')
 
-  useEffect(() => {
-    let activo = true
-    sincronizarFlota()
-      .then(({ drivers: remotos }) => {
-        if (!activo || remotos.length === 0) return
-        setDrivers(remotos)
-        saveDrivers(remotos)
-      })
-      .catch(() => {})
-    return () => { activo = false }
-  }, [])
-
-  const filteredDrivers = useMemo(() => {
-    const term = normalize(search.trim())
-    return drivers
-      .filter((driver) => {
-        if (statusFilter !== 'TODOS' && driver.status !== statusFilter)
-          return false
-        if (!term) return true
-        const haystack = normalize(
-          [
-            driver.firstName,
-            driver.lastName,
-            driver.dni,
-            driver.phone,
-            driver.assignedTruck ?? '',
-          ].join(' '),
-        )
-        return haystack.includes(term)
-      })
-      .sort((first, second) =>
-        `${first.lastName} ${first.firstName}`.localeCompare(
-          `${second.lastName} ${second.firstName}`,
-          'es',
-        ),
-      )
-  }, [drivers, search, statusFilter])
-
-  const stats = useMemo(
-    () => ({
-      total: drivers.length,
-      activos: drivers.filter((driver) => driver.status === 'ACTIVO').length,
-      inactivos: drivers.filter((driver) => driver.status === 'INACTIVO').length,
-    }),
-    [drivers],
+  const camiones = new Map(flota.camiones.map(({ id, patente }) => [id, patente]))
+  const drivers: Driver[] = flota.conductores.map((conductor) => {
+    const contrato = flota.contratos.find(({ idConductor }) => idConductor === conductor.id)
+    return { ...conductor, contrato, assignedTruck: contrato && camiones.get(contrato.idCamion) }
+  })
+  const term = normalize(search.trim())
+  const filteredDrivers = drivers.filter((driver) =>
+    (statusFilter === 'TODOS' || driver.activo === (statusFilter === 'ACTIVO')) &&
+    normalize(`${driverFullName(driver)} ${driver.assignedTruck ?? ''}`).includes(term),
+  ).sort((first, second) =>
+    `${first.apellido} ${first.nombre}`.localeCompare(`${second.apellido} ${second.nombre}`, 'es'),
   )
 
-  const openCreate = useCallback(() => {
-    setEditing(null)
-    setIsCreating(true)
-    setForm({
-      firstName: '',
-      lastName: '',
-      dni: '',
-      phone: '',
-      status: 'ACTIVO',
-      assignedTruck: '',
-      inicio: '',
-      fin: '',
-    })
+  const abrirFormulario = (conductor?: ConductorApi) => {
+    setEditing(conductor ?? null)
+    setIsCreating(!conductor)
+    setForm(conductor ?? formularioInicial)
     setFieldErrors({})
     setFormError('')
-  }, [])
-
-  const startEdit = useCallback((driver: Driver) => {
-    setIsCreating(false)
-    setEditing(driver)
-    setForm({
-      firstName: driver.firstName,
-      lastName: driver.lastName,
-      dni: driver.dni,
-      phone: driver.phone,
-      status: driver.status,
-      assignedTruck: driver.assignedTruck ?? '',
-      inicio: driver.contrato?.inicio ?? '',
-      fin: driver.contrato?.fin ?? '',
-    })
-    setFieldErrors({})
-    setFormError('')
-  }, [])
-
-  const closeForm = useCallback(() => {
+  }
+  const closeForm = () => {
     if (saving) return
     setEditing(null)
     setIsCreating(false)
+  }
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (saving) return
+    const validation = driverSchema.safeParse(form)
+    setFieldErrors(validation.success ? {} : z.flattenError(validation.error).fieldErrors)
     setFormError('')
-    setFieldErrors({})
-  }, [saving])
+    if (!validation.success) return
 
-  const updateField = useCallback(
-    <K extends keyof DriverForm>(field: K, value: DriverForm[K]) => {
-      setForm((previous) => ({ ...previous, [field]: value }))
-    },
-    [],
-  )
+    setSaving(true)
+    try {
+      await flota.guardarConductor(validation.data, editing?.id)
+      setEditing(null)
+      setIsCreating(false)
+      setNotice(editing ? 'Chofer actualizado correctamente.' : 'Chofer agregado correctamente.')
+    } catch (fallo) {
+      setFormError(fallo instanceof Error ? fallo.message : 'No se pudo guardar el chofer.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
-  const save = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      if (saving) return
-      setFormError('')
-      const validation = driverSchema.safeParse(form)
-      setFieldErrors(
-        validation.success
-          ? {}
-          : (z.flattenError(validation.error)
-              .fieldErrors as Partial<Record<keyof DriverForm, string[]>>),
-      )
-      if (!validation.success) return
-
-      const data = validation.data
-      const duplicate = drivers.some(
-        (driver) =>
-          driver.dni === data.dni &&
-          driver.id !== (editing?.id ?? ''),
-      )
-      if (duplicate) {
-        setFieldErrors((previous) => ({
-          ...previous,
-          dni: ['Ya existe un chofer con ese DNI'],
-        }))
-        return
-      }
-
-      setSaving(true)
-      try {
-        const payload: Driver = {
-          id: editing?.id ?? `d-${Date.now()}`,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          dni: data.dni,
-          phone: data.phone,
-          status: data.assignedTruck ? 'ACTIVO' : 'INACTIVO',
-          assignedTruck: data.assignedTruck?.trim() || null,
-          contrato: data.assignedTruck ? { inicio: data.inicio, fin: data.fin || undefined } : undefined,
-        }
-
-        setDrivers((previous) => {
-          const next = editing
-            ? previous.map((driver) =>
-                driver.id === editing.id ? payload : driver,
-              )
-            : [payload, ...previous]
-          saveDrivers(next)
-          return next
-        })
-
-        sincronizarCamiones(`${payload.firstName} ${payload.lastName}`.trim(), payload.assignedTruck ?? null, payload.contrato, editing ? `${editing.firstName} ${editing.lastName}`.trim() : undefined)
-        setEditing(null)
-        setIsCreating(false)
-        setNotice(editing ? 'Chofer actualizado correctamente.' : 'Chofer agregado correctamente.')
-      } catch {
-        setFormError('No se pudo guardar el chofer')
-      } finally {
-        setSaving(false)
-      }
-    },
-    [drivers, editing, form, saving],
-  )
-
-  const requestDelete = useCallback((driver: Driver) => {
-    setPendingDelete(driver)
-  }, [])
-
-  const cancelDelete = useCallback(() => {
-    if (deleting) return
-    setPendingDelete(null)
-  }, [deleting])
-
-  const confirmDelete = useCallback(() => {
+  const confirmDelete = async () => {
     if (!pendingDelete || deleting) return
+    setDeleteError('')
     setDeleting(true)
-    const nombre = `${pendingDelete.firstName} ${pendingDelete.lastName}`.trim()
-    setDrivers((previous) => {
-      const next = previous.filter((driver) => driver.id !== pendingDelete.id)
-      saveDrivers(next)
-      return next
-    })
-    sincronizarCamiones(nombre, null, undefined, nombre)
-    setPendingDelete(null)
-    setNotice('Chofer eliminado correctamente.')
-    setDeleting(false)
-  }, [deleting, pendingDelete])
+    try {
+      await flota.darDeBajaConductor(pendingDelete.id)
+      setPendingDelete(null)
+      setNotice('Se dio de baja al chofer.')
+    } catch (fallo) {
+      setDeleteError(fallo instanceof Error ? fallo.message : 'No se pudo dar de baja al chofer.')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
-  const assignTruck = useCallback(
-    (driverId: string, truckCode: string | null, contrato?: ContratoConductor) => {
-      const normalizedTruck = truckCode?.trim() || null
-      const target = drivers.find((driver) => driver.id === driverId)
-      if (!target) return
-      const targetName = `${target.firstName} ${target.lastName}`.trim()
-      const next = drivers.map((driver): Driver =>
-        driver.id === driverId
-          ? {
-            ...driver,
-            status: normalizedTruck ? 'ACTIVO' : 'INACTIVO',
-            assignedTruck: normalizedTruck,
-            contrato: normalizedTruck ? contrato : undefined,
-          }
-          : driver,
-      )
-      setDrivers(next)
-      saveDrivers(next)
-      sincronizarCamiones(targetName, normalizedTruck, contrato)
-      setNotice(normalizedTruck ? `Se asignó ${normalizedTruck} a ${targetName}.` : `Se desvinculó la unidad de ${targetName}.`)
-    },
-    [drivers],
-  )
+  const finalizarContrato = async (contrato: ContratoApi) => {
+    if (finalizando) return
+    setFinalizando(true)
+    setContratoError('')
+    try {
+      await flota.finalizar(contrato)
+      setNotice('Se finalizó el contrato.')
+    } catch (fallo) {
+      setContratoError(fallo instanceof Error ? fallo.message : 'No se pudo finalizar el contrato.')
+    } finally {
+      setFinalizando(false)
+    }
+  }
 
   return {
-    drivers,
-    filteredDrivers,
-    stats,
-    loading,
-    search,
-    statusFilter,
-    setSearch,
-    setStatusFilter,
+    ...flota,
+    drivers, filteredDrivers,
+    stats: {
+      total: drivers.length,
+      activos: drivers.filter(({ activo }) => activo).length,
+      inactivos: drivers.filter(({ activo }) => !activo).length,
+    },
+    search, setSearch, statusFilter, setStatusFilter,
     clearFilters: () => {
       setSearch('')
       setStatusFilter('TODOS')
     },
-    openCreate,
-    editing,
-    isCreating,
-    startEdit,
-    closeForm,
-    form,
-    fieldErrors,
-    formError,
-    saving,
-    updateField,
-    save,
-    assignTruck,
+    openCreate: () => abrirFormulario(),
+    startEdit: abrirFormulario,
+    editing, isCreating, closeForm, form, fieldErrors, formError, saving, save,
+    updateField: <K extends keyof ConductorDatos>(field: K, value: ConductorDatos[K]) =>
+      setForm((previous) => ({ ...previous, [field]: value })),
     pendingDelete,
-    requestDelete,
-    cancelDelete,
-    confirmDelete,
-    deleting,
-    notice,
-    dismissNotice: () => setNotice(''),
+    requestDelete: (conductor: ConductorApi) => {
+      setDeleteError('')
+      setPendingDelete(conductor)
+    },
+    cancelDelete: () => { if (!deleting) setPendingDelete(null) },
+    confirmDelete, deleting, deleteError,
+    finalizarContrato, finalizando, contratoError, setContratoError,
+    notice, setNotice, dismissNotice: () => setNotice(''),
   }
 }

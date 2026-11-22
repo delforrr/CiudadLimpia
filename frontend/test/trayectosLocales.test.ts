@@ -39,7 +39,7 @@ function storage(valores: Record<string, string> = {}, fallarEn?: string) {
   return datos;
 }
 
-test('quita solo las asignaciones locales del trayecto', () => {
+test('quita solo la asignación de zona sin tocar los camiones anteriores', () => {
   const datos = storage({
     'ciudad-limpia:zonas': JSON.stringify({ zonas: [{ id: 'norte' }], asignaciones: { 'ruta-1': 'norte', 'ruta-2': 'norte' } }),
     'ciudad-limpia:camiones': JSON.stringify([{ id: 'camion-1', conductores: ['Ana'], trayectos: [{ id: 'ruta-1' }, { id: 'ruta-2' }] }]),
@@ -48,16 +48,16 @@ test('quita solo las asignaciones locales del trayecto', () => {
   assert.equal(datos.has('ciudad-limpia:trayectos-eliminados'), false);
   assert.deepEqual(JSON.parse(datos.get('ciudad-limpia:zonas')!).asignaciones, { 'ruta-2': 'norte' });
   const camion = JSON.parse(datos.get('ciudad-limpia:camiones')!)[0];
-  assert.deepEqual(camion.trayectos, [{ id: 'ruta-2' }]);
+  assert.deepEqual(camion.trayectos, [{ id: 'ruta-1' }, { id: 'ruta-2' }]);
   assert.deepEqual(camion.conductores, ['Ana']);
 });
 
-test('si falla la persistencia restaura las asignaciones locales', () => {
+test('si falla la persistencia conserva las asignaciones de zona', () => {
   const valores = {
     'ciudad-limpia:zonas': JSON.stringify({ zonas: [], asignaciones: { 'ruta-1': 'norte' } }),
     'ciudad-limpia:camiones': JSON.stringify([{ id: 'camion-1', trayectos: [{ id: 'ruta-1' }] }]),
   };
-  const datos = storage(valores, 'ciudad-limpia:camiones');
+  const datos = storage(valores, 'ciudad-limpia:zonas');
   assert.throws(() => trayectosLocalesService.quitarAsignaciones('ruta-1'));
   assert.deepEqual(Object.fromEntries(datos), valores);
 });

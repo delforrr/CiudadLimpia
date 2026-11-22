@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Alert,
   Avatar,
@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  FormHelperText,
   IconButton,
   InputAdornment,
   InputLabel,
@@ -32,81 +31,21 @@ import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'
 import EditIcon from '@mui/icons-material/Edit'
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'
 import PeopleIcon from '@mui/icons-material/People'
-import PhoneIcon from '@mui/icons-material/Phone'
 import SearchIcon from '@mui/icons-material/Search'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import { useDrivers, type StatusFilter } from '../hooks/useDrivers'
-import { sincronizarFlota } from '../services/flotaService.ts'
-import type { Driver } from '../utils/driverFormat'
-import {
-  driverFullName,
-  driverInitials,
-  statusLabel,
-} from '../utils/driverFormat'
-import { AsignarCamionDialog } from './AsignarCamionDialog'
-import { ContratoCampos } from './ContratoCampos'
-import { formatoContrato, type ContratoConductor } from '../utils/contratoConductor'
+import { fechasContrato } from '../services/flotaService'
+import { driverFullName, driverInitials, type Driver } from '../utils/driverFormat'
+import { AsignarContratoDialog } from './AsignarContratoDialog'
+import { formatoContrato } from '../utils/contratoConductor'
 import './AdminChoferes.css'
-
-interface SystemTruckOption {
-  code: string
-  label: string
-}
-
-function loadSystemTruckOptions(): SystemTruckOption[] {
-  try {
-    const raw = localStorage.getItem('ciudad-limpia:camiones')
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed) || parsed.length === 0) return []
-    return parsed
-      .map((t: { code?: string; brand?: string; model?: string; plate?: string }) => ({
-        code: t.code || '',
-        label: `${t.code ?? 'Camión'}${t.brand ? ` - ${t.brand}` : ''}${t.model ? ` ${t.model}` : ''}${t.plate ? ` (${t.plate})` : ''}`,
-      }))
-      .filter((t: SystemTruckOption) => Boolean(t.code))
-  } catch {
-    return []
-  }
-}
-
-function statusChipClass(status: Driver['status']) {
-  if (status === 'ACTIVO') return 'is-active'
-  return 'is-inactive'
-}
 
 export function AdminChoferes() {
   const drivers = useDrivers()
-  const [detailDriver, setDetailDriver] = useState<Driver | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
   const [asignacionPendiente, setAsignacionPendiente] = useState<Driver | null>(null)
+  const detailDriver = drivers.drivers.find(({ id }) => id === detailId)
   const isEditing = Boolean(drivers.editing) || drivers.isCreating
-  const [systemTrucks, setSystemTrucks] = useState<SystemTruckOption[]>(loadSystemTruckOptions)
-
-  useEffect(() => {
-    let activo = true
-    sincronizarFlota()
-      .then(({ trucks }) => {
-        if (!activo || trucks.length === 0) return
-        setSystemTrucks(trucks.map(({ code, brand, model, plate }) => ({
-          code,
-          label: `${code}${brand ? ` - ${brand}` : ''}${model ? ` ${model}` : ''}${plate ? ` (${plate})` : ''}`,
-        })))
-      })
-      .catch(() => {})
-    return () => { activo = false }
-  }, [])
-
-  const confirmarAsignacion = (chofer: Driver, truckCode: string | null, contrato?: ContratoConductor) => {
-    drivers.assignTruck(chofer.id, truckCode, contrato)
-    if (detailDriver && detailDriver.id === chofer.id) {
-      setDetailDriver({
-        ...detailDriver,
-        status: truckCode ? 'ACTIVO' : 'INACTIVO',
-        assignedTruck: truckCode?.trim() || null,
-        contrato,
-      })
-    }
-  }
 
   const stats = [
     {
@@ -128,19 +67,18 @@ export function AdminChoferes() {
 
   return (
     <section className="admin-drivers" aria-labelledby="admin-drivers-title">
-      {asignacionPendiente && <AsignarCamionDialog
-        key={`${asignacionPendiente.id}-${asignacionPendiente.assignedTruck ?? ''}`}
-        conductor={driverFullName(asignacionPendiente)}
-        unidadInicial={asignacionPendiente.assignedTruck}
-        contratoInicial={asignacionPendiente.contrato}
-        camiones={systemTrucks}
+      {asignacionPendiente && <AsignarContratoDialog
+        titulo={`Asignar camión a ${driverFullName(asignacionPendiente)}`}
+        campo="Camión"
+        opciones={drivers.camiones.filter(({ estado }) => estado === "ACTIVO")
+          .map(({ id, patente, marca, modelo }) => ({ id, label: `${patente} · ${marca} ${modelo}` }))}
         onCerrar={() => setAsignacionPendiente(null)}
-        onConfirmar={(codigo, contrato) => {
-          confirmarAsignacion(asignacionPendiente, codigo, contrato)
-          setAsignacionPendiente(null)
+        onConfirmar={async (id, contrato) => {
+          await drivers.asignar(id, asignacionPendiente.id, contrato)
+          drivers.setNotice('Se registró el contrato.')
         }}
       />}
-      <div className="admin-drivers-stats admin-module-stats">
+      {!drivers.cargando && !drivers.error && <div className="admin-drivers-stats admin-module-stats">
         {stats.map((stat) => (
           <article className="admin-drivers-stat admin-module-stat" key={stat.label}>
             <span className="admin-drivers-stat-icon admin-module-stat-icon" aria-hidden="true">
@@ -152,7 +90,7 @@ export function AdminChoferes() {
             </div>
           </article>
         ))}
-      </div>
+      </div>}
 
       <div className="admin-drivers-panel admin-module-panel">
         <div className="admin-drivers-toolbar admin-module-toolbar">
@@ -161,7 +99,7 @@ export function AdminChoferes() {
             size="small"
             color="success"
             label="Buscar"
-            placeholder="Nombre, DNI, teléfono o licencia"
+            placeholder="Nombre, apellido o patente"
             value={drivers.search}
             onChange={(event) => drivers.setSearch(event.target.value)}
             slotProps={{
@@ -202,6 +140,7 @@ export function AdminChoferes() {
             className="admin-drivers-add"
             startIcon={<AddIcon />}
             onClick={drivers.openCreate}
+            disabled={drivers.cargando || Boolean(drivers.error)}
           >
             Agregar chofer
           </Button>
@@ -212,17 +151,21 @@ export function AdminChoferes() {
             <h3 id="admin-drivers-title">Listado de choferes</h3>
             <p>Gestión del personal de recolección y asignación de unidades.</p>
           </div>
-          <span className="admin-drivers-count admin-module-count">
+          {!drivers.cargando && !drivers.error && <span className="admin-drivers-count admin-module-count">
             {drivers.filteredDrivers.length} de {drivers.drivers.length}
-          </span>
+          </span>}
         </div>
 
-        {drivers.loading ? (
+        {drivers.cargando ? (
           <div className="admin-drivers-loading" aria-label="Cargando choferes">
             {[0, 1, 2, 3].map((row) => (
               <Skeleton key={row} variant="rounded" height={54} />
             ))}
           </div>
+        ) : drivers.error ? (
+          <Alert severity="error" action={<Button color="inherit" onClick={drivers.recargar}>Reintentar</Button>}>
+            {drivers.error}
+          </Alert>
         ) : drivers.filteredDrivers.length === 0 ? (
           <div className="admin-drivers-empty admin-module-empty">
             <LocalShippingIcon
@@ -258,9 +201,8 @@ export function AdminChoferes() {
               <TableHead>
                 <TableRow>
                   <TableCell>Chofer</TableCell>
-                  <TableCell>Contacto</TableCell>
                   <TableCell>Unidad asignada</TableCell>
-                  <TableCell>Fecha contrato</TableCell>
+                  <TableCell>Contrato</TableCell>
                   <TableCell>Estado</TableCell>
                   <TableCell align="right">Acciones</TableCell>
                 </TableRow>
@@ -277,19 +219,7 @@ export function AdminChoferes() {
                           <span className="admin-drivers-name">
                             {driverFullName(driver)}
                           </span>
-                          <span className="admin-drivers-subtext">
-                            DNI {driver.dni}
-                          </span>
                         </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="admin-drivers-contact">
-                        <span className="admin-drivers-contact-item">
-                          <PhoneIcon fontSize="small" aria-hidden="true" />
-                          {driver.phone}
-                        </span>
                       </div>
                     </TableCell>
 
@@ -297,9 +227,9 @@ export function AdminChoferes() {
                       {driver.assignedTruck ? (
                         <div className="admin-drivers-truck">
                           <DirectionsCarIcon fontSize="small" aria-hidden="true" />
-                          <span>{driver.assignedTruck}</span>
+                          <span>{driver.assignedTruck}{driver.contrato && Date.parse(driver.contrato.fechaInicio) > drivers.ahora ? " (programado)" : ""}</span>
                         </div>
-                      ) : (
+                      ) : !driver.activo ? "—" : (
                         <Tooltip title={`Asignar unidad a ${driverFullName(driver)}`}>
                           <Button
                             size="small"
@@ -315,15 +245,13 @@ export function AdminChoferes() {
                       )}
                     </TableCell>
 
-                    <TableCell>{formatoContrato(driver.contrato)}</TableCell>
+                    <TableCell>{driver.contrato ? formatoContrato(fechasContrato(driver.contrato)) : "—"}</TableCell>
 
                     <TableCell>
                       <Chip
                         size="small"
-                        label={statusLabel(driver.status)}
-                        className={`admin-drivers-status ${statusChipClass(
-                          driver.status,
-                        )}`}
+                        label={driver.activo ? "Activo" : "Inactivo"}
+                        className={`admin-drivers-status ${driver.activo ? "is-active" : "is-inactive"}`}
                       />
                     </TableCell>
 
@@ -335,7 +263,10 @@ export function AdminChoferes() {
                             aria-label={`Ver detalle de ${driverFullName(
                               driver,
                             )}`}
-                            onClick={() => setDetailDriver(driver)}
+                            onClick={() => {
+                              drivers.setContratoError("")
+                              setDetailId(driver.id)
+                            }}
                           >
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
@@ -351,12 +282,13 @@ export function AdminChoferes() {
                           </IconButton>
                         </Tooltip>
 
-                        <Tooltip title="Eliminar chofer">
+                        <Tooltip title="Dar de baja al chofer">
                           <IconButton
                             size="small"
                             color="error"
-                            aria-label={`Eliminar a ${driverFullName(driver)}`}
+                            aria-label={`Dar de baja a ${driverFullName(driver)}`}
                             onClick={() => drivers.requestDelete(driver)}
+                            disabled={!driver.activo}
                           >
                             <DeleteOutlineOutlinedIcon fontSize="small" />
                           </IconButton>
@@ -374,7 +306,7 @@ export function AdminChoferes() {
       <Dialog
         className="admin-module-dialog"
         open={Boolean(detailDriver)}
-        onClose={() => setDetailDriver(null)}
+        onClose={() => setDetailId(null)}
         fullWidth
         maxWidth="sm"
         aria-labelledby="admin-drivers-detail-title"
@@ -391,70 +323,36 @@ export function AdminChoferes() {
                 </Avatar>
                 <div>
                   <h3>{driverFullName(detailDriver)}</h3>
-                  <p>DNI {detailDriver.dni}</p>
                   <Chip
                     size="small"
-                    label={statusLabel(detailDriver.status)}
-                    className={`admin-drivers-status ${statusChipClass(
-                      detailDriver.status,
-                    )}`}
+                    label={detailDriver.activo ? "Activo" : "Inactivo"}
+                    className={`admin-drivers-status ${detailDriver.activo ? "is-active" : "is-inactive"}`}
                   />
                 </div>
               </div>
 
-              <p>Fecha contrato: {formatoContrato(detailDriver.contrato)}</p>
+              {drivers.contratoError && <Alert severity="error">{drivers.contratoError}</Alert>}
+              {detailDriver.contrato && <p>{formatoContrato(fechasContrato(detailDriver.contrato))}</p>}
               <div className="admin-drivers-detail-grid">
                 <article className="admin-drivers-detail-card">
-                  <h4>Contacto</h4>
-                  <p>
-                    <PhoneIcon fontSize="small" aria-hidden="true" />
-                    {detailDriver.phone}
-                  </p>
-                </article>
-                <article className="admin-drivers-detail-card">
                   <h4>Unidad asignada</h4>
-                  {detailDriver.assignedTruck ? (
-                    <div className="admin-drivers-detail-truck-row">
-                      <p>
-                        <LocalShippingIcon fontSize="small" aria-hidden="true" />
-                        {detailDriver.assignedTruck}
-                      </p>
-                      <Button
-                        size="small"
-                        color="success"
-                        onClick={() => setAsignacionPendiente(detailDriver)}
-                        sx={{
-                          textTransform: 'none',
-                          fontSize: '0.75rem',
-                          minWidth: 'auto',
-                          p: '1px 8px',
-                          ml: 'auto',
-                        }}
-                      >
-                        Cambiar
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="admin-drivers-detail-truck-row">
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="success"
-                        startIcon={<AddIcon />}
-                        className="admin-drivers-assign-btn"
-                        onClick={() => setAsignacionPendiente(detailDriver)}
-                      >
-                        Asignar
-                      </Button>
-                    </div>
+                  {detailDriver.assignedTruck && <p>{detailDriver.assignedTruck}</p>}
+                  {detailDriver.activo && <Button size="small" color="success"
+                    onClick={() => setAsignacionPendiente(detailDriver)}>Asignar</Button>}
+                  {detailDriver.contrato && Date.parse(detailDriver.contrato.fechaInicio) < drivers.ahora && (
+                    <Button size="small" color="error" disabled={drivers.finalizando}
+                      onClick={() => { if (detailDriver.contrato) void drivers.finalizarContrato(detailDriver.contrato) }}>
+                      Finalizar contrato
+                    </Button>
                   )}
+                  {!detailDriver.assignedTruck && !detailDriver.activo && <p>Sin unidad asignada.</p>}
                 </article>
               </div>
             </>
           )}
         </DialogContent>
         <DialogActions>
-          <Button color="inherit" onClick={() => setDetailDriver(null)}>
+          <Button color="inherit" onClick={() => setDetailId(null)}>
             Cerrar
           </Button>
           <Button
@@ -462,7 +360,7 @@ export function AdminChoferes() {
             color="success"
             onClick={() => {
               if (detailDriver) {
-                setDetailDriver(null)
+                setDetailId(null)
                 drivers.startEdit(detailDriver)
               }
             }}
@@ -503,11 +401,11 @@ export function AdminChoferes() {
               autoComplete="given-name"
               slotProps={{ htmlInput: { maxLength: 100 } }}
               disabled={drivers.saving}
-              error={Boolean(drivers.fieldErrors.firstName)}
-              helperText={drivers.fieldErrors.firstName?.[0]}
-              value={drivers.form.firstName}
+              error={Boolean(drivers.fieldErrors.nombre)}
+              helperText={drivers.fieldErrors.nombre?.[0]}
+              value={drivers.form.nombre}
               onChange={(event) =>
-                drivers.updateField('firstName', event.target.value)
+                drivers.updateField('nombre', event.target.value)
               }
             />
 
@@ -518,84 +416,23 @@ export function AdminChoferes() {
               autoComplete="family-name"
               slotProps={{ htmlInput: { maxLength: 100 } }}
               disabled={drivers.saving}
-              error={Boolean(drivers.fieldErrors.lastName)}
-              helperText={drivers.fieldErrors.lastName?.[0]}
-              value={drivers.form.lastName}
+              error={Boolean(drivers.fieldErrors.apellido)}
+              helperText={drivers.fieldErrors.apellido?.[0]}
+              value={drivers.form.apellido}
               onChange={(event) =>
-                drivers.updateField('lastName', event.target.value)
+                drivers.updateField('apellido', event.target.value)
               }
             />
 
-            <TextField
-              label="DNI"
-              required
-              color="success"
-              slotProps={{ htmlInput: { maxLength: 10, inputMode: 'numeric' } }}
-              disabled={drivers.saving}
-              error={Boolean(drivers.fieldErrors.dni)}
-              helperText={drivers.fieldErrors.dni?.[0]}
-              value={drivers.form.dni}
-              onChange={(event) =>
-                drivers.updateField('dni', event.target.value)
-              }
-            />
-
-            <TextField
-              label="Teléfono"
-              required
-              color="success"
-              slotProps={{ htmlInput: { maxLength: 20 } }}
-              disabled={drivers.saving}
-              error={Boolean(drivers.fieldErrors.phone)}
-              helperText={drivers.fieldErrors.phone?.[0]}
-              value={drivers.form.phone}
-              onChange={(event) =>
-                drivers.updateField('phone', event.target.value)
-              }
-            />
-
-            <FormControl
-              className="admin-drivers-form-full"
-              color="success"
-              disabled={drivers.saving}
-              error={Boolean(drivers.fieldErrors.assignedTruck)}
-            >
-              <InputLabel id="admin-drivers-form-assigned-truck">
-                Unidad asignada
-              </InputLabel>
-              <Select
-                labelId="admin-drivers-form-assigned-truck"
-                id="admin-drivers-form-assigned-truck-select"
-                label="Unidad asignada"
-                value={drivers.form.assignedTruck ?? ''}
-                onChange={(event) =>
-                  drivers.updateField('assignedTruck', event.target.value)
-                }
-              >
-                <MenuItem value="">
-                  <em>Sin unidad asignada</em>
-                </MenuItem>
-                {systemTrucks.map((truck) => (
-                  <MenuItem key={truck.code} value={truck.code}>
-                    {truck.label}
-                  </MenuItem>
-                ))}
-                {Boolean(drivers.form.assignedTruck) &&
-                  !systemTrucks.some((t) => t.code === drivers.form.assignedTruck) && (
-                    <MenuItem value={drivers.form.assignedTruck}>
-                      {drivers.form.assignedTruck}
-                    </MenuItem>
-                  )}
+            <FormControl color="success" disabled={drivers.saving} fullWidth>
+              <InputLabel id="admin-drivers-form-status">Estado</InputLabel>
+              <Select labelId="admin-drivers-form-status" label="Estado"
+                value={drivers.form.activo ? "ACTIVO" : "INACTIVO"}
+                onChange={(event) => drivers.updateField("activo", event.target.value === "ACTIVO")}>
+                <MenuItem value="ACTIVO">Activo</MenuItem>
+                <MenuItem value="INACTIVO">Inactivo</MenuItem>
               </Select>
-              <FormHelperText>
-                {drivers.fieldErrors.assignedTruck?.[0] ||
-                  'Seleccioná una unidad de la flota registrada en el sistema.'}
-              </FormHelperText>
             </FormControl>
-            {drivers.form.assignedTruck && <ContratoCampos
-              inicio={drivers.form.inicio} fin={drivers.form.fin}
-              errores={{ inicio: drivers.fieldErrors.inicio?.[0], fin: drivers.fieldErrors.fin?.[0] }}
-              onChange={drivers.updateField} />}
           </form>
         </DialogContent>
         <DialogActions>
@@ -628,15 +465,16 @@ export function AdminChoferes() {
         aria-labelledby="admin-drivers-delete-title"
       >
         <DialogTitle id="admin-drivers-delete-title">
-          Eliminar chofer
+          Dar de baja al chofer
         </DialogTitle>
         <DialogContent dividers>
+          {drivers.deleteError && <Alert severity="error">{drivers.deleteError}</Alert>}
           <p>
-            ¿Seguro que querés eliminar a{' '}
+            ¿Querés dar de baja a{' '}
             <strong>
               {drivers.pendingDelete ? driverFullName(drivers.pendingDelete) : ''}
             </strong>
-            ? Esta acción no se puede deshacer.
+            ? El chofer quedará inactivo.
           </p>
         </DialogContent>
         <DialogActions>
@@ -653,7 +491,7 @@ export function AdminChoferes() {
             onClick={drivers.confirmDelete}
             disabled={drivers.deleting}
           >
-            {drivers.deleting ? 'Eliminando…' : 'Eliminar'}
+            {drivers.deleting ? 'Guardando…' : 'Dar de baja'}
           </Button>
         </DialogActions>
       </Dialog>
