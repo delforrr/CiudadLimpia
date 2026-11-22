@@ -8,6 +8,10 @@ import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/configure-app';
 import { PrismaService } from '../src/prisma/prisma.service';
+import {
+  EnvioPushService,
+  TransportePush,
+} from '../src/push/envio-push.service';
 import type { PosicionTelemetriaDto } from '../src/telemetria/telemetria.dto';
 import type { LineStringDto } from '../src/trayecto/trayecto.dto';
 
@@ -32,19 +36,28 @@ export function geometria(vertices: [number, number][]): LineStringDto {
   };
 }
 
-export async function prepararRecoleccion() {
+export async function prepararRecoleccion(push = false) {
+  const enviar = jest
+    .fn<Promise<number>, Parameters<TransportePush['enviar']>>()
+    .mockResolvedValue(201);
   const config = new ConfigService({
     DATABASE_URL: process.env.TEST_DATABASE_URL,
     JWT_SECRET: 'test-only-secret-at-least-32-characters',
     TELEMETRIA_PROVEEDOR_ID: 'mock',
     TELEMETRIA_TOKEN: 'gps-test-token',
+    PUSH_HABILITADO: push ? '1' : '0',
+    PUSH_VAPID_PUBLICA: 'vapid-publica-de-prueba',
   });
   const modulo = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(ConfigService)
     .useValue(config)
+    .overrideProvider(TransportePush)
+    .useValue({ enviar })
     .compile();
   const app: INestApplication<App> = modulo.createNestApplication();
   configureApp(app);
+  const despachador = app.get(EnvioPushService);
+  jest.spyOn(despachador, 'onModuleInit').mockImplementation(() => undefined);
   await app.init();
   const prisma = app.get(PrismaService);
   const prefijo = randomUUID();
@@ -178,6 +191,8 @@ export async function prepararRecoleccion() {
     muestra,
     gps,
     mapa,
+    despachador,
+    enviar,
     async cerrar() {
       try {
         await prisma.user.deleteMany({

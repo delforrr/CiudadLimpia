@@ -146,3 +146,15 @@ npm run audit
 ```
 
 Con `TEST_DATABASE_URL` exportada, la suite HTTP verifica en PostgreSQL que un alta o una edición rechazada deja intactos los datos, que dos altas simultáneas comparten una fila y que PostgreSQL rechaza pines nulos y frentes duplicados. La aceptación local requiere además que pasen los casos de Swagger con una sesión `ADMIN`.
+
+## Probar telemetría y push desde el backend
+
+Configurar `TELEMETRIA_PROVEEDOR_ID=mock` y `TELEMETRIA_TOKEN` en `backend/.env`. Con el backend en ejecución, guardar un archivo de posiciones GPS de prueba como lista de pares `[longitud, latitud]`. Desde `backend/`, ejecutar:
+
+```sh
+node --env-file=.env scripts/mock-telemetria.mjs posiciones.json CAMION_ID TRAYECTO_ID
+```
+
+El mock envía una posición cada cinco segundos. `TELEMETRIA_URL` permite indicar otra URL base local, como `http://localhost:8080` para Compose. Un cuarto argumento permite continuar una prestación con el mismo UUID. Cada pasada distinta usa un UUID nuevo. `GET /api/hoy/domicilios/:direccionId/mapa` requiere la sesión del titular del domicilio y devuelve los camiones vigentes que pasan por su frente.
+
+Los e2e de PostgreSQL usan `TEST_DATABASE_URL` con el esquema ya migrado y un transporte de prueba para Web Push. Mantener `PUSH_HABILITADO=0` hasta validar las tolerancias de cobertura con casos locales. Para pruebas de entrega real, configurar también las tres variables VAPID de `backend/.env.example`; la suscripción del navegador pertenece a la integración de frontend.

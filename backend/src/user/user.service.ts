@@ -81,7 +81,20 @@ export class UserService {
               },
               update: {
                 ...profile,
-                domicilios: vinculos && { deleteMany: {}, create: vinculos },
+                domicilios: vinculos && {
+                  deleteMany: {
+                    direccionId: {
+                      notIn: vinculos.map(({ direccionId }) => direccionId),
+                    },
+                  },
+                  updateMany: vinculos.map(({ direccionId, etiqueta }) => ({
+                    where: { direccionId },
+                    data: { etiqueta: etiqueta ?? null },
+                  })),
+                  ...(vinculos.length && {
+                    createMany: { data: vinculos, skipDuplicates: true },
+                  }),
+                },
               },
             },
           };

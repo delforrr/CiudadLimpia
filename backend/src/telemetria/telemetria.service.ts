@@ -4,8 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { referenciasRecorridoArgs } from '../punto-trayecto/puntos-trayecto.select';
+import { PushService } from '../push/push.service';
 import type { Recorrido } from '../trayecto/cobertura-trayecto';
 import { esLineaValida } from '../trayecto/line-string';
 import { leerProgreso, proyectarProgreso } from './progreso-trayecto';
@@ -20,7 +22,11 @@ export interface ReceptorTelemetria {
 
 @Injectable()
 export class TelemetriaService implements ReceptorTelemetria {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly push: PushService,
+  ) {}
 
   async registrarPosicion(
     proveedorId: string,
@@ -122,6 +128,9 @@ export class TelemetriaService implements ReceptorTelemetria {
           }),
         },
       });
+      if (progreso?.avanza && this.config.get('PUSH_HABILITADO') === '1') {
+        await this.push.encolarAvisos(tx, servicio.id, progreso);
+      }
     });
   }
 }
