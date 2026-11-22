@@ -167,7 +167,7 @@ Si guardaste la respuesta de `GET /api/trayectos` con varios trayectos, pasá ta
 
 Si el frente de prueba es Julio A Roca 550, elegí ese domicilio en Hoy y dibujá el paso entre dos referencias de Julio A Roca que lo enmarquen. Si editás la línea, descargá nuevamente el JSON del trayecto antes de repetir el mock.
 
-Los e2e de PostgreSQL usan `TEST_DATABASE_URL` con el esquema ya migrado y un transporte de prueba para Web Push. Mantener `PUSH_HABILITADO=0` hasta validar las tolerancias de cobertura con casos locales. Para pruebas de entrega real, configurar también las tres variables VAPID de `backend/.env.example`; la suscripción del navegador pertenece a la integración de frontend.
+Los e2e de PostgreSQL usan `TEST_DATABASE_URL` con el esquema ya migrado y un transporte de prueba para Web Push. Para probar la entrega real en una instancia local, configurá las tres variables VAPID de `backend/.env.example` y `PUSH_HABILITADO=1`. En producción, mantené el envío deshabilitado hasta validar las tolerancias de cobertura con casos locales.
 
 ## Demo de recolección con dos camiones
 
@@ -179,7 +179,7 @@ node scripts/demo-recoleccion.mjs
 
 El script prepara **Demo Ciudad Limpia · Roca**, dos camiones activos y `demo-recoleccion@ciudadlimpia.test` con el domicilio **Casa demo**. La primera pasada verifica el mapa y guarda los identificadores en `backend/.tmp/demo/recorrido.json`. Las pasadas siguientes usan esos IDs y el token de telemetría. Envía cinco muestras por camión, una cada cinco segundos, y cada ejecución crea dos prestaciones nuevas. Si cambia la base o se borran los datos, volvé a ejecutar el script con `--preparar`.
 
-Si ya está preparada la instancia aislada en el puerto 3101, desde `backend/` se puede repetir la demo con `node --env-file=.tmp/demo/.env scripts/demo-recoleccion.mjs`. En Swagger, iniciá sesión con el vecino de prueba mientras corre el script y consultá la ruta que imprime. Para esta demo, mantené el envío push real deshabilitado.
+Si ya está preparada la instancia aislada en el puerto 3101, desde `backend/` se puede repetir la demo con `node --env-file=.tmp/demo/.env scripts/demo-recoleccion.mjs`. En Swagger, iniciá sesión con el vecino de prueba mientras corre el script y consultá la ruta que imprime.
 
 Para verla en la app con la instancia aislada, iniciá Vite desde `frontend/` en PowerShell.
 
@@ -188,4 +188,6 @@ $env:CIUDAD_LIMPIA_API_URL = 'http://127.0.0.1:3101'
 node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5174 --strictPort
 ```
 
-Abrí [Hoy](http://127.0.0.1:5174/hoy), iniciá sesión como `demo-recoleccion@ciudadlimpia.test` y volvé a Hoy antes de ejecutar el script. El mapa consulta posiciones cada cinco segundos mientras la página está visible. Después de la última muestra, la API deja de devolver cada camión cuando vence su posición.
+Abrí [Hoy](http://127.0.0.1:5174/hoy), iniciá sesión como `demo-recoleccion@ciudadlimpia.test` y seleccioná el domicilio de prueba. Con Web Push configurado, Hoy solicita permiso al entrar desde una interacción o con el primer clic o toque si el navegador exige un gesto. Usá un navegador compatible y aceptá el permiso del sitio antes de iniciar la pasada. El mock informa cuando un aviso queda encolado y cuando el proveedor acepta el envío.
+
+Hoy consulta el trayecto una vez por selección de domicilio mediante `GET /api/hoy/domicilios/:direccionId/trayectos`. Después, `GET /api/hoy/domicilios/:direccionId/camiones` actualiza cada cinco segundos solo las posiciones vigentes mientras la página está visible. Al vencer la última posición de un camión, se oculta su marcador y el trayecto sigue visible.

@@ -96,6 +96,18 @@ describePostgres('Suscripciones y entregas push (HTTP y PostgreSQL)', () => {
 
   it('da dos posiciones y dos entregas en la esquina, una por prestación', async () => {
     const a = await avanzar(320);
+    const estadoAvisos = `/api/telemetria/servicios/${a.servicioId}/avisos`;
+    await f.api().get(estadoAvisos).expect(401);
+    await f
+      .api()
+      .get(estadoAvisos)
+      .set('Authorization', 'Bearer gps-test-token')
+      .expect(200, {
+        habilitado: true,
+        pendientes: 1,
+        enviados: 0,
+        cancelados: 0,
+      });
     const b = await avanzar(330, f.camiones[1].id);
     const servicioId = randomUUID();
     const paso = (y: number, registradoEn: string) =>
@@ -118,6 +130,16 @@ describePostgres('Suscripciones y entregas push (HTTP y PostgreSQL)', () => {
       f.despachador.despacharPendientes(new Date()),
     ]);
     expect(f.enviar).toHaveBeenCalledTimes(2);
+    await f
+      .api()
+      .get(estadoAvisos)
+      .set('Authorization', 'Bearer gps-test-token')
+      .expect(200, {
+        habilitado: true,
+        pendientes: 0,
+        enviados: 1,
+        cancelados: 0,
+      });
     const entregas = await f.prisma.entregaPush.findMany({
       where: { suscripcionId },
     });

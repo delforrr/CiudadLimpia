@@ -58,6 +58,7 @@ describe('Public API and documentation (HTTP)', () => {
       '/api/push/suscripciones',
       '/api/push/suscripciones/{id}',
       '/api/telemetria/posiciones',
+      '/api/telemetria/servicios/{servicioId}/avisos',
       '/api/trayectos',
       '/api/trayectos/sugerencia',
       '/api/trayectos/{id}',

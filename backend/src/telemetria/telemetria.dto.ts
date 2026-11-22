@@ -23,3 +23,10 @@ export class PosicionTelemetriaDto {
   @ApiProperty() @IsNumber() @IsLongitude() long!: number;
   @ApiProperty({ minimum: 0 }) @IsNumber() @Min(0) precisionM!: number;
 }
+
+export class AvisosTelemetriaDto {
+  @ApiProperty() habilitado!: boolean;
+  @ApiProperty() pendientes!: number;
+  @ApiProperty() enviados!: number;
+  @ApiProperty() cancelados!: number;
+}

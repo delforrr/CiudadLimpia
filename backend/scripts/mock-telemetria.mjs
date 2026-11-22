@@ -95,9 +95,47 @@ function muestrear(linea) {
 }
 
 const posiciones = esTrayecto ? muestrear(coordenadas) : coordenadas;
+const autorizacion = { Authorization: `Bearer ${token}` };
+let avisosAnteriores;
+let consultarAvisos = true;
+
+async function informarAvisos() {
+  if (!consultarAvisos) return;
+  try {
+    const respuesta = await fetch(
+      new URL(`/api/telemetria/servicios/${servicioId}/avisos`, base),
+      {
+        headers: autorizacion,
+        signal: AbortSignal.timeout(3000),
+        redirect: 'error',
+      },
+    );
+    if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+    const avisos = await respuesta.json();
+    if (!avisos.habilitado) {
+      console.log('Los avisos push están desactivados en esta API.');
+      consultarAvisos = false;
+      return;
+    }
+    if (avisos.pendientes > (avisosAnteriores?.pendientes ?? 0))
+      console.log(`Aviso push encolado · ${avisos.pendientes} pendiente(s)`);
+    if (avisos.enviados > (avisosAnteriores?.enviados ?? 0))
+      console.log(
+        `Aviso push enviado · el proveedor aceptó ${avisos.enviados} entrega(s)`,
+      );
+    if (avisos.cancelados > (avisosAnteriores?.cancelados ?? 0))
+      console.log(`Aviso push cancelado · ${avisos.cancelados} entrega(s)`);
+    avisosAnteriores = avisos;
+  } catch (error) {
+    console.warn(
+      `No se pudo consultar el estado de los avisos (${error.message}). El GPS sigue activo.`,
+    );
+    consultarAvisos = false;
+  }
+}
 
 console.log(
-  `Prestación ${servicioId} · ${posiciones.length} posiciones para un camión`,
+  `Camión ${camionId} · trayecto ${datos?.nombre ?? trayectoId} · prestación ${servicioId}`,
 );
 for (const [indice, [long, lat]] of posiciones.entries()) {
   if (indice) await esperar(5000);
@@ -105,7 +143,7 @@ for (const [indice, [long, lat]] of posiciones.entries()) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      ...autorizacion,
     },
     body: JSON.stringify({
       servicioId,
@@ -124,6 +162,25 @@ for (const [indice, [long, lat]] of posiciones.entries()) {
       `La posición ${indice + 1} recibió HTTP ${respuesta.status}`,
     );
   console.log(
-    `Posición ${indice + 1}/${posiciones.length} · ${long.toFixed(6)}, ${lat.toFixed(6)}`,
+    `GPS ${indice + 1}/${posiciones.length} · lat ${lat.toFixed(6)}, long ${long.toFixed(6)}`,
   );
+  await informarAvisos();
+}
+
+for (
+  let intento = 0;
+  consultarAvisos && avisosAnteriores?.pendientes && intento < 4;
+  intento++
+) {
+  await esperar(2500);
+  await informarAvisos();
+}
+if (
+  consultarAvisos &&
+  avisosAnteriores &&
+  !avisosAnteriores.pendientes &&
+  !avisosAnteriores.enviados &&
+  !avisosAnteriores.cancelados
+) {
+  console.log('Esta prestación no generó avisos push.');
 }

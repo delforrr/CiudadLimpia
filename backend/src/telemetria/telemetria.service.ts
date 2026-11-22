@@ -28,6 +28,24 @@ export class TelemetriaService implements ReceptorTelemetria {
     private readonly push: PushService,
   ) {}
 
+  async consultarAvisos(proveedorId: string, servicioId: string) {
+    const habilitado = this.config.get('PUSH_HABILITADO') === '1';
+    const estados = await this.prisma.entregaPush.groupBy({
+      by: ['estado'],
+      where: { prestacion: { proveedorId, servicioId } },
+      _count: { _all: true },
+    });
+    const cantidades = new Map(
+      estados.map(({ estado, _count }) => [estado, _count._all]),
+    );
+    return {
+      habilitado,
+      pendientes: cantidades.get('PENDIENTE') ?? 0,
+      enviados: cantidades.get('ENVIADO') ?? 0,
+      cancelados: cantidades.get('CANCELADO') ?? 0,
+    };
+  }
+
   async registrarPosicion(
     proveedorId: string,
     dto: PosicionTelemetriaDto,

@@ -4,6 +4,7 @@ import { Alert, Button } from '@mui/material';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useDomicilioActual } from '../hooks/useDomicilioActual';
 import { useMapaHoy } from '../hooks/useMapaHoy';
+import { useAvisosPush } from '../hooks/useAvisosPush';
 import type { User } from '../services/authService';
 import camionRecolector from '../assets/camion-recolector.png';
 import residuosReciclables from '../assets/residuos-reciclables.png';
@@ -22,6 +23,7 @@ function SeguimientoHoy({ user }: { user: User }) {
   const domicilio = useDomicilioActual(user);
   const { actual } = domicilio;
   const { mapa, camiones, cargando, errorMapa, errorPosiciones } = useMapaHoy(actual?.id);
+  const avisos = useAvisosPush(user.id, actual?.id, user.cliente?.domicilios);
   const lineas = useMemo(() => mapa?.trayectos.map(({ geometria }) => geometria), [mapa]);
   const cantidad = camiones?.length ?? 0;
 
@@ -52,6 +54,8 @@ function SeguimientoHoy({ user }: { user: User }) {
               <img src={camionRecolector} alt="" className="tarjeta-camion-img" />
             </div>
           </div>
+          {avisos?.error && <Alert severity="warning">{avisos.error}</Alert>}
+          {avisos?.activo && <p className="estado-descripcion">Avisos activados para este domicilio.</p>}
           {mapa && (
             <div className="mapa-trayecto-card">
               <div className="hoy-mapa">

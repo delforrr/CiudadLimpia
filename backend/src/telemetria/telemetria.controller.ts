@@ -1,8 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
+  Param,
+  ParseUUIDPipe,
   Post,
   UnauthorizedException,
   UseGuards,
@@ -12,12 +15,13 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiNoContentResponse,
+  ApiOkResponse,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
-import { PosicionTelemetriaDto } from './telemetria.dto';
+import { AvisosTelemetriaDto, PosicionTelemetriaDto } from './telemetria.dto';
 import { TelemetriaService } from './telemetria.service';
 
 const hash = (valor: string) => createHash('sha256').update(valor).digest();
@@ -54,6 +58,26 @@ export class TelemetriaController {
     @Headers('authorization') autorizacion: string | undefined,
     @Body() dto: PosicionTelemetriaDto,
   ) {
+    await this.telemetria.registrarPosicion(this.autenticar(autorizacion), dto);
+  }
+
+  @Get('servicios/:servicioId/avisos')
+  @ApiOkResponse({ type: AvisosTelemetriaDto })
+  @ApiResponse({
+    status: 401,
+    description: 'Credencial de proveedor inválida.',
+  })
+  avisos(
+    @Headers('authorization') autorizacion: string | undefined,
+    @Param('servicioId', ParseUUIDPipe) servicioId: string,
+  ) {
+    return this.telemetria.consultarAvisos(
+      this.autenticar(autorizacion),
+      servicioId,
+    );
+  }
+
+  private autenticar(autorizacion: string | undefined) {
     const token = this.config.get<string>('TELEMETRIA_TOKEN');
     const proveedor = this.config.get<string>('TELEMETRIA_PROVEEDOR_ID');
     if (
@@ -64,6 +88,6 @@ export class TelemetriaController {
     ) {
       throw new UnauthorizedException('Credencial de proveedor inválida');
     }
-    await this.telemetria.registrarPosicion(proveedor, dto);
+    return proveedor;
   }
 }
