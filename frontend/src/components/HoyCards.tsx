@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Alert, Button } from '@mui/material';
+import { Alert, Button, IconButton, Tooltip } from '@mui/material';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import { useAuthContext } from '../hooks/useAuthContext';
 import { useDomicilioActual } from '../hooks/useDomicilioActual';
 import { useMapaHoy } from '../hooks/useMapaHoy';
@@ -23,7 +24,7 @@ function SeguimientoHoy({ user }: { user: User }) {
   const domicilio = useDomicilioActual(user);
   const { actual } = domicilio;
   const { mapa, camiones, cargando, errorMapa, errorPosiciones } = useMapaHoy(actual?.id);
-  const avisos = useAvisosPush(user.id, actual?.id, user.cliente?.domicilios);
+  const { estado: avisos, activar } = useAvisosPush(user.id, actual?.id, user.cliente?.domicilios);
   const lineas = useMemo(() => mapa?.trayectos.map(({ geometria }) => geometria), [mapa]);
   const cantidad = camiones?.length ?? 0;
 
@@ -31,7 +32,16 @@ function SeguimientoHoy({ user }: { user: User }) {
     <section className="tarjeta-blanca-wrapper" aria-label="Seguimiento de recolección">
       <div className="saludo-header">
         <h2 className="saludo-titulo">Hola, {user.cliente?.name || user.email}</h2>
-        <HoyDomicilio {...domicilio} />
+        <div className="saludo-acciones">
+          {actual && !avisos?.activo && (
+            <Tooltip title="Activar notificaciones">
+              <IconButton className="hoy-activar-avisos" aria-label="Activar notificaciones" onClick={activar}>
+                <NotificationsNoneIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          <HoyDomicilio {...domicilio} />
+        </div>
       </div>
       <div className="tarjeta-blanca-card">
         <div className="tarjeta-blanca-cuerpo">

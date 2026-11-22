@@ -53,7 +53,7 @@ test('shows one current address in Hoy and opens the new address form directly f
       domicilios: [{ id: 'domicilio-1', direccion: 'san Martín 123' },
         { id: 'domicilio-2', direccion: 'Belgrano 456' }] } }
   const hoy = renderHoy(user)
-  assert.match(hoy, /aria-haspopup="menu"/)
+  assert.match(hoy, /aria-label="Activar notificaciones"[\s\S]*?aria-haspopup="menu"/)
   assert.doesNotMatch(hoy, /Agregar domicilio/)
   assert.match(hoy, /San Martín 123/)
   assert.doesNotMatch(hoy, /Belgrano 456/)
@@ -72,8 +72,14 @@ test('Hoy muestra la carga de posiciones sin anticipar distancia, paso ni horari
   const html = renderHoy(user)
   assert.match(html, /Recolección en vivo/)
   assert.match(html, /Buscando el trayecto de tu domicilio/)
-  assert.doesNotMatch(html, /Activar avisos|Ocultar mapa/)
+  assert.doesNotMatch(html, /Ocultar mapa/)
   assert.doesNotMatch(html, /350 m|NO HA PASADO|19:00 h|18:45 h/)
+})
+
+test('Hoy oculta la campana si todavía no hay domicilio', () => {
+  const html = renderHoy({ id: 'user-1', email: 'ana@example.com', role: 'USER', cliente: null })
+  assert.match(html, /Elegir domicilio/)
+  assert.doesNotMatch(html, /Activar notificaciones/)
 })
 
 test('opens registration with all fields required by the current API', () => {
