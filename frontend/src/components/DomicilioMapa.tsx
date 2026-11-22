@@ -12,7 +12,7 @@ export function DomicilioMapa({ calle, altura, ubicacion, onChange }: {
 }) {
   const mapa = useUbicacionDomicilio(calle, altura, ubicacion, onChange);
   return <section className="domicilio-ubicacion" aria-label="Confirmar ubicación del domicilio">
-    <p>Revisá dónde está tu casa. Podés mover la casita o tocar el mapa para cambiar su ubicación.</p>
+    <p>Poné el pin en la entrada de tu casa, del lado de la vereda. Podés arrastrarlo o tocar el mapa antes de confirmar.</p>
     {mapa.buscando && <p role="status">Buscando tu dirección…</p>}
     {mapa.mensaje && <Alert className="domicilio-ubicacion-aviso" severity="info">{mapa.mensaje}</Alert>}
     {mapa.sugerencias.length > 1 && <div className="domicilio-ubicacion-sugerencias" aria-label="Direcciones encontradas">

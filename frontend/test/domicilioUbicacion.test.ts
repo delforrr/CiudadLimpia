@@ -10,11 +10,12 @@ afterEach(() => {
 });
 const posicion = { lat: -35.973, long: -62.734 };
 
-test('busca calle y altura limitadas a Trenque Lauquen, sin enviar credenciales', async () => {
+test('pide a Georef una sugerencia dentro de la manzana de Trenque Lauquen', async () => {
   mock.method(globalThis, 'fetch', async (url: string, opciones: RequestInit) => {
     const consulta = new URL(url);
     assert.equal(consulta.searchParams.get('direccion'), 'Roca 860');
     assert.equal(consulta.searchParams.get('localidad_censal'), '06826050');
+    assert.equal(consulta.searchParams.get('desplazar'), 'true');
     assert.equal(opciones.credentials, 'omit');
     return Response.json({ direcciones: [
       { localidad_censal: { id: '06826050' }, ubicacion: { lat: posicion.lat, lon: posicion.long }, nomenclatura: 'Roca 860' },

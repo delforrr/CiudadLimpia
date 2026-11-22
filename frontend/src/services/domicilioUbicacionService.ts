@@ -15,7 +15,8 @@ export type SugerenciaDomicilio = Coordenadas & { nombre: string };
 export const domicilioUbicacionService = {
   async buscar(calle: string, altura: string, signal: AbortSignal): Promise<SugerenciaDomicilio[]> {
     const query = new URLSearchParams({ direccion: `${calle.trim()} ${altura.trim()}`,
-      provincia: '06', departamento: '06826', localidad_censal: '06826050', campos: 'completo', max: '3' });
+      provincia: '06', departamento: '06826', localidad_censal: '06826050', campos: 'completo', max: '3',
+      desplazar: 'true' });
     const response = await fetch(`https://apis.datos.gob.ar/georef/api/v2.0/direcciones?${query}`, {
       signal: AbortSignal.any([signal, AbortSignal.timeout(7000)]), credentials: 'omit', referrerPolicy: 'no-referrer',
     });

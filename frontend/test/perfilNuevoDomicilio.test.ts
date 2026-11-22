@@ -31,6 +31,7 @@ test('la segunda pantalla permite revisar el mapa y volver; no confirma sin ubic
   const html = renderToStaticMarkup(createElement(PerfilNuevoDomicilio, { ...props, paso: 'mapa' }));
   assert.doesNotMatch(html, /Roca 860/);
   assert.match(html, /Mapa del trayecto/);
+  assert.match(html, /Poné el pin en la entrada de tu casa, del lado de la vereda/);
   assert.match(html, /Volver/);
   assert.match(html, /Confirmar domicilio/);
   const boton = Array.from(html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)).find((partes) => partes[2].includes('Confirmar domicilio'));
