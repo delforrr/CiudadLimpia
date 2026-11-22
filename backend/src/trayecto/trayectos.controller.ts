@@ -82,7 +82,8 @@ export class TrayectosController {
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar un trayecto y su línea confirmada',
-    description: 'Enviá el trayecto completo con sus puntos y geometría.',
+    description:
+      'Enviá el trayecto completo con sus puntos, geometría y cobertura de todos los tramos.',
   })
   @ApiConsumes('application/json')
   @ApiOkResponse({ type: TrayectoResponseDto })

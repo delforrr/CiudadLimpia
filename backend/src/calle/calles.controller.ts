@@ -101,7 +101,7 @@ export class CallesController {
 
   @Delete(':id')
   @ApiOperation({
-    summary: 'Eliminar una calle sin direcciones vinculadas (ADMIN)',
+    summary: 'Eliminar una calle sin direcciones ni tramos vinculados (ADMIN)',
   })
   @HttpCode(204)
   @ApiConsumes('application/json')

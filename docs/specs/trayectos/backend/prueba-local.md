@@ -11,12 +11,16 @@ Abrí [Swagger de Ciudad Limpia](http://localhost:8080/api/docs) y usá `POST /a
 
 ## Alta manual de referencia
 
-Enviá este cuerpo a `POST /api/trayectos`.
+Consultá los UUID con `GET /calles?buscar=Roca` y `GET /calles?buscar=Villegas`. Reemplazá los marcadores del ejemplo por los UUID devueltos y enviá el cuerpo a `POST /api/trayectos`.
 
 ```json
 {
   "nombre": "Roca a San Martín",
   "localidadId": "06826050",
+  "tramos": [
+    { "desde": 0, "hasta": 1, "calleId": "UUID_CALLE_ROCA" },
+    { "desde": 1, "hasta": 2, "calleId": "UUID_CALLE_VILLEGAS" }
+  ],
   "puntos": [
     {
       "orden": 0,
@@ -60,7 +64,8 @@ Guardá el `id` del trayecto y los `direccionId` de sus puntos. GeoJSON usa pare
 | Reutilizar un frente | Enviá `{ "orden": 0, "direccionId": "<uuid>" }` al referenciar uno de los puntos. Podés incluir `lat` y `long` juntas si coinciden con el pin guardado. |
 | Pin distinto | Reenviá la misma calle y altura con otro pin. Debe devolver `409` con `code: "PIN_DIRECCION_DISTINTO"` y la dirección guardada. Reenviá su ID para confirmar el pin o indicá el otro frente con su calle, altura y coordenadas. |
 | Entrada inválida | Un orden repetido, localidad o dirección inexistente, calle sin altura, una sola coordenada, coordenadas fuera de rango o una línea sin dos posiciones válidas distintas devuelve `400`. Una escritura rechazada conserva el trayecto anterior y revierte las direcciones nuevas. |
-| Edición | Enviá el trayecto completo a `PATCH /api/trayectos/{id}` con la geometría y los puntos. Usá un nuevo `direccionId` o indicá un nuevo frente si cambia la dirección de un punto. |
+| Cobertura obligatoria | Un trayecto sin tramos o con huecos, solapamientos o calles inexistentes devuelve `400`. Dividí el recorrido donde cambia el nombre de la calle. |
+| Edición | Enviá el trayecto completo a `PATCH /api/trayectos/{id}` con la geometría, los puntos y los tramos. Usá un nuevo `direccionId` o indicá un nuevo frente si cambia la dirección de un punto. |
 | GeoRef | La geocodificación directa consulta primero el catálogo compartido. GeoRef puede sugerir una calle con `altura: null`. Completá los datos y confirmá ambas coordenadas para guardar el frente. |
 
 ## Domicilios, puntos limpios y corrección del pin
@@ -165,7 +170,7 @@ node --env-file=.tmp/demo/.env scripts/mock-telemetria.mjs .tmp/demo/trayecto.js
 
 Si guardaste la respuesta de `GET /api/trayectos` con varios trayectos, pasá también el ID del trayecto elegido como tercer argumento del script.
 
-Si el frente de prueba es Julio A Roca 550, elegí ese domicilio en Hoy y dibujá el paso entre dos referencias de Julio A Roca que lo enmarquen. Si editás la línea, descargá nuevamente el JSON del trayecto antes de repetir el mock.
+Si el frente de prueba es Julio A Roca 550, elegí ese domicilio en Hoy y asigná Julio A Roca al tramo que pasa frente al pin. Si editás la línea, descargá nuevamente el JSON del trayecto antes de repetir el mock.
 
 Los e2e de PostgreSQL usan `TEST_DATABASE_URL` con el esquema ya migrado y un transporte de prueba para Web Push. Para probar la entrega real en una instancia local, configurá las tres variables VAPID de `backend/.env.example` y `PUSH_HABILITADO=1`. En producción, mantené el envío deshabilitado hasta validar las tolerancias de cobertura con casos locales.
 

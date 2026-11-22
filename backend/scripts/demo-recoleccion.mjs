@@ -112,13 +112,27 @@ async function prepararDemo() {
   const cookie = admin.cookie;
 
   const { datos: trayectos } = await solicitar('/api/trayectos', { cookie });
+  const { datos: calles } = await solicitar(
+    `/calles?buscar=${encodeURIComponent(calle)}`,
+    { cookie },
+  );
+  const calleDemo =
+    calles.find((item) => item.calle === calle) ??
+    (await solicitar('/calles', { metodo: 'POST', cookie, cuerpo: { calle } }))
+      .datos;
   const trayecto =
     trayectos.find((item) => item.nombre === nombre) ??
     (
       await solicitar('/api/trayectos', {
         metodo: 'POST',
         cookie,
-        cuerpo: { nombre, localidadId: '06826050', geometria, puntos },
+        cuerpo: {
+          nombre,
+          localidadId: '06826050',
+          geometria,
+          puntos,
+          tramos: [{ desde: 0, hasta: 1, calleId: calleDemo.id }],
+        },
       })
     ).datos;
   assert.deepEqual(
@@ -126,6 +140,19 @@ async function prepararDemo() {
     geometria,
     'La geometría del trayecto de demo existente fue modificada.',
   );
+  if (!trayecto.tramos?.length) {
+    await solicitar(`/api/trayectos/${trayecto.id}`, {
+      metodo: 'PATCH',
+      cookie,
+      cuerpo: {
+        nombre,
+        localidadId: '06826050',
+        geometria,
+        puntos,
+        tramos: [{ desde: 0, hasta: 1, calleId: calleDemo.id }],
+      },
+    });
+  }
 
   const { datos: flota } = await solicitar('/api/camiones', { cookie });
   const camiones = [];

@@ -6,9 +6,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { referenciasRecorridoArgs } from '../punto-trayecto/puntos-trayecto.select';
 import { PushService } from '../push/push.service';
-import type { Recorrido } from '../trayecto/cobertura-trayecto';
+import {
+  tramosRecorridoArgs,
+  type Recorrido,
+} from '../trayecto/cobertura-trayecto';
 import { esLineaValida } from '../trayecto/line-string';
 import { leerProgreso, proyectarProgreso } from './progreso-trayecto';
 import type { PosicionTelemetriaDto } from './telemetria.dto';
@@ -88,17 +90,23 @@ export class TelemetriaService implements ReceptorTelemetria {
         await tx.$queryRaw`SELECT id FROM "Trayecto" WHERE id = ${trayectoId} FOR SHARE`;
         const trayecto = await tx.trayecto.findUnique({
           where: { id: trayectoId },
-          include: { puntos: referenciasRecorridoArgs },
+          include: {
+            tramos: tramosRecorridoArgs,
+          },
         });
         if (!trayecto) throw new NotFoundException('Trayecto no encontrado');
         if (!esLineaValida(trayecto.geometria))
           throw new ConflictException('El trayecto carece de una línea válida');
         const recorrido: Recorrido = {
           geometria: trayecto.geometria,
-          referencias: trayecto.puntos.map(({ orden, direccion }) => ({
-            orden,
-            ...direccion,
-          })),
+          tramos: trayecto.tramos.map(
+            ({ calleId, desde, hasta, lado, calle }) => ({
+              calleId: calle.calleVigenteId ?? calleId,
+              desde,
+              hasta,
+              lado,
+            }),
+          ),
         };
         const recorridoId = createHash('sha256')
           .update(
@@ -119,7 +127,14 @@ export class TelemetriaService implements ReceptorTelemetria {
             muestraEn,
             recorrido: {
               geometria: { ...recorrido.geometria },
-              referencias: [...recorrido.referencias],
+              tramos: recorrido.tramos.map(
+                ({ calleId, desde, hasta, lado }) => ({
+                  calleId,
+                  desde,
+                  hasta,
+                  lado,
+                }),
+              ),
             },
           },
         });

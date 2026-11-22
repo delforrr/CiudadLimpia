@@ -71,31 +71,21 @@ La entrega 01 establece el formato que comparten las otras tres. Los tickets de 
 
 ## Cobertura por domicilio
 
-Un trayecto cubre un frente cuando recorre su misma calle y la posición del frente cae dentro de la porción efectivamente recorrida. La primera versión usa el domicilio (`calleId`, altura y pin), las direcciones asociadas a los `PuntoTrayecto` y la geometría completa guardada. Funciona con los datos existentes de Ciudad Limpia, tanto para líneas manuales como sugeridas.
+Para guardar un trayecto, el operador asigna una calle a toda la línea mediante tramos sin huecos ni solapamientos. Cada tramo indica sus vértices de inicio y fin en la geometría final. Si la vía cambia de nombre, se divide en el punto de cambio, aunque el camión siga derecho. Los índices crecen en el sentido del recorrido y admiten alturas descendentes.
 
 ### Regla de coincidencia
 
-1. **Buscar trayectos candidatos.** Medir en metros la distancia desde el pin del domicilio a los `PuntoTrayecto`, usando las coordenadas de sus direcciones en el modelo compartido. Agrupar por `trayectoId` y ordenar por la menor distancia. Considerar todos los trayectos con línea cercana al frente, incluso si sus pines quedan lejos. Esto preserva el caso de una recta larga marcada solo en los extremos.
-2. **Confirmar cada candidato.** Proyectar el pin sobre la `LineString` guardada y revisar el tramo que contiene la proyección. Usar `calleId` de los puntos ordenados que enmarcan ese tramo para comprobar la calle. Dos referencias de la misma calle respaldan un tramo cuando la línea entre ellas sigue esa calle sin un desvío ambiguo. Si las referencias no alcanzan para distinguir una esquina, una paralela o un desvío, devolver datos insuficientes. La distancia al pin más cercano ayuda a ordenar los candidatos.
-3. **Ubicar el paso.** Para cada coincidencia confirmada, devolver la distancia acumulada sobre la línea hasta el frente. Mantener la tolerancia lateral separada del límite longitudinal. Incluir el extremo inequívoco y excluir una casa después del fin de la línea. Si el trayecto pasa dos veces por el frente, conservar ambas posiciones para identificar el próximo paso según el avance del camión.
-
-La primera prueba usa 20 m de distancia lateral al frente, 15 m para asociar un pin del editor y un corredor máximo de 12 m y 30° entre las referencias que enmarcan el paso. Las direcciones compartidas y la línea guardada aportan estos datos. El cálculo funciona sin consultar GeoRef.
-
-Para la primera versión se propone cubrir ambas veredas de una calle con calzada simple. Las avenidas con calzadas separadas quedan en revisión hasta confirmar con Recolección qué frentes atiende cada mano. Ajustar las tolerancias con la muestra local antes de habilitar el aviso.
+1. Proyectar el pin dentro de un tramo de la línea a 20 m o menos y verificar que la calle coincida. Los renombres documentados que identifican la misma calle se resuelven con el catálogo local.
+2. Comprobar el lado atendido. El tramo puede cubrir ambas veredas, solo la izquierda o solo la derecha, según el sentido del recorrido. Para un solo lado, el pin debe quedar de ese lado de la línea.
+3. Conservar la distancia acumulada de cada paso confirmado. Si el camión pasa dos veces por el frente, se usan ambos pasos para calcular el siguiente aviso. Hoy ordena los resultados por distancia al tramo que cubre el frente.
 
 ### Resultado para Hoy
 
-El backend verifica que el domicilio seleccionado esté vinculado a la cuenta y devuelve todos los trayectos con cobertura confirmada. Por cada trayecto, el cálculo distingue tres resultados.
-
-| Resultado | Condición |
-| --- | --- |
-| Cubierto | El frente se proyecta dentro de una porción recorrida cuya calle coincide con la dirección. |
-| Sin cobertura | La línea queda fuera de alcance, termina antes del frente o las referencias ubican el tramo cercano en otra calle. |
-| Datos insuficientes | Las referencias del trayecto y del domicilio dejan más de una interpretación plausible. |
+El backend verifica que el domicilio seleccionado esté vinculado a la cuenta y devuelve todos los trayectos que cumplen la regla de cobertura.
 
 Hoy muestra en el mapa los camiones de trayectos confirmados para el domicilio seleccionado. Para el push, comparar el avance del camión por la línea con la posición del próximo paso por el frente. Enviar cuando avance hacia el frente y falten más de 0 y hasta 300 metros sobre el trayecto. Cada prestación que cubra el frente puede generar un push.
 
-El proveedor GPS identifica cada prestación mediante un `servicioId` estable. La primera muestra aceptada vincula la prestación al camión y guarda una copia del trayecto y sus referencias. El backend conserva la última posición utilizable y la expone durante 30 segundos. Cada navegador suscribe un domicilio propio y recibe un push por prestación. Dos camiones sobre el mismo frente generan dos avisos. El envío real permanece deshabilitado hasta validar las tolerancias locales y configurar VAPID.
+El proveedor GPS identifica cada prestación mediante un `servicioId` estable. La primera muestra aceptada vincula la prestación al camión y guarda una copia de la geometría y los tramos. El backend conserva la última posición utilizable y la expone durante 30 segundos. Cada navegador suscribe un domicilio propio y recibe un push por prestación. Dos camiones sobre el mismo frente generan dos avisos. El envío real permanece deshabilitado hasta validar las tolerancias locales y configurar VAPID.
 
 ### Muestra para validar la regla
 

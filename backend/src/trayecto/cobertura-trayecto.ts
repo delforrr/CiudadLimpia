@@ -1,177 +1,78 @@
-import {
-  distanciaM,
-  proyectarEnLinea,
-  segmentosLinea,
-  vectorM,
-  type Coordenadas,
-  type ProyeccionLinea,
-} from './proyeccion-linea';
-import type { LineStringDto } from './trayecto.dto';
+import { proyectarEnLinea, type Coordenadas } from './proyeccion-linea';
+import type { LineStringDto, TramoTrayectoDto } from './trayecto.dto';
 
-export type Frente = Coordenadas & { calleId: string; altura: number };
-export type ReferenciaTrayecto = Frente & { orden: number };
+type CalleVigente = { calleVigenteId: string | null };
+
+export type Frente = Coordenadas & { calleId: string; calle?: CalleVigente };
+type Tramo = TramoTrayectoDto & { calle?: CalleVigente };
 export type Recorrido = {
   geometria: LineStringDto;
-  referencias: readonly ReferenciaTrayecto[];
+  tramos: readonly Tramo[];
 };
-export type CoberturaFrente =
-  | { estado: 'CUBIERTO'; pasosEnTrayectoM: number[] }
-  | { estado: 'SIN_COBERTURA' | 'DATOS_INSUFICIENTES' };
 
-export function distanciaAlPinMasCercano(frente: Frente, recorrido: Recorrido) {
-  return recorrido.referencias.reduce(
-    (minima, referencia) => Math.min(minima, distanciaM(frente, referencia)),
-    Infinity,
-  );
-}
+const calleVigenteSelect = { select: { calleVigenteId: true } } as const;
+export const frenteCoberturaSelect = {
+  calleId: true,
+  lat: true,
+  long: true,
+  calle: calleVigenteSelect,
+} as const;
+export const tramosRecorridoArgs = {
+  orderBy: { desde: 'asc' },
+  select: {
+    calleId: true,
+    desde: true,
+    hasta: true,
+    lado: true,
+    calle: calleVigenteSelect,
+  },
+} as const;
+
+export type CoberturaFrente =
+  | { estado: 'CUBIERTO'; pasosEnTrayectoM: number[]; distanciaM: number }
+  | { estado: 'SIN_COBERTURA' };
 
 const margenM = 0.05;
-
-function dentroDelTramo(metros: number, inicio: number, fin: number) {
-  return metros >= inicio - margenM && metros <= fin + margenM;
-}
-
-function sigueEntreReferencias(
-  segmentos: ReturnType<typeof segmentosLinea>,
-  a: ReferenciaTrayecto,
-  b: ReferenciaTrayecto,
-  inicio: ProyeccionLinea,
-  fin: ProyeccionLinea,
-) {
-  const eje = vectorM(a, b);
-  const largo = Math.hypot(eje.x, eje.y);
-  if (largo < margenM || fin.metros - inicio.metros < margenM) return false;
-  const cercaDelEje = (punto: Coordenadas) => {
-    const v = vectorM(a, punto);
-    return Math.abs(v.x * eje.y - v.y * eje.x) / largo <= 12;
-  };
-  return (
-    cercaDelEje(inicio.posicion) &&
-    cercaDelEje(fin.posicion) &&
-    segmentos.every(
-      ({ metros, longitud, inicio: desde, fin: hasta, vector }) => {
-        if (metros + longitud <= inicio.metros || metros >= fin.metros)
-          return true;
-        const coseno =
-          (vector.x * eje.x + vector.y * eje.y) / (longitud * largo);
-        return (
-          coseno >= Math.cos(Math.PI / 6) &&
-          (metros < inicio.metros || cercaDelEje(desde)) &&
-          (metros + longitud > fin.metros || cercaDelEje(hasta))
-        );
-      },
-    )
-  );
-}
-
-function anclajesOrdenados(
-  referencias: ReferenciaTrayecto[],
-  linea: LineStringDto,
-) {
-  const candidatos = referencias.map((ref) =>
-    proyectarEnLinea(ref, linea).filter(
-      ({ distancia, metros }, indice, proyecciones) => {
-        const previo = proyecciones[indice - 1];
-        const siguiente = proyecciones[indice + 1];
-        return (
-          distancia <= 15 &&
-          (!previo ||
-            (previo.distancia >= distancia && previo.metros !== metros)) &&
-          (!siguiente || siguiente.distancia >= distancia)
-        );
-      },
-    ),
-  );
-  // Solo quedan proyecciones que pueden formar parte de una secuencia completa.
-  for (let i = 1; i < candidatos.length; i++) {
-    const previo = candidatos[i - 1][0]?.metros ?? Infinity;
-    candidatos[i] = candidatos[i].filter(
-      ({ metros }) => metros >= previo - margenM,
-    );
-  }
-  for (let i = candidatos.length - 2; i >= 0; i--) {
-    const siguiente = candidatos[i + 1].at(-1)?.metros ?? -Infinity;
-    candidatos[i] = candidatos[i].filter(
-      ({ metros }) => metros <= siguiente + margenM,
-    );
-  }
-  return candidatos;
-}
 
 export function calcularCobertura(
   frente: Frente,
   recorrido: Recorrido,
 ): CoberturaFrente {
-  const { geometria } = recorrido;
-  const pasos = proyectarEnLinea(frente, geometria).filter(
-    ({ dentro, distancia }) => dentro && distancia <= 20,
-  );
-  if (!pasos.length) return { estado: 'SIN_COBERTURA' };
-
-  const referencias = [...recorrido.referencias].sort(
-    (a, b) => a.orden - b.orden,
-  );
-  const anclajes = anclajesOrdenados(referencias, geometria);
-  const segmentos = segmentosLinea(geometria);
-  const validezPorTramo = referencias
-    .slice(1)
-    .map(() => new Map<string, boolean>());
-  const confirmados: number[] = [];
-  let insuficiente = false;
-
-  for (const paso of pasos) {
-    let confirma = false;
-    let otraCalle = false;
-    let ambiguo = false;
-    let limiteSinConfirmar = false;
-    evaluarTramos: for (let i = 1; i < referencias.length; i++) {
-      const a = referencias[i - 1];
-      const b = referencias[i];
-      for (const inicio of anclajes[i - 1]) {
-        for (const fin of anclajes[i]) {
-          if (
-            fin.metros - inicio.metros < margenM ||
-            !dentroDelTramo(paso.metros, inicio.metros, fin.metros)
-          )
-            continue;
-          const clave = `${inicio.metros}:${fin.metros}`;
-          const validez = validezPorTramo[i - 1];
-          if (!validez.has(clave)) {
-            validez.set(
-              clave,
-              a.calleId === b.calleId &&
-                sigueEntreReferencias(segmentos, a, b, inicio, fin),
-            );
-          }
-          if (!validez.get(clave)) {
-            if (
-              paso.metros > inicio.metros + margenM &&
-              paso.metros < fin.metros - margenM
-            ) {
-              ambiguo = true;
-              break evaluarTramos;
-            } else {
-              limiteSinConfirmar = true;
-            }
-          } else if (a.calleId === frente.calleId) {
-            confirma = true;
-          } else {
-            otraCalle = true;
-          }
-          if (confirma && otraCalle) break evaluarTramos;
-        }
-      }
-    }
-    if (confirma && !otraCalle && !ambiguo) {
-      if (paso.metros - (confirmados.at(-1) ?? -Infinity) >= margenM) {
-        confirmados.push(paso.metros);
-      }
-    } else if (ambiguo || limiteSinConfirmar || !otraCalle || confirma) {
-      insuficiente = true;
+  // Las prestaciones guardadas antes de la asignación por tramo podían omitir tramos.
+  const tramosPorSegmento = new Map<number, Tramo>();
+  for (const tramo of recorrido.tramos ?? []) {
+    for (let indice = tramo.desde; indice < tramo.hasta; indice++) {
+      tramosPorSegmento.set(indice, tramo);
     }
   }
-
-  if (confirmados.length)
-    return { estado: 'CUBIERTO', pasosEnTrayectoM: confirmados };
-  return { estado: insuficiente ? 'DATOS_INSUFICIENTES' : 'SIN_COBERTURA' };
+  const calleFrente = frente.calle?.calleVigenteId ?? frente.calleId;
+  const pasosEnTrayectoM: number[] = [];
+  let distanciaM = Infinity;
+  for (const {
+    indice,
+    dentro,
+    distancia,
+    metros,
+    lateralM,
+  } of proyectarEnLinea(frente, recorrido.geometria)) {
+    const tramo = tramosPorSegmento.get(indice);
+    if (
+      !dentro ||
+      distancia > 20 ||
+      !tramo ||
+      (tramo.calle?.calleVigenteId ?? tramo.calleId) !== calleFrente
+    )
+      continue;
+    if (
+      (tramo.lado === 'IZQUIERDA' && lateralM <= margenM) ||
+      (tramo.lado === 'DERECHA' && lateralM >= -margenM)
+    )
+      continue;
+    distanciaM = Math.min(distanciaM, distancia);
+    if (metros - (pasosEnTrayectoM.at(-1) ?? -Infinity) >= margenM)
+      pasosEnTrayectoM.push(metros);
+  }
+  return pasosEnTrayectoM.length
+    ? { estado: 'CUBIERTO', pasosEnTrayectoM, distanciaM }
+    : { estado: 'SIN_COBERTURA' };
 }

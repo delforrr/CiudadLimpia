@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { leerProgreso } from '../telemetria/progreso-trayecto';
-import { referenciasRecorridoArgs } from '../punto-trayecto/puntos-trayecto.select';
 import { esLineaValida } from '../trayecto/line-string';
 import {
   calcularCobertura,
-  distanciaAlPinMasCercano,
+  frenteCoberturaSelect,
+  tramosRecorridoArgs,
   type Recorrido,
 } from '../trayecto/cobertura-trayecto';
 import type {
@@ -23,7 +23,7 @@ export class HoyService {
       where: { direccionId, cliente: { userId: usuarioId } },
       select: {
         direccion: {
-          select: { calleId: true, altura: true, lat: true, long: true },
+          select: frenteCoberturaSelect,
         },
       },
     });
@@ -44,27 +44,20 @@ export class HoyService {
             id: true,
             nombre: true,
             geometria: true,
-            puntos: referenciasRecorridoArgs,
+            tramos: tramosRecorridoArgs,
           },
         }),
       { isolationLevel: 'RepeatableRead' },
     );
     const confirmados = trayectos.flatMap(
-      ({ id, nombre, geometria, puntos }) => {
+      ({ id, nombre, geometria, tramos }) => {
         if (!esLineaValida(geometria)) return [];
-        const recorrido = {
-          geometria,
-          referencias: puntos.map(({ orden, direccion }) => ({
-            orden,
-            ...direccion,
-          })),
-        };
-        if (calcularCobertura(frente, recorrido).estado !== 'CUBIERTO')
-          return [];
+        const cobertura = calcularCobertura(frente, { geometria, tramos });
+        if (cobertura.estado !== 'CUBIERTO') return [];
         return [
           {
             trayecto: { id, recorridoId: id, nombre, geometria },
-            distancia: distanciaAlPinMasCercano(frente, recorrido),
+            distancia: cobertura.distanciaM,
           },
         ];
       },
@@ -89,14 +82,19 @@ export class HoyService {
       where: { visibleHasta: { gt: new Date() }, camion: { estado: 'ACTIVO' } },
       include: { camion: { select: { marca: true, modelo: true } } },
     });
+    const coberturas = new Map<string, ReturnType<typeof calcularCobertura>>();
     const ordenados = servicios
-      .map((servicio) => {
+      .flatMap((servicio) => {
         const recorrido = servicio.recorrido as unknown as Recorrido;
-        return {
-          servicio,
-          recorrido,
-          distancia: distanciaAlPinMasCercano(frente, recorrido),
-        };
+        const progreso = leerProgreso(servicio.progreso);
+        if (!progreso) return [];
+        const cobertura =
+          coberturas.get(servicio.recorridoId) ??
+          calcularCobertura(frente, recorrido);
+        coberturas.set(servicio.recorridoId, cobertura);
+        return cobertura.estado === 'CUBIERTO'
+          ? [{ servicio, recorrido, progreso, distancia: cobertura.distanciaM }]
+          : [];
       })
       .sort(
         (a, b) =>
@@ -110,14 +108,10 @@ export class HoyService {
       trayectos: [],
       camiones: [],
     };
-    for (const { servicio, recorrido } of ordenados) {
+    for (const { servicio, recorrido, progreso } of ordenados) {
       const { id, camionId, trayectoId, recorridoId, nombre, camion } =
         servicio;
-      const progreso = leerProgreso(servicio.progreso);
-      if (!progreso) continue;
       if (!trayectos.has(recorridoId)) {
-        if (calcularCobertura(frente, recorrido).estado !== 'CUBIERTO')
-          continue;
         trayectos.set(recorridoId, {
           id: trayectoId,
           recorridoId,

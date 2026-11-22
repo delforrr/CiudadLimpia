@@ -139,6 +139,7 @@ export async function prepararRecoleccion(push = false) {
         localidadId,
         geometria: { ...geometria(vertices) },
         puntos: { create: referencia },
+        tramos: { create: { desde: 0, hasta: vertices.length - 1, calleId } },
       },
     });
   }

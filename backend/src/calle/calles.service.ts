@@ -11,7 +11,19 @@ export class CallesService {
   findAll(buscar?: string) {
     const texto = typeof buscar === 'string' ? buscar.trim() : '';
     return this.prisma.calle.findMany({
-      where: texto ? { calle: { contains: texto, mode: 'insensitive' } } : {},
+      where: {
+        calleVigenteId: null,
+        ...(texto && {
+          OR: [
+            { calle: { contains: texto, mode: 'insensitive' } },
+            {
+              nombresAnteriores: {
+                some: { calle: { contains: texto, mode: 'insensitive' } },
+              },
+            },
+          ],
+        }),
+      },
       orderBy: [{ calle: 'asc' }, { id: 'asc' }],
       take: 20,
       select,

@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { ProgresoTrayecto } from '../telemetria/progreso-trayecto';
 import {
   calcularCobertura,
+  frenteCoberturaSelect,
   type Recorrido,
 } from '../trayecto/cobertura-trayecto';
 import type {
@@ -164,7 +165,7 @@ export class PushService {
         domicilio: {
           select: {
             direccion: {
-              select: { calleId: true, altura: true, lat: true, long: true },
+              select: frenteCoberturaSelect,
             },
           },
         },

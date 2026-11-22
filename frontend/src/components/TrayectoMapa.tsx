@@ -8,6 +8,7 @@ import './DomicilioMapa.css';
 import camionRecolector from '../assets/icono-camion-hoy.png';
 
 type CamionMapa = { servicioId: string; nombre: string; posicion: Coordenadas };
+type TramoMapa = { desde: number; hasta: number; confirmado: boolean };
 
 type Props = {
   puntos: Coordenadas[];
@@ -20,6 +21,9 @@ type Props = {
   onMarcar?: (posicion: Coordenadas) => void;
   onDescartarPin?: () => void;
   onEditarPunto?: (indice: number) => void;
+  tramos?: readonly TramoMapa[];
+  tramoActivo?: number;
+  onSeleccionarTramo?: (desde: number, posicion: Coordenadas) => void;
   zoomInicial?: number;
   zoomFijo?: boolean;
   camiones?: readonly CamionMapa[];
@@ -38,7 +42,7 @@ const sinCamiones: readonly CamionMapa[] = [];
 const posiciones = (linea: LineaTrayecto): [number, number][] =>
   linea.coordinates.map(([long, lat]) => [lat, long]);
 
-export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto, zoomInicial = 14, zoomFijo = false, camiones = sinCamiones, domicilio, mostrarBotonCentrarDomicilio, onMoverDomicilio, onDescartarDomicilio }: Props) {
+export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto, tramos, tramoActivo, onSeleccionarTramo, zoomInicial = 14, zoomFijo = false, camiones = sinCamiones, domicilio, mostrarBotonCentrarDomicilio, onMoverDomicilio, onDescartarDomicilio }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const marcadoresCamiones = useRef(new Map<string, Marker>());
   const encuadreEnVivo = useRef(false);
@@ -60,6 +64,7 @@ export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, 
   const marcar = useEffectEvent((lat: number, long: number) => onMarcar?.({ lat, long }));
   const descartarPin = useEffectEvent(() => onDescartarPin?.());
   const editarPunto = useEffectEvent((indice: number) => onEditarPunto?.(indice));
+  const seleccionarTramo = useEffectEvent((desde: number, posicion: Coordenadas) => onSeleccionarTramo?.(desde, posicion));
   const posicionPin = useEffectEvent(() => pin);
   const encuadrar = useEffectEvent((mapa: LeafletMap, L: Mapa['L']) => {
     const limites = L.latLngBounds(limitesTrenqueLauquen);
@@ -134,6 +139,16 @@ export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, 
     for (const recorrido of lineas ?? (linea ? [linea] : [])) {
       if (recorrido.coordinates.length >= 2) L.polyline(posiciones(recorrido), { color: '#166044', weight: 5, interactive: false }).addTo(capa);
     }
+    if (linea && tramos) {
+      for (const tramo of [...tramos].sort((a, b) => Number(a.desde === tramoActivo) - Number(b.desde === tramoActivo))) {
+        const activo = tramo.desde === tramoActivo;
+        const coordenadas = linea.coordinates.slice(tramo.desde, tramo.hasta + 1).map<LatLngTuple>(([long, lat]) => [lat, long]);
+        L.polyline(coordenadas, {
+          color: activo ? '#185da8' : tramo.confirmado ? '#166044' : '#65727c',
+          weight: activo ? 9 : 7, bubblingMouseEvents: false,
+        }).on('click', ({ latlng }) => seleccionarTramo(tramo.desde, { lat: latlng.lat, long: latlng.lng })).addTo(capa);
+      }
+    }
     if (domicilio) {
       const marcadorDomicilio = L.marker([domicilio.lat, domicilio.long], {
         title: 'Tu domicilio',
@@ -177,7 +192,7 @@ export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, 
         marcar(lat, lng);
       }).on('click', descartarPin).addTo(capa);
     }
-  }, [instancia, puntos, linea, lineas, sugerida, pin, indicePin, interactivo, descartable, puedeEditarPunto, domicilio, domicilioMovible, domicilioDescartable]);
+  }, [instancia, puntos, linea, lineas, sugerida, pin, indicePin, interactivo, descartable, puedeEditarPunto, tramos, tramoActivo, domicilio, domicilioMovible, domicilioDescartable]);
 
   useEffect(() => {
     if (!instancia) return;

@@ -12,10 +12,20 @@ import {
 } from '../punto-trayecto/puntos-trayecto.select';
 import { PuntosTrayectoService } from '../punto-trayecto/puntos-trayecto.service';
 import { esLineaValida } from './line-string';
-import type { CreateTrayectoDto } from './trayecto.dto';
+import type { CreateTrayectoDto, TramoTrayectoDto } from './trayecto.dto';
 
 const trayectoInclude = {
   puntos: puntosTrayectoArgs,
+  tramos: {
+    orderBy: { desde: 'asc' },
+    select: {
+      desde: true,
+      hasta: true,
+      lado: true,
+      calleId: true,
+      calle: { select: { id: true, calle: true } },
+    },
+  },
 } as const satisfies Prisma.TrayectoInclude;
 
 function toTrayectoResponse(
@@ -67,6 +77,7 @@ export class TrayectosService {
 
   async update(id: string, dto: CreateTrayectoDto) {
     return this.guardar(dto, async (tx, data) => {
+      await tx.tramoTrayecto.deleteMany({ where: { trayectoId: id } });
       await this.puntosTrayecto.eliminarDeTrayecto(tx, id);
       return toTrayectoResponse(
         await tx.trayecto.update({
@@ -83,7 +94,7 @@ export class TrayectosService {
   }
 
   private async guardar<T>(
-    { geometria, localidadId, nombre, puntos }: CreateTrayectoDto,
+    { geometria, localidadId, nombre, puntos, tramos }: CreateTrayectoDto,
     escribir: (
       tx: Prisma.TransactionClient,
       data: Prisma.TrayectoUncheckedCreateInput,
@@ -96,6 +107,32 @@ export class TrayectosService {
     }
 
     const ordenados = this.puntosTrayecto.ordenar(puntos);
+    const tramosOrdenados = [...tramos].sort((a, b) => a.desde - b.desde);
+    const { coordinates } = geometria;
+    const hayLongitud = (desde: number, hasta: number) =>
+      coordinates
+        .slice(desde + 1, hasta + 1)
+        .some(
+          ([long, lat]) =>
+            long !== coordinates[desde][0] || lat !== coordinates[desde][1],
+        );
+    let fin = 0;
+    const errorCobertura =
+      'Asigná una calle a toda la línea, sin huecos ni tramos superpuestos.';
+    for (const { desde, hasta } of tramosOrdenados) {
+      if (
+        desde < fin ||
+        hasta <= desde ||
+        hasta >= coordinates.length ||
+        hayLongitud(fin, desde) ||
+        !hayLongitud(desde, hasta)
+      ) {
+        throw new BadRequestException(errorCobertura);
+      }
+      fin = hasta;
+    }
+    if (hayLongitud(fin, coordinates.length - 1))
+      throw new BadRequestException(errorCobertura);
 
     return transaccionConDirecciones(
       this.prisma,
@@ -111,6 +148,12 @@ export class TrayectosService {
           tx,
           ordenados,
         );
+        const ids = [...new Set(tramosOrdenados.map(({ calleId }) => calleId))];
+        const cantidad = await tx.calle.count({ where: { id: { in: ids } } });
+        if (cantidad !== ids.length)
+          throw new BadRequestException(
+            'Una calle asignada al tramo no existe.',
+          );
 
         return escribir(tx, {
           nombre,
@@ -120,6 +163,16 @@ export class TrayectosService {
             coordinates: geometria.coordinates,
           },
           puntos: { create: referencias },
+          tramos: {
+            create: tramosOrdenados.map(
+              ({ calleId, desde, hasta, lado }: TramoTrayectoDto) => ({
+                calleId,
+                desde,
+                hasta,
+                lado,
+              }),
+            ),
+          },
         });
       },
       {

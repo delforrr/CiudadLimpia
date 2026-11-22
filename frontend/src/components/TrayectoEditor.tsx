@@ -17,6 +17,7 @@ import { useTrayectoEditor } from '../hooks/useTrayectoEditor';
 import type { Referencia, Trayecto } from '../services/trayectosService';
 import type { BorradorTrayecto } from '../utils/trayectoEditor';
 import { TrayectoMapa } from './TrayectoMapa';
+import { TramosTrayecto } from './TramosTrayecto';
 import type { Zona } from '../services/zonasService';
 
 const referenciaTexto = ({ calle, altura }: Referencia) => `${calle} ${altura ?? '· sin altura'}`;
@@ -35,11 +36,18 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
   const opciones = useRef<HTMLElement>(null);
   const [panel, setPanel] = useState<'mapa' | 'opciones'>('mapa');
   const [editandoRecorrido, setEditandoRecorrido] = useState(!inicial.id);
+  const [editandoCobertura, setEditandoCobertura] = useState(false);
+  const [tramoDesde, setTramoDesde] = useState<number>();
+  const [dividiendo, setDividiendo] = useState(false);
+  const [errorDivision, setErrorDivision] = useState(false);
   const { borrador, pin, inversa, busqueda, sugerencia, guardando } = editor;
-  const mostrarDatos = !borrador.id || !editandoRecorrido;
+  const mostrarDatos = !editandoCobertura && (!borrador.id || !editandoRecorrido);
   const nombreRecorrido = borrador.nombre.trim() || 'Trayecto sin nombre';
   const revisionPendiente = Boolean(pin || sugerencia.cargando || sugerencia.resultado);
   const indicePin = pin?.origen ? borrador.puntos.indexOf(pin.origen) : -1;
+  const tramoActivo = editor.tramos.find(({ desde }) => desde === tramoDesde) ?? editor.tramos[0];
+  const quedanTramosPendientes = editor.tramos.some((tramo) => !tramo.calle);
+  const puedeEditarPuntos = editandoRecorrido && !editandoCobertura;
 
   const mostrarInicioOpciones = () => opciones.current?.scrollTo({ top: 0 });
 
@@ -50,20 +58,40 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
         <ToggleButton value="mapa">Mapa</ToggleButton>
         <ToggleButton value="opciones">Opciones</ToggleButton>
       </ToggleButtonGroup>
-      {borrador.id && editandoRecorrido && panel === 'mapa' && (
+      {borrador.id && (editandoRecorrido || editandoCobertura) && panel === 'mapa' && (
         <h3 className="trayectos-nombre-movil">{nombreRecorrido}</h3>
       )}
       <div className="trayectos-espacio-mapa" data-panel={panel}>
         <div className="trayectos-mapa-editor">
           <TrayectoMapa puntos={borrador.puntos} linea={editor.linea} sugerida={sugerencia.resultado?.geometria}
             centrarEn={editor.centrarEn}
+            tramos={editandoCobertura ? editor.tramos.map((tramo) => ({ ...tramo, confirmado: Boolean(tramo.calle) })) : undefined}
+            tramoActivo={editandoCobertura ? tramoActivo?.desde : undefined}
+            onSeleccionarTramo={editandoCobertura && !guardando ? (desde, posicion) => {
+              const tramo = editor.tramos.find((candidato) => candidato.desde === desde);
+              if (!tramo) return;
+              let seleccion = desde;
+              if (dividiendo) {
+                if (desde !== tramoActivo?.desde) return;
+                const corte = editor.cortarTramo(tramo, posicion);
+                if (corte === undefined) {
+                  setErrorDivision(true);
+                  return;
+                }
+                seleccion = corte;
+                setDividiendo(false);
+                setErrorDivision(false);
+              }
+              setTramoDesde(seleccion);
+              setPanel('opciones');
+            } : undefined}
             indicePin={indicePin >= 0 ? indicePin : undefined}
             onDescartarPin={pin ? editor.descartarPin : undefined}
-            onEditarPunto={editandoRecorrido && !guardando && !pin ? (indice) => {
+            onEditarPunto={puedeEditarPuntos && !guardando && !pin ? (indice) => {
               mostrarInicioOpciones();
               void editor.editarPunto(borrador.puntos[indice]);
             } : undefined}
-            pin={pin} onMarcar={guardando || !editandoRecorrido ? undefined : (posicion) => {
+            pin={pin} onMarcar={guardando || !puedeEditarPuntos ? undefined : (posicion) => {
               if (!pin) mostrarInicioOpciones();
               void editor.marcarEnMapa(posicion);
             }} />
@@ -71,11 +99,14 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
             <p className={sugerencia.resultado && !pin ? 'trayectos-leyenda' : 'trayectos-ayuda'}>
               {pin ? 'Arrastrá el pin azul o tocalo de nuevo para deshacer.'
                 : sugerencia.resultado ? 'Azul punteado · recorrido sugerido'
-                  : editandoRecorrido ? 'Tocá un punto para moverlo o el mapa para agregar uno.' : 'Usá «Editar recorrido» para cambiar los puntos.'}
+                  : editandoCobertura ? dividiendo
+                    ? errorDivision ? 'Elegí un lugar dentro del tramo azul, entre sus extremos.' : 'Tocá el tramo azul donde cambia la calle.'
+                    : 'Tocá un tramo para elegir su calle. El gris indica tramos pendientes.'
+                    : editandoRecorrido ? 'Tocá un punto para moverlo o el mapa para agregar uno.' : 'Usá «Editar recorrido» para cambiar los puntos.'}
             </p>
-            {(pin || sugerencia.resultado) && (
+            {(pin || sugerencia.resultado || editandoCobertura) && (
               <Button className="trayectos-revisar-movil" color="success" size="small"
-                onClick={() => setPanel('opciones')}>{pin ? 'Revisar punto' : 'Revisar recorrido'}</Button>
+                onClick={() => setPanel('opciones')}>{pin ? 'Revisar punto' : editandoCobertura ? 'Ver tramos' : 'Revisar recorrido'}</Button>
             )}
           </div>
         </div>
@@ -85,7 +116,7 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
               {borrador.id && editandoRecorrido ? (
                 <IconButton size="small" color="success" aria-label="Volver a los datos del trayecto"
                   title="Volver a los datos del trayecto" disabled={guardando || revisionPendiente}
-                  onClick={() => setEditandoRecorrido(false)}>
+                  onClick={() => { setEditandoRecorrido(false); setEditandoCobertura(false); setDividiendo(false); }}>
                   <ArrowBackIcon fontSize="small" />
                 </IconButton>
               ) : <span className="trayectos-icono"><RouteOutlinedIcon /></span>}
@@ -97,12 +128,12 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
             <div className="trayectos-acciones">
               <Button color="success" disabled={guardando} onClick={onCancelar}>Cancelar</Button>
               <Button variant="contained" color="success"
-                disabled={guardando || !borrador.localidadId || revisionPendiente}
+                disabled={guardando || !borrador.localidadId || revisionPendiente || dividiendo || !tramoActivo || quedanTramosPendientes}
                 onClick={() => void editor.guardar()}>{guardando ? 'Guardando…' : 'Guardar trayecto'}</Button>
             </div>
             {editor.error && <Alert className="trayectos-error-guardado" severity="error">{editor.error}</Alert>}
           </div>
-          {borrador.id && !editandoRecorrido && (
+          {borrador.id && !editandoRecorrido && !editandoCobertura && (
             <Button variant="outlined" color="success" startIcon={<RouteOutlinedIcon />}
               disabled={guardando || revisionPendiente} onClick={() => {
                 mostrarInicioOpciones();
@@ -110,6 +141,33 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
               }}>
               Editar recorrido
             </Button>
+          )}
+          {tramoActivo && quedanTramosPendientes && (
+            <Alert severity={editor.revisarCobertura ? 'warning' : 'info'}>
+              {editor.revisarCobertura ? 'Cambió el trazado. ' : ''}Asigná una calle a todos los tramos para guardar.
+            </Alert>
+          )}
+          {tramoActivo && !revisionPendiente && (
+            <Button color="success" variant="outlined" disabled={guardando} onClick={() => {
+              setEditandoCobertura(!editandoCobertura);
+              setDividiendo(false);
+              setErrorDivision(false);
+              setPanel('opciones');
+            }}>
+              {editandoCobertura ? 'Cerrar cobertura' : 'Editar cobertura'}
+            </Button>
+          )}
+          {editandoCobertura && tramoActivo && (
+            <TramosTrayecto tramos={editor.tramos} activo={tramoActivo} linea={editor.linea} puntos={borrador.puntos}
+              guardando={guardando} dividiendo={dividiendo}
+              seleccionar={(desde) => { setTramoDesde(desde); setDividiendo(false); setErrorDivision(false); }}
+              asignar={(calle) => editor.asignarCalle(tramoActivo, calle)}
+              cambiarLado={(lado) => editor.cambiarLado(tramoActivo.desde, lado)}
+              alternarDivision={() => {
+                setErrorDivision(false);
+                setDividiendo(!dividiendo);
+                if (!dividiendo) setPanel('mapa');
+              }} />
           )}
           {pin && (
             <section className="trayectos-revision" aria-label="Confirmar pin">
@@ -161,7 +219,7 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
                 onClick={() => onAgregarZona((zona) => editor.actualizarZona(zona.id))}>Agregar zona</Button>}
           </div>}
           {!borrador.localidadId && <Alert severity="warning">Trenque Lauquen no está disponible en el catálogo de localidades.</Alert>}
-          {editandoRecorrido && (
+          {puedeEditarPuntos && (
             <>
               <section className="trayectos-agregar" aria-label="Buscar por dirección">
                 <h4>Buscar por dirección</h4>

@@ -2,8 +2,10 @@ import type { LineStringDto } from './trayecto.dto';
 
 export type Coordenadas = { lat: number; long: number };
 export type ProyeccionLinea = {
+  indice: number;
   metros: number;
   distancia: number;
+  lateralM: number;
   dentro: boolean;
   posicion: Coordenadas;
 };
@@ -26,6 +28,7 @@ export function distanciaM(a: Coordenadas, b: Coordenadas): number {
 export function segmentosLinea(linea: LineStringDto) {
   let metros = 0;
   const segmentos: {
+    indice: number;
     inicio: Coordenadas;
     fin: Coordenadas;
     vector: ReturnType<typeof vectorM>;
@@ -40,7 +43,7 @@ export function segmentosLinea(linea: LineStringDto) {
     const vector = vectorM(inicio, fin);
     const longitud = Math.hypot(vector.x, vector.y);
     if (longitud === 0) continue;
-    segmentos.push({ inicio, fin, vector, longitud, metros });
+    segmentos.push({ indice: i - 1, inicio, fin, vector, longitud, metros });
     metros += longitud;
   }
   return segmentos;
@@ -51,7 +54,7 @@ export function proyectarEnLinea(
   linea: LineStringDto,
 ): ProyeccionLinea[] {
   return segmentosLinea(linea).map(
-    ({ inicio, fin, vector, longitud, metros }) => {
+    ({ indice, inicio, fin, vector, longitud, metros }) => {
       const { x, y } = vectorM(inicio, punto);
       const fraccion = (x * vector.x + y * vector.y) / longitud ** 2;
       const recorte = Math.max(0, Math.min(1, fraccion));
@@ -60,8 +63,10 @@ export function proyectarEnLinea(
         long: inicio.long + recorte * (fin.long - inicio.long),
       };
       return {
+        indice,
         metros: metros + recorte * longitud,
         distancia: distanciaM(punto, posicion),
+        lateralM: (vector.x * y - vector.y * x) / longitud,
         dentro: fraccion >= -1e-6 && fraccion <= 1 + 1e-6,
         posicion,
       };

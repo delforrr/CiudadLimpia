@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { trayectosService, type Trayecto } from '../src/services/trayectosService.ts';
 import { abrirBorrador, completarAltura, prepararTrayecto, tienePosicionesDistintas } from '../src/utils/trayectoEditor.ts';
+import { dividirTramo, tramosDeLinea } from '../src/utils/tramosTrayecto.ts';
 
 const origen = { lat: -35.97, long: -62.73 };
 const destino = { lat: -35.98, long: -62.74 };
@@ -16,6 +17,21 @@ const guardado: Trayecto = {
 };
 
 afterEach(() => mock.restoreAll());
+
+test('edita y envía la calle de un tramo y admite una división sobre la línea sugerida', () => {
+  const calle = { id: 'calle-1', calle: 'Villegas' };
+  const borrador = abrirBorrador({ ...guardado, tramos: [{ desde: 0, hasta: 1, calleId: calle.id, calle }] });
+  const [primero, segundo] = tramosDeLinea(guardado.geometria, borrador);
+  assert.deepEqual(primero, { desde: 0, hasta: 1, calle });
+  assert.deepEqual(segundo, { desde: 1, hasta: 2, calle: undefined });
+  assert.deepEqual(prepararTrayecto(borrador).tramos, [{ desde: 0, hasta: 1, calleId: calle.id }]);
+  const corte = dividirTramo(guardado.geometria, segundo, { lat: -35.979, long: -62.735 });
+  assert.equal(corte?.indice, 2);
+  assert.ok(corte.posicion);
+  assert.ok(Math.abs(corte.posicion[0] - (-62.735)) < 1e-9);
+  assert.equal(corte.posicion[1], -35.98);
+  assert.equal(dividirTramo(guardado.geometria, segundo, destino), undefined);
+});
 
 test('permite completar manualmente una calle sin altura y conserva el pin', () => {
   const referencia = { calle: 'Dorrego', altura: null };

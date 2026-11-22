@@ -90,6 +90,7 @@ describePostgres('Mapa para Hoy (HTTP y PostgreSQL)', () => {
     await f.prisma.trayecto.update({
       where: { id: f.trayecto.id },
       data: {
+        tramos: { updateMany: { where: { desde: 0 }, data: { hasta: 2 } } },
         geometria: {
           ...geometria([
             [0, 0],

@@ -1,15 +1,22 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMinSize,
   Equals,
   IsArray,
+  IsEnum,
+  IsInt,
   IsObject,
   IsString,
+  IsUUID,
   MaxLength,
+  Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { CalleResponseDto } from '../calle/calle.dto';
+import { LadoRecoleccion } from '../generated/prisma/enums';
 import {
   CreatePuntoTrayectoDto,
   PuntoTrayectoResponseDto,
@@ -66,6 +73,35 @@ class TrayectoDto {
   geometria!: LineStringDto;
 }
 
+export class TramoTrayectoDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  calleId!: string;
+
+  @ApiProperty({ minimum: 0, description: 'Índice inicial de la LineString.' })
+  @IsInt()
+  @Min(0)
+  desde!: number;
+
+  @ApiProperty({ minimum: 1, description: 'Índice final de la LineString.' })
+  @IsInt()
+  @Min(1)
+  hasta!: number;
+
+  @ApiPropertyOptional({
+    enum: LadoRecoleccion,
+    default: LadoRecoleccion.AMBOS,
+  })
+  @ValidateIf((_, valor: unknown) => valor !== undefined)
+  @IsEnum(LadoRecoleccion)
+  lado?: LadoRecoleccion;
+}
+
+class TramoTrayectoResponseDto extends TramoTrayectoDto {
+  @ApiProperty({ type: CalleResponseDto })
+  calle!: CalleResponseDto;
+}
+
 export class CreateTrayectoDto extends TrayectoDto {
   @ApiProperty({ type: [CreatePuntoTrayectoDto], minItems: 2 })
   @IsArray()
@@ -74,6 +110,19 @@ export class CreateTrayectoDto extends TrayectoDto {
   @ValidateNested({ each: true })
   @Type(() => CreatePuntoTrayectoDto)
   puntos!: CreatePuntoTrayectoDto[];
+
+  @ApiProperty({
+    type: [TramoTrayectoDto],
+    minItems: 1,
+    description:
+      'Tramos confirmados que cubren toda la línea en el sentido del recorrido.',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsObject({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => TramoTrayectoDto)
+  tramos!: TramoTrayectoDto[];
 }
 
 export class TrayectoResponseDto extends TrayectoDto {
@@ -82,4 +131,7 @@ export class TrayectoResponseDto extends TrayectoDto {
 
   @ApiProperty({ type: [PuntoTrayectoResponseDto] })
   puntos!: PuntoTrayectoResponseDto[];
+
+  @ApiProperty({ type: [TramoTrayectoResponseDto] })
+  tramos!: TramoTrayectoResponseDto[];
 }

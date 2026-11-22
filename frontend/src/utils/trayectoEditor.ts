@@ -1,4 +1,4 @@
-import type { Coordenadas, LineaTrayecto, Referencia, Trayecto, TrayectoEnvio } from '../services/trayectosService.ts';
+import type { Coordenadas, LineaTrayecto, Referencia, TramoConfirmado, Trayecto, TrayectoEnvio } from '../services/trayectosService.ts';
 
 export type PuntoEditor = Coordenadas & {
   clave: string;
@@ -13,6 +13,8 @@ export type BorradorTrayecto = {
   zonaId?: string;
   puntos: PuntoEditor[];
   lineaElegida: LineaTrayecto | null;
+  tramos?: TramoConfirmado[];
+  cortes?: number[];
 };
 
 export function completarAltura(referencia: Referencia, alturaManual: string): Referencia {
@@ -26,9 +28,10 @@ export function completarAltura(referencia: Referencia, alturaManual: string): R
 }
 
 export function abrirBorrador(trayecto: Trayecto): BorradorTrayecto {
-  const { id, nombre, localidadId, puntos, geometria } = trayecto;
+  const { id, nombre, localidadId, puntos, geometria, tramos } = trayecto;
   return {
     id, nombre, localidadId, lineaElegida: geometria,
+    tramos: tramos ?? undefined,
     puntos: [...puntos].sort((a, b) => a.orden - b.orden)
       .map(({ lat, long, orden, direccionId, direccion }) => ({
         clave: String(orden), lat, long, direccionId,
@@ -51,6 +54,9 @@ export function prepararTrayecto(borrador: BorradorTrayecto): TrayectoEnvio {
     nombre: borrador.nombre.trim(),
     localidadId: borrador.localidadId,
     geometria: borrador.lineaElegida ?? lineaManual(borrador.puntos),
+    tramos: (borrador.tramos ?? []).map(({ desde, hasta, calleId, lado }) => ({
+      desde, hasta, calleId, ...(lado && { lado }),
+    })),
     puntos: borrador.puntos.map(({ lat, long, direccionId, referencia }, orden) => ({
       lat, long, orden,
       ...(direccionId ? { direccionId } : referencia ? { direccion: referencia } : {}),

@@ -25,6 +25,8 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
   const nombre = `Centro ${clave}`;
   const nombreEditado = `Centro editado ${clave}`;
   const calle = `Roca ${clave}`;
+  const calleCobertura = `Monferrand ${clave}`;
+  const calleIdPrueba = randomUUID();
   const calleRollback = `Calle a revertir ${clave}`;
   const localidadId = '06826050';
   const geometria = {
@@ -50,7 +52,13 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
     long: longVecino,
     direccion: referenciaVecina,
   };
-  const entrada = { nombre, localidadId, geometria, puntos: [origen, destino] };
+  const entrada = {
+    nombre,
+    localidadId,
+    geometria,
+    puntos: [origen, destino],
+    tramos: [{ desde: 0, hasta: 2, calleId: calleIdPrueba }],
+  };
   const emails = ['admin', 'vecino', 'vecina'].map(
     (rol) => `${rol}-${clave}@example.test`,
   );
@@ -75,6 +83,9 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
     configureApp(app);
     await app.init();
     prisma = app.get(PrismaService);
+    await prisma.calle.create({
+      data: { id: calleIdPrueba, calle, clave: calle.toLowerCase() },
+    });
     const usuario = await prisma.user.create({
       data: { email: emails[0], role: 'ADMIN', passwordHash: 'sin-uso' },
     });
@@ -95,14 +106,70 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
         where: { nombre: { in: [nombre, nombreEditado] } },
       });
       await prisma.direccion.deleteMany({
-        where: { calle: { calle: { in: [calle, calleRollback] } } },
+        where: {
+          calle: { calle: { in: [calle, calleRollback, calleCobertura] } },
+        },
       });
       await prisma.calle.deleteMany({
-        where: { calle: { in: [calle, calleRollback] } },
+        where: { calle: { in: [calle, calleRollback, calleCobertura] } },
       });
     } finally {
       await app.close();
     }
+  });
+
+  it('guarda y reemplaza tramos confirmados junto con la línea', async () => {
+    const { id: calleId } = await prisma.calle.create({
+      data: { calle: calleCobertura, clave: calleCobertura.toLowerCase() },
+    });
+    const datos = {
+      ...entrada,
+      puntos: [origen, destino].map((punto) => ({
+        ...punto,
+        direccion: { ...punto.direccion, calle: calleCobertura },
+      })),
+    };
+    const tramo = { desde: 0, hasta: 2, calleId };
+    const { id } = (
+      await guardar()
+        .send({ ...datos, tramos: [tramo] })
+        .expect(201)
+    ).body as TrayectoResponseDto;
+    await leer(id).expect(({ body }: { body: TrayectoResponseDto }) => {
+      expect(body.tramos).toEqual([
+        {
+          ...tramo,
+          lado: 'AMBOS',
+          calle: { id: calleId, calle: calleCobertura },
+        },
+      ]);
+    });
+    const asignados = [
+      { ...tramo, hasta: 1, lado: 'IZQUIERDA' },
+      { desde: 1, hasta: 2, calleId: calleIdPrueba, lado: 'DERECHA' },
+    ];
+    await editar(id)
+      .send({ ...datos, tramos: asignados })
+      .expect(200);
+    await leer(id).expect(({ body }: { body: TrayectoResponseDto }) => {
+      expect(body.tramos).toMatchObject(asignados);
+    });
+    await editar(id)
+      .send({ ...datos, tramos: undefined })
+      .expect(400);
+    await editar(id)
+      .send({ ...datos, tramos: asignados.slice(0, 1) })
+      .expect(400);
+    await editar(id)
+      .send({ ...datos, tramos: [{ ...tramo, calleId: randomUUID() }] })
+      .expect(400);
+    await leer(id).expect(({ body }: { body: TrayectoResponseDto }) => {
+      expect(body.geometria).toEqual(geometria);
+      expect(body.tramos).toMatchObject(asignados);
+    });
+    await editar(id)
+      .send({ ...datos, tramos: [] })
+      .expect(400);
   });
 
   it('comparte y corrige el pin sin alterar la LineString ni divulgar etiquetas', async () => {

@@ -96,6 +96,9 @@ describe('Trayectos (HTTP)', () => {
       localidadId: localidad.id,
       puntos,
       geometria,
+      tramos: [
+        { desde: 0, hasta: 1, calleId: 'd6b3ff34-15fc-4a47-b299-8d16a321218d' },
+      ],
     };
 
     await api().send(entrada).expect(401);
@@ -162,6 +165,26 @@ describe('Trayectos (HTTP)', () => {
       },
       { geometria: { ...geometria, type: 'MultiLineString' } },
       { geometria: null },
+      { tramos: null },
+      { tramos: undefined },
+      { tramos: [] },
+      { tramos: [{ desde: 0, hasta: 1, calleId: 'invalida' }] },
+      {
+        tramos: [
+          {
+            desde: 0,
+            hasta: 2,
+            calleId: 'd6b3ff34-15fc-4a47-b299-8d16a321218d',
+          },
+        ],
+      },
+      {
+        tramos: Array.from({ length: 2 }, () => ({
+          desde: 0,
+          hasta: 1,
+          calleId: 'd6b3ff34-15fc-4a47-b299-8d16a321218d',
+        })),
+      },
     ]) {
       await api()
         .set('Authorization', admin)

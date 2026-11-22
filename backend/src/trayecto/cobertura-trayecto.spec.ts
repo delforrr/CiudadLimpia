@@ -1,25 +1,13 @@
-import {
-  calcularCobertura,
-  distanciaAlPinMasCercano,
-} from './cobertura-trayecto';
-import type { Recorrido } from './cobertura-trayecto';
+import { calcularCobertura, type Recorrido } from './cobertura-trayecto';
 
-const metrosLat = 111195;
-const metrosLong = metrosLat * Math.cos((-36 * Math.PI) / 180);
 const posicion = (x: number, y: number) => ({
-  lat: -36 + y / metrosLat,
-  long: -62.7 + x / metrosLong,
-});
-const frente = (x: number, y: number, calleId = 'roca') => ({
-  ...posicion(x, y),
-  calleId,
-  altura: 850,
+  lat: -36 + y / 111195,
+  long: -62.7 + x / 89958,
 });
 
 function recorrido(
   vertices: [number, number][],
-  calleId = 'roca',
-  pines = vertices,
+  tramos: Recorrido['tramos'],
 ): Recorrido {
   return {
     geometria: {
@@ -29,119 +17,96 @@ function recorrido(
         return [long, lat];
       }),
     },
-    referencias: pines.map(([x, y], orden) => ({
-      ...frente(x, y, calleId),
-      orden,
-    })),
+    tramos,
   };
 }
 
+const frente = (x: number, y: number, calleId = 'roca') => ({
+  ...posicion(x, y),
+  calleId,
+});
+
 describe('cobertura del frente', () => {
-  it('incluye el extremo confirmado aunque el tramo siguiente gire a otra calle', () => {
-    const giro = recorrido([
-      [0, 0],
-      [100, 0],
-      [100, 100],
-    ]);
-    const referencias = giro.referencias.map((ref) =>
-      ref.orden < 2 ? ref : { ...ref, calleId: 'pincen' },
+  it('distingue un cambio de nombre sin giro y reconoce un nombre anterior documentado', () => {
+    const linea = recorrido(
+      [
+        [0, 0],
+        [100, 0],
+        [200, 0],
+      ],
+      [
+        { desde: 0, hasta: 1, calleId: 'roca' },
+        { desde: 1, hasta: 2, calleId: 'continuacion' },
+      ],
+    );
+    expect(calcularCobertura(frente(150, 3), linea).estado).toBe(
+      'SIN_COBERTURA',
     );
     expect(
-      calcularCobertura(frente(100, 0), { ...giro, referencias }).estado,
+      calcularCobertura(frente(150, 3, 'continuacion'), linea).estado,
     ).toBe('CUBIERTO');
-  });
-  const recta = recorrido([
-    [0, 0],
-    [1000, 0],
-  ]);
-
-  it('cubre la quinta cuadra aunque un pin de otro trayecto esté más cerca', () => {
-    const casa = frente(500, 8);
-    const transversal = recorrido(
-      [
-        [502, 6],
-        [502, 110],
-      ],
-      'pincen',
-    );
-    expect(distanciaAlPinMasCercano(casa, transversal)).toBeLessThan(
-      distanciaAlPinMasCercano(casa, recta),
-    );
-    expect(calcularCobertura(casa, transversal)).toEqual({
-      estado: 'SIN_COBERTURA',
-    });
-    const resultado = calcularCobertura(casa, recta);
-    expect(resultado.estado).toBe('CUBIERTO');
-    if (resultado.estado === 'CUBIERTO')
-      expect(resultado.pasosEnTrayectoM[0]).toBeCloseTo(500, 1);
-  });
-
-  it('excluye una paralela identificada y un frente después del extremo', () => {
     expect(
       calcularCobertura(
-        frente(500, 3),
-        recorrido(
-          [
-            [0, 10],
-            [1000, 10],
-          ],
-          'mitre',
-        ),
+        {
+          ...frente(150, 3, 'nombre-anterior'),
+          calle: { calleVigenteId: 'continuacion' },
+        },
+        linea,
       ).estado,
-    ).toBe('SIN_COBERTURA');
-    expect(calcularCobertura(frente(990, 3), recta).estado).toBe('CUBIERTO');
-    expect(calcularCobertura(frente(1010, 3), recta).estado).toBe(
+    ).toBe('CUBIERTO');
+  });
+
+  it('respeta el lado de la calzada en el sentido de marcha', () => {
+    const tramo = {
+      desde: 0,
+      hasta: 1,
+      calleId: 'roca',
+      lado: 'IZQUIERDA',
+    } as const;
+    const ida = recorrido(
+      [
+        [0, 0],
+        [100, 0],
+      ],
+      [tramo],
+    );
+    const vuelta = recorrido(
+      [
+        [100, 0],
+        [0, 0],
+      ],
+      [tramo],
+    );
+    expect(calcularCobertura(frente(50, 10), ida).estado).toBe('CUBIERTO');
+    expect(calcularCobertura(frente(50, -10), ida).estado).toBe(
+      'SIN_COBERTURA',
+    );
+    expect(calcularCobertura(frente(50, -10), vuelta).estado).toBe('CUBIERTO');
+    expect(calcularCobertura(frente(50, 0), vuelta).estado).toBe(
       'SIN_COBERTURA',
     );
   });
 
-  it('clasifica un desvío sin referencias suficientes y conserva los dos pasos de un retorno', () => {
-    const desvio = recorrido(
+  it('conserva los dos pasos de un recorrido de ida y vuelta y la menor distancia al tramo', () => {
+    const linea = recorrido(
       [
         [0, 0],
-        [400, 0],
-        [400, 30],
-        [600, 30],
-        [600, 0],
-        [1000, 0],
-      ],
-      'roca',
-      [
+        [100, 0],
+        [100, 0],
         [0, 0],
-        [1000, 0],
       ],
+      [{ desde: 0, hasta: 3, calleId: 'roca' }],
     );
-    expect(calcularCobertura(frente(500, 15), desvio).estado).toBe(
-      'DATOS_INSUFICIENTES',
+    const cobertura = calcularCobertura(frente(50, 8), linea);
+    expect(cobertura.estado).toBe('CUBIERTO');
+    if (cobertura.estado !== 'CUBIERTO') return;
+    expect(cobertura.pasosEnTrayectoM).toHaveLength(2);
+    expect(cobertura.distanciaM).toBeCloseTo(8, 1);
+    expect(calcularCobertura(frente(101, 0), linea).estado).toBe(
+      'SIN_COBERTURA',
     );
-    const regreso = recorrido([
-      [0, 0],
-      [1000, 0],
-      [0, 0],
-    ]);
-    const resultado = calcularCobertura(frente(500, 3), regreso);
-    expect(resultado.estado).toBe('CUBIERTO');
-    if (resultado.estado === 'CUBIERTO')
-      expect(resultado.pasosEnTrayectoM).toHaveLength(2);
-  });
-
-  it('conserva todas las coincidencias y el extremo inequívoco', () => {
-    for (const linea of [
-      recta,
-      recorrido(
-        [
-          [0, 0],
-          [300, 0],
-          [1000, 0],
-        ],
-        'roca',
-        [
-          [0, 0],
-          [1000, 0],
-        ],
-      ),
-    ]) {
-      expect(calcularCobertura(frente(1000, 0), linea).estado).toBe('CUBIERTO');
-    }
+    expect(calcularCobertura(frente(50, 21), linea).estado).toBe(
+      'SIN_COBERTURA',
+    );
   });
 });

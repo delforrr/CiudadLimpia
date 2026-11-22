@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { leerProgreso } from '../telemetria/progreso-trayecto';
 import {
   calcularCobertura,
+  frenteCoberturaSelect,
   type Recorrido,
 } from '../trayecto/cobertura-trayecto';
 import { debeAvisar, validarEndpointPush } from './push.service';
@@ -138,7 +139,11 @@ export class EnvioPushService implements OnModuleInit, OnModuleDestroy {
       where,
       include: {
         suscripcion: {
-          include: { domicilio: { include: { direccion: true } } },
+          include: {
+            domicilio: {
+              include: { direccion: { select: frenteCoberturaSelect } },
+            },
+          },
         },
         prestacion: { include: { camion: { select: { estado: true } } } },
       },

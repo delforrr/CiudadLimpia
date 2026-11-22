@@ -3,6 +3,9 @@ import { httpRequest } from './http.ts';
 export type Coordenadas = { lat: number; long: number };
 export type Referencia = { calle: string; altura: number | null };
 export type LineaTrayecto = { type: 'LineString'; coordinates: [number, number][] };
+export type CalleCatalogo = { id: string; calle: string };
+export type LadoRecoleccion = 'AMBOS' | 'IZQUIERDA' | 'DERECHA';
+export type TramoConfirmado = { desde: number; hasta: number; calleId: string; calle: CalleCatalogo; lado?: LadoRecoleccion };
 export type Localidad = { id: string; nombre: string };
 export type UbicacionSugerida = Coordenadas & Referencia;
 export type SugerenciaTrayecto = { geometria: LineaTrayecto; fuente: string };
@@ -13,10 +16,12 @@ export type TrayectoEnvio = {
   localidadId: string;
   geometria: LineaTrayecto;
   puntos: PuntoEnvio[];
+  tramos: Omit<TramoConfirmado, 'calle'>[];
 };
 
-export type Trayecto = Omit<TrayectoEnvio, 'puntos'> & {
+export type Trayecto = Omit<TrayectoEnvio, 'puntos' | 'tramos'> & {
   id: string;
+  tramos?: TramoConfirmado[] | null;
   puntos: (Coordenadas & {
     orden: number;
     direccionId: string;
@@ -30,6 +35,8 @@ const geo = '/api/geocodificacion';
 export const trayectosService = {
   listar: (signal?: AbortSignal) => httpRequest<Trayecto[]>(ruta, { signal }),
   localidades: (signal?: AbortSignal) => httpRequest<Localidad[]>('/api/localidades', { signal }),
+  buscarCalles: (buscar: string, signal: AbortSignal) =>
+    httpRequest<CalleCatalogo[]>(`/calles?${new URLSearchParams({ buscar })}`, { signal }),
   consultar: (id: string, signal?: AbortSignal) =>
     httpRequest<Trayecto>(`${ruta}/${encodeURIComponent(id)}`, { signal }),
   eliminar: (id: string) =>

@@ -37,10 +37,16 @@ model Cliente {
 }
 
 model Calle {
-  id          String      @id @default(uuid())
+  id          String          @id @default(uuid())
   calle       String
-  clave       String      @unique
+  clave       String          @unique
   direcciones Direccion[]
+  tramos      TramoTrayecto[]
+  calleVigenteId String?
+  calleVigente Calle? @relation("NombresDeCalle", fields: [calleVigenteId], references: [id], onDelete: Restrict)
+  nombresAnteriores Calle[] @relation("NombresDeCalle")
+
+  @@index([calleVigenteId])
 }
 
 model Direccion {
@@ -113,15 +119,35 @@ model Localidad {
 }
 
 model Trayecto {
-  id          String          @id @default(uuid())
-  nombre      String
-  localidadId String
-  localidad   Localidad       @relation(fields: [localidadId], references: [id])
-  geometria   Json
-  puntos      PuntoTrayecto[]
-  servicios   ServicioRecoleccion[]
+  id                 String                @id @default(uuid())
+  nombre             String
+  localidadId        String
+  localidad          Localidad             @relation(fields: [localidadId], references: [id])
+  geometria          Json
+  puntos             PuntoTrayecto[]
+  servicios          ServicioRecoleccion[]
+  tramos             TramoTrayecto[]
 
   @@index([localidadId])
+}
+
+model TramoTrayecto {
+  trayectoId String
+  trayecto   Trayecto @relation(fields: [trayectoId], references: [id], onDelete: Cascade)
+  calleId    String
+  calle      Calle    @relation(fields: [calleId], references: [id], onDelete: Restrict)
+  desde      Int
+  hasta      Int
+  lado       LadoRecoleccion @default(AMBOS)
+
+  @@id([trayectoId, desde])
+  @@index([calleId])
+}
+
+enum LadoRecoleccion {
+  AMBOS
+  IZQUIERDA
+  DERECHA
 }
 
 model PuntoTrayecto {
