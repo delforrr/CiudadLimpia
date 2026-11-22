@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -17,6 +19,7 @@ import {
   ApiCookieAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -99,5 +102,23 @@ export class TrayectosController {
     @Body() dto: CreateTrayectoDto,
   ) {
     return this.trayectos.update(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Eliminar un trayecto y sus puntos',
+    description:
+      'Conserva las direcciones de referencia. Requiere Content-Type: application/json aunque no tenga cuerpo.',
+  })
+  @ApiConsumes('application/json')
+  @ApiNoContentResponse({ description: 'Trayecto eliminado.' })
+  @ApiBadRequestResponse({ description: 'Identificador inválido.' })
+  @ApiNotFoundResponse({ description: 'Trayecto no encontrado.' })
+  @ApiUnsupportedMediaTypeResponse({
+    description: 'Se requiere application/json.',
+  })
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.trayectos.remove(id);
   }
 }

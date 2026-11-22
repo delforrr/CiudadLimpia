@@ -20,6 +20,7 @@ describe('Trayectos (HTTP)', () => {
       }),
     },
     localidad: { findMany: jest.fn().mockResolvedValue([localidad]) },
+    trayecto: { delete: jest.fn() },
   };
 
   beforeAll(async () => {
@@ -45,6 +46,27 @@ describe('Trayectos (HTTP)', () => {
     await api().expect(401);
     await api().set('Authorization', usuario).expect(403);
     await api().set('Authorization', admin).expect(200).expect([localidad]);
+  });
+
+  it('elimina un trayecto solo con permiso ADMIN y un UUID válido', async () => {
+    const id = 'd6b3ff34-15fc-4a47-b299-8d16a321218d';
+    const api = (trayectoId = id) =>
+      request(app.getHttpServer())
+        .delete(`/api/trayectos/${trayectoId}`)
+        .set('Content-Type', 'application/json');
+
+    await api().expect(401);
+    await api().set('Authorization', usuario).expect(403);
+    await api().set('Authorization', admin).unset('Content-Type').expect(415);
+    await api('invalido').set('Authorization', admin).expect(400);
+    expect(prisma.trayecto.delete).not.toHaveBeenCalled();
+
+    prisma.trayecto.delete
+      .mockResolvedValueOnce({ id })
+      .mockRejectedValueOnce({ code: 'P2025' });
+    await api().set('Authorization', admin).expect(204).expect('');
+    expect(prisma.trayecto.delete).toHaveBeenCalledWith({ where: { id } });
+    await api().set('Authorization', admin).expect(404);
   });
 
   const escrituras = [

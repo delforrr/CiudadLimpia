@@ -78,6 +78,10 @@ export class TrayectosService {
     });
   }
 
+  async remove(id: string) {
+    await this.prisma.trayecto.delete({ where: { id } });
+  }
+
   private async guardar<T>(
     { geometria, localidadId, nombre, puntos }: CreateTrayectoDto,
     escribir: (

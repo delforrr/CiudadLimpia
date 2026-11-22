@@ -251,6 +251,23 @@ describePostgres('Trayectos (HTTP y PostgreSQL)', () => {
       .set('Authorization', admin)
       .expect(200);
     expect(listado.body).toEqual(expect.arrayContaining([creado]));
+
+    await api()
+      .delete(`/api/trayectos/${creado.id}`)
+      .set('Authorization', admin)
+      .set('Content-Type', 'application/json')
+      .expect(204);
+    await api()
+      .get(`/api/trayectos/${creado.id}`)
+      .set('Authorization', admin)
+      .expect(404);
+    expect(
+      await prisma.puntoTrayecto.count({ where: { trayectoId: creado.id } }),
+    ).toBe(0);
+    const direccionIds = [...new Set(creado.puntos.map((p) => p.direccionId))];
+    expect(
+      await prisma.direccion.count({ where: { id: { in: direccionIds } } }),
+    ).toBe(direccionIds.length);
   });
 
   it('rechaza una localidad desconocida y revierte la referencia nueva al rechazar un domicilio', async () => {

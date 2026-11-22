@@ -241,6 +241,16 @@ describe('Public API and documentation (HTTP)', () => {
       '409',
       '415',
     ]);
+    const bajaTrayecto = document.paths['/api/trayectos/{id}'].delete;
+    expect(Object.keys(bajaTrayecto?.responses ?? {}).sort()).toEqual([
+      '204',
+      '400',
+      '401',
+      '403',
+      '404',
+      '415',
+    ]);
+    expect(bajaTrayecto?.requestBody).toBeUndefined();
     expect(document.paths['/users/{id}'].delete?.responses).toHaveProperty(
       '204',
     );
