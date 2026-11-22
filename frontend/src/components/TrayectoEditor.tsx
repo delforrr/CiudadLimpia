@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import AddLocationAltOutlinedIcon from '@mui/icons-material/AddLocationAltOutlined';
 import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -118,10 +119,10 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
               {inversa.cargando && <p role="status">Buscando referencia cercana…</p>}
               {inversa.error && <Alert severity="warning">{inversa.error}</Alert>}
               {inversa.resultado === null && <p>GeoRef no encontró una referencia para el pin.</p>}
-              <RadioGroup value={editor.referenciaElegida} aria-label="Referencia del punto" onChange={(_, valor) => {
-                if (valor === 'ninguna' || valor === 'original' || valor === 'georef') editor.setReferenciaElegida(valor);
+              {editor.errorReferencia && <Alert severity="error">{editor.errorReferencia}</Alert>}
+              <RadioGroup value={editor.referenciaElegida ?? ''} aria-label="Referencia del punto" onChange={(_, valor) => {
+                if (valor === 'original' || valor === 'georef') editor.setReferenciaElegida(valor);
               }}>
-                <FormControlLabel value="ninguna" control={<Radio color="success" size="small" />} label="Sin referencia de calle" />
                 {(pin.referencia || pin.origen?.direccionId) && (
                   <FormControlLabel value="original" control={<Radio color="success" size="small" />}
                     label={pin.referencia ? referenciaTexto(pin.referencia) : 'Mantener referencia guardada'} />
@@ -129,9 +130,14 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
                 {inversa.resultado && <FormControlLabel value="georef" control={<Radio color="success" size="small" />}
                   label={`${referenciaTexto(inversa.resultado)} · GeoRef`} />}
               </RadioGroup>
+              {editor.puedeCompletarAltura && <TextField label="Altura manual" required size="small" color="success"
+                value={editor.alturaManual} error={Boolean(editor.errorAlturaManual)}
+                helperText={editor.errorAlturaManual || <span className="trayectos-altura-obligatoria">Obligatoria</span>}
+                slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 10 } }}
+                onChange={(event) => editor.actualizarAlturaManual(event.target.value)} />}
               <div className="trayectos-acciones">
                 <Button variant="contained" color="success" startIcon={pin.origen ? undefined : <AddLocationAltOutlinedIcon />}
-                  onClick={() => { editor.confirmarPin(); setPanel('mapa'); }}>
+                  onClick={() => { if (editor.confirmarPin()) setPanel('mapa'); }}>
                   {pin.origen ? 'Confirmar cambios' : 'Agregar punto'}
                 </Button>
                 <Button color="success" onClick={() => { editor.descartarPin(); setPanel('mapa'); }}>Descartar pin</Button>
@@ -144,12 +150,15 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
           {mostrarDatos && <div className="trayectos-zona-selector">
             <TextField label="Zona" select required size="small" color="success"
             value={borrador.zonaId ?? ''} disabled={guardando || zonas.length === 0}
-            helperText={zonas.length === 0 ? 'Usá Agregar zona para crear la primera.' : 'Zona a la que pertenece este trayecto.'}
+            helperText={zonas.length === 0 ? 'Usá Agregar zona para crear la primera.' : <span className="trayectos-zona-ayuda">Zona a la que pertenece este trayecto.</span>}
             onChange={(event) => editor.actualizarZona(event.target.value)}>
             {zonas.map((zona) => <MenuItem key={zona.id} value={zona.id}>{zona.nombre}</MenuItem>)}
             </TextField>
-            <Button variant="outlined" color="success" startIcon={<AddIcon />} disabled={guardando}
-              onClick={() => onAgregarZona((zona) => editor.actualizarZona(zona.id))}>Agregar zona</Button>
+            {borrador.zonaId ? <IconButton color="success" disabled={guardando}
+              className="trayectos-zona-quitar" aria-label="Quitar zona seleccionada" title="Quitar zona seleccionada"
+              onClick={() => editor.actualizarZona('')}><CloseIcon fontSize="small" /></IconButton>
+              : <Button variant="outlined" color="success" startIcon={<AddIcon />} disabled={guardando}
+                onClick={() => onAgregarZona((zona) => editor.actualizarZona(zona.id))}>Agregar zona</Button>}
           </div>}
           {!borrador.localidadId && <Alert severity="warning">Trenque Lauquen no está disponible en el catálogo de localidades.</Alert>}
           {editandoRecorrido && (

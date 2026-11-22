@@ -52,7 +52,7 @@ describe('Geocodificación (HTTP)', () => {
       .set('Cookie', `session=${admin}`);
   }
 
-  it('reutiliza las coordenadas del catálogo de direcciones públicas', async () => {
+  it('reutiliza las coordenadas del catálogo compartido', async () => {
     findFirst.mockResolvedValue({
       calle: { calle: 'Villegas' },
       lat: -35.97,
@@ -69,11 +69,8 @@ describe('Geocodificación (HTTP)', () => {
     expect(findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          clienteId: null,
           calle: { clave: 'villegas' },
           altura: 555,
-          lat: { not: null },
-          long: { not: null },
         },
       }),
     );

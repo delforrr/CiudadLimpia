@@ -14,7 +14,6 @@ import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
-  ApiConflictResponse,
   ApiConsumes,
   ApiCookieAuth,
   ApiCreatedResponse,
@@ -27,6 +26,7 @@ import {
   ApiUnauthorizedResponse,
   ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
+import { ApiConflictoPin } from '../direccion/dto/direccion-response.dto';
 import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -67,11 +67,11 @@ export class TrayectosController {
   @ApiCreatedResponse({ type: TrayectoResponseDto })
   @ApiBadRequestResponse({
     description:
-      'Datos inválidos, localidad inexistente o referencia inexistente o privada.',
+      'Datos inválidos, localidad inexistente o referencia inexistente.',
   })
-  @ApiConflictResponse({
-    description: 'Conflicto de referencia o de escritura concurrente.',
-  })
+  @ApiConflictoPin(
+    'Pin distinto para una dirección existente o conflicto de escritura concurrente.',
+  )
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',
   })
@@ -88,12 +88,12 @@ export class TrayectosController {
   @ApiOkResponse({ type: TrayectoResponseDto })
   @ApiBadRequestResponse({
     description:
-      'Identificador o datos inválidos, localidad inexistente o referencia inexistente o privada.',
+      'Identificador o datos inválidos, localidad inexistente o referencia inexistente.',
   })
   @ApiNotFoundResponse({ description: 'Trayecto no encontrado.' })
-  @ApiConflictResponse({
-    description: 'Conflicto de referencia o de escritura concurrente.',
-  })
+  @ApiConflictoPin(
+    'Pin distinto para una dirección existente o conflicto de escritura concurrente.',
+  )
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',
   })

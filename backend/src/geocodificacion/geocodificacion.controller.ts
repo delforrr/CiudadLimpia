@@ -45,7 +45,7 @@ export class GeocodificacionController {
   @ApiOperation({
     summary: 'Buscar hasta tres ubicaciones aproximadas por calle y altura',
     description:
-      'Una coincidencia exacta con coordenadas en el catálogo público tiene prioridad. Si falta, se consulta Georef. Una sugerencia con coordenadas puede tener altura null. Una lista vacía indica que no hay una ubicación sugerida.',
+      'Una coincidencia exacta con coordenadas en el catálogo compartido tiene prioridad. Si falta, se consulta Georef. Una sugerencia con coordenadas puede tener altura null. Una lista vacía indica que no hay una ubicación sugerida.',
   })
   @ApiOkResponse({ type: GeocodificacionDirectaResponse })
   directa(@Query() query: GeocodificacionDirectaQuery) {

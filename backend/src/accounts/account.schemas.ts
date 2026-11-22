@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizarCalle } from '../calle/calle.dto';
 import { Role } from '../generated/prisma/enums';
 
 const textSchema = (max: number) =>
@@ -38,24 +39,40 @@ export const passwordSchema = z
       'Mínimo 8 caracteres y máximo 72 bytes UTF-8. Conserva espacios y símbolos.',
   });
 export const roleSchema = z.enum(Role);
-export const domicilioSchema = z.strictObject({
-  direccion: textSchema(200),
-  etiqueta: z
-    .string()
-    .trim()
-    .refine(
-      (value) => Array.from(value).length <= 100,
-      'La etiqueta no puede superar 100 caracteres',
-    )
-    .meta({ maxLength: 100 })
-    .nullish(),
+const frenteSchema = z.strictObject({
+  calle: z.string(),
+  altura: z.number().int().min(1).max(2147483647),
+  lat: z.number().min(-90).max(90),
+  long: z.number().min(-180).max(180),
 });
+const etiquetaSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => Array.from(value).length <= 100,
+    'La etiqueta no puede superar 100 caracteres',
+  )
+  .meta({ maxLength: 100 })
+  .nullish();
+export const domicilioSchema = z.union([
+  z.strictObject({ direccionId: z.uuid(), etiqueta: etiquetaSchema }),
+  z.strictObject({
+    direccion: frenteSchema.extend({
+      calle: z.string().transform(normalizarCalle).pipe(textSchema(180)),
+    }),
+    etiqueta: etiquetaSchema,
+  }),
+]);
+export type DomicilioInput = z.infer<typeof domicilioSchema>;
+
 export const clienteSchema = z.strictObject({
   name: textSchema(100),
   lastName: textSchema(100),
   domicilios: z.array(domicilioSchema).min(1).max(20),
 });
-export const updateClienteSchema = clienteSchema.partial({ domicilios: true });
+export const updateClienteSchema = clienteSchema.extend({
+  domicilios: z.array(domicilioSchema).max(20).optional(),
+});
 export const publicUserSchema = z.strictObject({
   id: z.uuid(),
   email: z.email(),
@@ -66,10 +83,10 @@ export const publicUserSchema = z.strictObject({
       name: z.string(),
       lastName: z.string(),
       domicilios: z.array(
-        z.strictObject({
+        frenteSchema.extend({
           id: z.uuid(),
           direccion: z.string(),
-          etiqueta: z.string().max(100).nullable(),
+          etiqueta: z.string().nullable().meta({ maxLength: 100 }),
         }),
       ),
     })

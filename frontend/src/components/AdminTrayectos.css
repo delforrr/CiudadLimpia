@@ -1,3 +1,7 @@
+.trayectos-altura-obligatoria {
+  color: #d32f2f;
+}
+
 .trayectos-modulo {
   display: flex;
   flex: 1;
@@ -38,6 +42,15 @@
 
 .trayectos-zona-selector > .MuiButton-root {
   min-height: 40px;
+}
+
+.trayectos-zona-quitar.MuiIconButton-root {
+  width: 40px;
+  height: 40px;
+}
+
+.trayectos-zona-ayuda {
+  white-space: nowrap;
 }
 
 @media (max-width: 480px) {

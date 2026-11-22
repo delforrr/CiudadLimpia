@@ -24,8 +24,17 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
     lat: -35.97,
     long: -62.73,
   };
-  const record = { id: tipoId, ...body };
-  const response = record;
+  const { lat, long, ...puntoData } = body;
+  const pin = { lat, long };
+  const frente = { calle: 'Roca', altura: 50, ...pin };
+  const direccionResponse = { ...frente, id: residuoId, direccion: 'Roca 50' };
+  const direccionRecord = {
+    ...frente,
+    id: residuoId,
+    calle: { calle: 'Roca' },
+  };
+  const record = { id: tipoId, ...puntoData, direccion: pin };
+  const response = { id: tipoId, ...body };
   const db = {
     user: { findUnique: jest.fn() },
     $transaction: jest.fn(),
@@ -33,7 +42,8 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
     $queryRaw: jest.fn(),
     direccion: {
       findUnique: jest.fn(),
-      upsert: jest.fn(),
+      createMany: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -41,6 +51,7 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
     puntoLimpio: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -74,10 +85,11 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
       (operation: (tx: typeof db) => unknown) => operation(db),
     );
     db.calle.upsert.mockResolvedValue({ id: missingId, calle: 'Roca' });
-    db.direccion.findUnique.mockResolvedValue({ id: body.direccionId });
-    db.direccion.upsert.mockResolvedValue({ id: body.direccionId });
+    db.direccion.findUnique.mockResolvedValue(direccionRecord);
+    db.direccion.findUniqueOrThrow.mockResolvedValue(direccionRecord);
     db.puntoLimpio.findMany.mockResolvedValue([record]);
     db.puntoLimpio.findUnique.mockResolvedValue(record);
+    db.puntoLimpio.findUniqueOrThrow.mockResolvedValue(record);
     db.puntoLimpio.create.mockResolvedValue(record);
     db.puntoLimpio.update.mockResolvedValue(record);
     db.puntoLimpio.delete.mockResolvedValue(record);
@@ -151,7 +163,7 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
       .expect(201)
       .expect(response);
     expect(db.puntoLimpio.create).toHaveBeenCalledWith({
-      data: body,
+      data: puntoData,
       select: puntoLimpioSelect,
     });
 
@@ -195,108 +207,114 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
       update: { clave: 'roca' },
       select: { id: true },
     });
-    expect(db.direccion.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { calleId_altura: { calleId: missingId, altura: 50 } },
-        create: { calleId: missingId, altura: 50 },
-      }),
-    );
+    expect(db.direccion.createMany).toHaveBeenCalledWith({
+      data: { calleId: missingId, altura: 50, ...pin },
+      skipDuplicates: true,
+    });
     expect(db.puntoLimpio.create).toHaveBeenCalledWith({
-      data: body,
+      data: puntoData,
       select: puntoLimpioSelect,
     });
 
     db.direccion.findUnique.mockResolvedValueOnce(null);
     await alta().send(body).expect(400);
     expect(db.direccion.findUnique).toHaveBeenCalledWith({
-      where: { id: direccionId, clienteId: null },
-      select: { id: true },
+      where: { id: direccionId },
+      select: expect.any(Object) as object,
     });
+    await alta()
+      .send({ ...body, lat: 0 })
+      .expect(409)
+      .expect({
+        statusCode: 409,
+        code: 'PIN_DIRECCION_DISTINTO',
+        message: 'El pin enviado difiere del pin guardado para esta dirección',
+        direccion: direccionResponse,
+      });
+    await alta().send(puntoData).expect(201).expect(response);
   });
 
-  it('separa el listado general del catálogo para puntos limpios', async () => {
+  it('lista el catálogo compartido y limita la corrección del pin al administrador', async () => {
     const catalogo = () => request(app.getHttpServer());
     const auth = `Bearer ${adminToken}`;
     const ruta = `/direcciones/${body.direccionId}`;
-    const entrada = { calle: 'Roca', altura: 50 };
-    const direccion = {
-      id: body.direccionId,
-      direccion: 'Roca 50',
-      ...entrada,
-    };
-    const guardada = {
-      ...direccion,
-      direccion: null,
-      calle: { calle: 'Roca' },
-    };
-    db.$queryRaw.mockResolvedValue([direccion]);
-    db.direccion.findUnique
-      .mockResolvedValueOnce(guardada)
-      .mockResolvedValueOnce({ ...guardada, calleId: missingId });
-    db.direccion.create.mockResolvedValue(guardada);
-    db.direccion.update.mockResolvedValue({
-      ...guardada,
-      altura: 52,
-    });
+    db.$queryRaw.mockResolvedValue([direccionResponse]);
+    db.direccion.create.mockResolvedValue(direccionRecord);
+    db.direccion.update.mockResolvedValue({ ...direccionRecord, lat: 0 });
 
-    await catalogo().get('/direcciones').expect(401);
-    await catalogo()
-      .get('/direcciones')
-      .set('Authorization', `Bearer ${userToken}`)
-      .expect(403);
-    await catalogo().get('/direcciones/puntos-limpios').expect(401);
-    await catalogo()
-      .get('/direcciones/puntos-limpios')
-      .set('Authorization', `Bearer ${userToken}`)
-      .expect(403);
-    await catalogo().get('/direcciones').set('Authorization', auth).expect(200);
-    await catalogo()
-      .get('/direcciones/puntos-limpios?buscar=roca')
-      .set('Authorization', auth)
-      .expect(200)
-      .expect([direccion]);
-    expect(db.$queryRaw).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.objectContaining({ sql: 'WHERE d."clienteId" IS NULL' }),
-      expect.objectContaining({ values: ['roca'] }),
-    );
+    for (const path of [
+      '/direcciones',
+      '/direcciones/puntos-limpios?buscar=roca',
+    ]) {
+      await catalogo().get(path).expect(401);
+      await catalogo()
+        .get(path)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(403);
+      await catalogo()
+        .get(path)
+        .set('Authorization', auth)
+        .expect(200)
+        .expect([direccionResponse]);
+    }
     await catalogo()
       .get(ruta)
       .set('Authorization', auth)
       .expect(200)
-      .expect(direccion);
+      .expect(direccionResponse);
     await catalogo()
       .post('/direcciones')
       .set('Authorization', auth)
-      .send(entrada)
+      .send({ ...frente, altura: undefined })
+      .expect(400);
+    await catalogo()
+      .post('/direcciones')
+      .set('Authorization', auth)
+      .send(frente)
       .expect(201)
-      .expect(direccion);
+      .expect(direccionResponse);
+    await catalogo()
+      .patch(ruta)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ ...pin, lat: 0 })
+      .expect(403);
     await catalogo()
       .patch(ruta)
       .set('Authorization', auth)
-      .send({ altura: 52 })
+      .send({ altura: 52, ...pin })
+      .expect(400);
+    await catalogo()
+      .patch(ruta)
+      .set('Authorization', auth)
+      .send({ ...pin, lat: 0 })
       .expect(200)
-      .expect({ ...direccion, altura: 52, direccion: 'Roca 52' });
+      .expect({ ...direccionResponse, lat: 0 });
     await catalogo()
       .delete(ruta)
       .set('Authorization', auth)
       .set('Content-Type', 'application/json')
       .expect(204);
     expect(db.direccion.delete).toHaveBeenCalledWith({
-      where: { id: body.direccionId, clienteId: null },
+      where: { id: body.direccionId },
     });
   });
 
   it('actualiza parcialmente y devuelve 404 si no existe', async () => {
-    await request(app.getHttpServer())
-      .patch(`/puntos-limpios/${tipoId}`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ lat: 0 })
+    const patch = () =>
+      request(app.getHttpServer())
+        .patch(`/puntos-limpios/${tipoId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+    await patch().send({ lat: 0 }).expect(400);
+    await patch().send({ lat: 0, long }).expect(409);
+    await patch().send({ direccionId: residuoId, lat: 0, long }).expect(409);
+    expect(db.puntoLimpio.update).not.toHaveBeenCalled();
+    await patch()
+      .send({ nombre: body.nombre, ...pin })
       .expect(200)
       .expect(response);
     expect(db.puntoLimpio.update).toHaveBeenCalledWith({
       where: { id: tipoId },
-      data: { lat: 0 },
+      data: { nombre: body.nombre },
       select: puntoLimpioSelect,
     });
     db.puntoLimpio.update.mockRejectedValue({ code: 'P2025' });

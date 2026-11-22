@@ -19,6 +19,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { ApiConflictoPin } from '../direccion/dto/direccion-response.dto';
 import type { CookieOptions, Response } from 'express';
 import { AuthService, sessionSeconds } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -63,7 +64,9 @@ export class AuthController {
     status: 400,
     description: 'Datos inválidos.',
   })
-  @ApiResponse({ status: 409, description: 'El email ya está registrado.' })
+  @ApiConflictoPin(
+    'Email ya registrado o pin distinto para una dirección existente.',
+  )
   @ApiResponse({
     status: 403,
     description: 'Solicitud desde otro sitio rechazada.',

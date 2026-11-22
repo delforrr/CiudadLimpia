@@ -28,6 +28,7 @@ const admin: Admin = {
     geometria: { type: 'LineString', coordinates: [[-62.73, -35.97], [-62.74, -35.98]] }, puntos: [] }],
   localidades: [localidad], localidadFija: localidad, vista: { tipo: 'lista' }, cargando: false, error: '', aviso: '',
   abrir: async () => {}, cargar: () => {}, nuevo: () => {}, volver: () => {}, guardado: () => {},
+  pendienteEliminar: null, errorEliminar: '', solicitarEliminar: () => {}, cancelarEliminar: () => {}, confirmarEliminar: () => null,
 };
 
 function render(catalogo: CatalogoZonas, estado: Admin = admin) {
@@ -41,6 +42,7 @@ test('ofrece el cambio entre trayectos y zonas y muestra la zona en las tarjetas
   assert.match(html, /aria-label="Ver trayectos o zonas"/);
   assert.match(html, /value="zonas"/);
   assert.match(html, /Recorrido 1/);
+  assert.match(html, /aria-label="Eliminar trayecto Recorrido 1"/);
   assert.match(html, /Zona Norte/);
   assert.doesNotMatch(html, /Trenque Lauquen/);
 });
@@ -69,4 +71,14 @@ test('el editor ofrece agregar una zona junto al selector sin abandonar los dato
 test('un cambio de nombre de zona se refleja en la tarjeta sin cambiar su asignación', () => {
   const html = render({ zonas: [{ id: 'zona-1', nombre: 'Centro renovado', descripcion: '' }], asignaciones: { 'ruta-1': 'zona-1' } });
   assert.match(html, /Centro renovado/);
+});
+
+test('la zona seleccionada puede quitarse con una cruz y oculta Agregar zona', () => {
+  const html = render({ zonas: [{ id: 'zona-1', nombre: 'Norte', descripcion: '' }], asignaciones: { 'ruta-1': 'zona-1' } }, {
+    ...admin, vista: { tipo: 'editor', borrador: {
+      id: 'ruta-1', nombre: 'Recorrido 1', localidadId: localidad.id, puntos: [], lineaElegida: null,
+    } },
+  });
+  assert.match(html, /aria-label="Quitar zona seleccionada"/);
+  assert.doesNotMatch(html, />Agregar zona</);
 });

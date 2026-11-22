@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { types } from 'node:util';
 import { esLineaValida } from './line-string';
 import type { SugerenciaTrayectoDto } from './sugerencia-trayecto.dto';
-import type { CoordenadasTrayectoDto } from '../punto-trayecto/punto-trayecto.dto';
+import type { CoordenadasDireccionDto } from '../direccion/dto/create-direccion.dto';
 
 const demoOsrm = 'https://routing.openstreetmap.de/routed-car/';
 const continuarManual = 'Podés dibujar el trayecto manualmente.';
@@ -21,7 +21,7 @@ export class SugerenciaTrayectoService {
   constructor(private readonly config: ConfigService) {}
 
   async sugerir(
-    puntos: CoordenadasTrayectoDto[],
+    puntos: CoordenadasDireccionDto[],
   ): Promise<SugerenciaTrayectoDto> {
     const base =
       this.config.get<string>('OSRM_BASE_URL')?.trim() ||

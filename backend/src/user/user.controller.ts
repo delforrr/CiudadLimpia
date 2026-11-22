@@ -13,7 +13,6 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
-  ApiConflictResponse,
   ApiConsumes,
   ApiCookieAuth,
   ApiCreatedResponse,
@@ -26,6 +25,7 @@ import {
   ApiUnauthorizedResponse,
   ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
+import { ApiConflictoPin } from '../direccion/dto/direccion-response.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -64,7 +64,9 @@ export class UserController {
   })
   @ApiCreatedResponse({ standardSchema: publicUserSchema })
   @ApiBadRequestResponse({ description: 'Datos inválidos.' })
-  @ApiConflictResponse({ description: 'El email ya está registrado.' })
+  @ApiConflictoPin(
+    'Email ya registrado o pin distinto para una dirección existente.',
+  )
   create(@Body({ schema: createUserSchema }) dto: CreateUserInput) {
     const { role, ...account } = dto;
     return this.users.create(account, role);
@@ -97,12 +99,14 @@ export class UserController {
   @ApiOperation({
     summary: 'Editar cuenta y cliente (titular o ADMIN)',
     description:
-      'Solo ADMIN puede enviar role; USER recibe 403 incluso si el valor es inválido. Si se envía cliente, requiere name y lastName. Omitir domicilios conserva la lista de un cliente existente; enviarlo requiere entre 1 y 20 direcciones y reemplaza la lista completa, con nuevos identificadores. Las cuentas antiguas sin domicilios deben completarlos para poder guardar cualquier actualización (400).',
+      'Solo ADMIN puede enviar role; USER recibe 403 incluso si el valor es inválido. Si se envía cliente, requiere name y lastName. Omitir domicilios conserva la lista de un cliente existente; enviarla admite hasta 20 direcciones y reemplaza la lista completa, con los IDs de las direcciones compartidas. Una lista vacía quita todos los vínculos.',
   })
   @ApiOkResponse({ standardSchema: publicUserSchema })
   @ApiBadRequestResponse({ description: 'Datos o identificador inválidos.' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.' })
-  @ApiConflictResponse({ description: 'El email ya está registrado.' })
+  @ApiConflictoPin(
+    'Email ya registrado o pin distinto para una dirección existente.',
+  )
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body({ schema: updateUserSchema }) dto: UpdateUserInput,
@@ -118,7 +122,7 @@ export class UserController {
     description: 'Se requiere application/json.',
   })
   @ApiOperation({
-    summary: 'Eliminar cuenta, cliente y domicilios (ADMIN)',
+    summary: 'Eliminar cuenta, cliente y sus vínculos de domicilio (ADMIN)',
     description:
       'Requiere Content-Type: application/json aunque no tenga cuerpo.',
   })

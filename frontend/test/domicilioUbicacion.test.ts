@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { domicilioUbicacionService, coordenadasDomicilioSchema } from '../src/services/domicilioUbicacionService.ts';
-import { profileSchema } from '../src/schemas/profileSchema.ts';
 
 const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 afterEach(() => {
@@ -52,10 +51,7 @@ test('guarda la ubicación confirmada por usuario y dirección sin depender de l
   assert.equal(domicilioUbicacionService.leer('vecino-1', 'Roca 123'), undefined);
 });
 
-test('la ubicación es válida en la ciudad y se conserva fuera del payload del backend', () => {
+test('admite coordenadas válidas dentro de la ciudad', () => {
   assert.equal(coordenadasDomicilioSchema.safeParse(posicion).success, true);
   assert.equal(coordenadasDomicilioSchema.safeParse({ lat: NaN, long: 0 }).success, false);
-  const perfil = profileSchema.parse({ name: 'Ana', lastName: 'Pérez', email: 'ana@example.com',
-    domicilios: [{ direccion: 'Roca 860', ubicacion: posicion }] });
-  assert.deepEqual(perfil.domicilios, [{ direccion: 'Roca 860' }]);
 });

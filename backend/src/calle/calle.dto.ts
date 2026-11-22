@@ -5,9 +5,7 @@ import { IsString, MaxLength, MinLength } from 'class-validator';
 export class CalleDto {
   @ApiProperty({ example: 'Roca', maxLength: 180 })
   @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string'
-      ? value.trim().replace(/\s+/g, ' ').normalize('NFC')
-      : value,
+    typeof value === 'string' ? normalizarCalle(value) : value,
   )
   @IsString()
   @MinLength(1)
@@ -20,6 +18,10 @@ export class CalleResponseDto extends CalleDto {
   id!: string;
 }
 
+export function normalizarCalle(calle: string) {
+  return calle.trim().replace(/\s+/g, ' ').normalize('NFC');
+}
+
 export function claveCalle(calle: string) {
-  return calle.toLocaleLowerCase('es-AR');
+  return normalizarCalle(calle).toLocaleLowerCase('es-AR');
 }

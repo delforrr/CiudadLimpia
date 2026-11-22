@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { trayectosService, type Localidad, type Trayecto } from '../services/trayectosService.ts';
 import { abrirBorrador, type BorradorTrayecto } from '../utils/trayectoEditor.ts';
+import { trayectosLocalesService } from '../services/trayectosLocalesService.ts';
 
 type Vista = { tipo: 'lista' } | { tipo: 'detalle'; trayecto: Trayecto } | { tipo: 'editor'; borrador: BorradorTrayecto };
 
@@ -14,6 +15,8 @@ export function useAdminTrayectos() {
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [intento, setIntento] = useState(0);
+  const [pendienteEliminar, setPendienteEliminar] = useState<Trayecto | null>(null);
+  const [errorEliminar, setErrorEliminar] = useState('');
   const solicitudActiva = useRef<AbortController | null>(null);
   const localidadFija = localidades.find(({ id }) => id === idTrenqueLauquen);
 
@@ -24,7 +27,8 @@ export function useAdminTrayectos() {
     void Promise.all([trayectosService.listar(signal), trayectosService.localidades(signal)])
       .then(([registros, catalogo]) => {
         if (signal.aborted) return;
-        setTrayectos(registros);
+        const eliminados = new Set(trayectosLocalesService.eliminados());
+        setTrayectos(registros.filter(({ id }) => !eliminados.has(id)));
         setLocalidades(catalogo);
       })
       .catch((error: unknown) => {
@@ -62,6 +66,24 @@ export function useAdminTrayectos() {
 
   return {
     trayectos, localidades, localidadFija, vista, cargando, error, aviso, abrir,
+    pendienteEliminar, errorEliminar,
+    solicitarEliminar: (trayecto: Trayecto) => { setErrorEliminar(''); setPendienteEliminar(trayecto); },
+    cancelarEliminar: () => { setErrorEliminar(''); setPendienteEliminar(null); },
+    confirmarEliminar: () => {
+      if (!pendienteEliminar) return null;
+      try {
+        trayectosLocalesService.eliminar(pendienteEliminar.id);
+        setTrayectos((anteriores) => anteriores.filter(({ id }) => id !== pendienteEliminar.id));
+        if (vista.tipo !== 'lista') setVista({ tipo: 'lista' });
+        setAviso('Trayecto eliminado.');
+        setPendienteEliminar(null);
+        setErrorEliminar('');
+        return pendienteEliminar.id;
+      } catch {
+        setErrorEliminar('No se pudo eliminar el trayecto. Intentá nuevamente.');
+        return null;
+      }
+    },
     cargar: () => {
       setCargando(true);
       setError('');

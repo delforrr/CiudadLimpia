@@ -8,6 +8,5 @@ import { DireccionesService } from './direcciones.service';
   imports: [AccountsModule, PrismaModule],
   controllers: [DireccionesController],
   providers: [DireccionesService],
-  exports: [DireccionesService],
 })
 export class DireccionesModule {}

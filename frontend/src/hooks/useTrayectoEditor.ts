@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { trayectosService, type Coordenadas, type Referencia, type SugerenciaTrayecto, type Trayecto, type UbicacionSugerida } from '../services/trayectosService';
-import { lineaManual, prepararTrayecto, tienePosicionesDistintas, type BorradorTrayecto, type PuntoEditor } from '../utils/trayectoEditor';
+import { completarAltura, lineaManual, prepararTrayecto, tienePosicionesDistintas, type BorradorTrayecto, type PuntoEditor } from '../utils/trayectoEditor';
 import type { Zona } from '../services/zonasService';
 
 type Pin = Coordenadas & { origen?: PuntoEditor; referencia?: Referencia };
 type Consulta<T> = { cargando: boolean; error?: string; resultado?: T };
+type ReferenciaElegida = 'original' | 'georef' | null;
 
 const mensaje = (error: unknown) => error instanceof Error ? error.message : 'No se pudo completar la solicitud.';
 
@@ -12,11 +13,14 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
   const [borrador, setBorrador] = useState(inicial);
   const [pin, setPin] = useState<Pin | null>(null);
   const [centrarEn, setCentrarEn] = useState<Coordenadas | null>(null);
-  const [referenciaElegida, setReferenciaElegida] = useState<'ninguna' | 'original' | 'georef'>('ninguna');
+  const [referenciaElegida, setReferenciaElegida] = useState<ReferenciaElegida>(null);
   const [inversa, setInversa] = useState<Consulta<Referencia | null>>({ cargando: false });
   const [busqueda, setBusqueda] = useState<Consulta<{ sugerencias: UbicacionSugerida[]; fuente: string }>>({ cargando: false });
   const [calle, setCalle] = useState('');
   const [altura, setAltura] = useState('');
+  const [alturaManual, setAlturaManual] = useState('');
+  const [errorAlturaManual, setErrorAlturaManual] = useState('');
+  const [errorReferencia, setErrorReferencia] = useState('');
   const [sugerencia, setSugerencia] = useState<Consulta<SugerenciaTrayecto>>({ cargando: false });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
@@ -36,11 +40,17 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     const solicitud = new AbortController();
     solicitudPin.current = solicitud;
     setPin(nuevo);
-    setReferenciaElegida(nuevo.referencia || nuevo.origen?.direccionId ? 'original' : 'ninguna');
+    setAlturaManual('');
+    setErrorAlturaManual('');
+    setErrorReferencia('');
+    setReferenciaElegida(nuevo.referencia || nuevo.origen?.direccionId ? 'original' : null);
     setInversa({ cargando: true });
     try {
       const { direccionSugerida } = await trayectosService.invertir(nuevo, solicitud.signal);
-      if (!solicitud.signal.aborted) setInversa({ cargando: false, resultado: direccionSugerida });
+      if (!solicitud.signal.aborted) {
+        setInversa({ cargando: false, resultado: direccionSugerida });
+        setReferenciaElegida((actual) => actual ?? (direccionSugerida ? 'georef' : null));
+      }
     } catch {
       if (!solicitud.signal.aborted) {
         setInversa({ cargando: false, error: 'GeoRef no pudo sugerir una dirección. Podés confirmar el pin.' });
@@ -57,6 +67,7 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     solicitudPin.current?.abort();
     setPin(null);
     setInversa({ cargando: false });
+    setErrorReferencia('');
   };
 
   const cambiarPuntos = (puntos: PuntoEditor[]) => {
@@ -75,7 +86,11 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
 
   const usarUbicacion = ({ lat, long, calle, altura }: UbicacionSugerida) => {
     const posicion = { lat, long };
-    aplicarPunto({ ...posicion, referencia: { calle, altura } }, pin?.origen);
+    if (altura === null) {
+      void revisarPin({ ...posicion, referencia: { calle, altura }, origen: pin?.origen });
+    } else {
+      aplicarPunto({ ...posicion, referencia: { calle, altura } }, pin?.origen);
+    }
     setCentrarEn(posicion);
     solicitudBusqueda.current?.abort();
     setCalle('');
@@ -84,15 +99,31 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
   };
 
   const confirmarPin = () => {
-    if (!pin) return;
+    if (!pin) return false;
     const { lat, long, origen } = pin;
-    const referencia = referenciaElegida === 'georef' ? inversa.resultado ?? undefined
-      : referenciaElegida === 'original' ? pin.referencia : undefined;
+    if (!referenciaElegida) {
+      setErrorReferencia('Elegí una calle de referencia antes de confirmar el punto.');
+      return false;
+    }
+    let referencia = referenciaElegida === 'georef' ? inversa.resultado ?? undefined
+      : pin.referencia;
+    if (!referencia) {
+      setErrorReferencia('No hay una calle de referencia para este punto. Buscala por calle y altura.');
+      return false;
+    }
+    setErrorReferencia('');
+    try {
+      if (referencia) referencia = completarAltura(referencia, alturaManual);
+    } catch (error) {
+      setErrorAlturaManual(mensaje(error));
+      return false;
+    }
     const mismaPosicion = origen?.lat === lat && origen.long === long;
     const mismaReferencia = referencia?.calle === origen?.referencia?.calle && referencia?.altura === origen?.referencia?.altura;
     const direccionId = referenciaElegida === 'original' && mismaReferencia && (mismaPosicion || referencia?.altura != null)
       ? origen?.direccionId : undefined;
     aplicarPunto({ lat, long, referencia, direccionId }, origen);
+    return true;
   };
 
   const actualizarBusqueda = (campo: 'calle' | 'altura', valor: string) => {
@@ -170,7 +201,19 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
   };
 
   return {
-    borrador, pin, centrarEn, inversa, referenciaElegida, setReferenciaElegida,
+    borrador, pin, centrarEn, inversa, referenciaElegida,
+    setReferenciaElegida: (valor: ReferenciaElegida) => {
+      setReferenciaElegida(valor);
+      setAlturaManual('');
+      setErrorAlturaManual('');
+      setErrorReferencia('');
+    },
+    puedeCompletarAltura: (referenciaElegida === 'original' ? pin?.referencia : inversa.resultado)?.altura === null,
+    alturaManual, errorAlturaManual, errorReferencia,
+    actualizarAlturaManual: (valor: string) => {
+      setAlturaManual(valor);
+      setErrorAlturaManual('');
+    },
     marcarEnMapa, editarPunto, confirmarPin, descartarPin,
     quitarPunto: (clave: string) => cambiarPuntos(borrador.puntos.filter((punto) => punto.clave !== clave)),
     actualizarNombre: (nombre: string) => setBorrador((previo) => ({ ...previo, nombre })),

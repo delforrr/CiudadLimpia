@@ -4,6 +4,7 @@ import { createElement, type ComponentType } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { createServer, type ViteDevServer } from 'vite'
+import { camiones, conLocalStorage } from './fixtures.ts'
 
 let server: ViteDevServer
 let AdminCamiones: ComponentType
@@ -23,43 +24,45 @@ before(async () => {
 after(async () => server?.close())
 
 test('renders the trucks module with class diagram fields, buttons and sample data', () => {
-  const html = renderToStaticMarkup(
-    createElement(MemoryRouter, null, createElement(AdminCamiones)),
-  )
-  assert.match(html, /Camiones totales/)
-  assert.match(html, /Operativos/)
-  assert.match(html, /En mantenimiento/)
-  assert.match(html, /Flota de camiones/)
-  assert.match(html, /Agregar camión/)
-  assert.match(html, /Unidad \/ Patente/)
-  assert.match(html, /Marca/)
-  assert.match(html, /Modelo/)
-  assert.match(html, /Año/)
-  assert.match(html, /Conductor/)
+  conLocalStorage({ 'ciudad-limpia:camiones': camiones }, () => {
+    const html = renderToStaticMarkup(
+      createElement(MemoryRouter, null, createElement(AdminCamiones)),
+    )
+    assert.match(html, /Camiones totales/)
+    assert.match(html, /Operativos/)
+    assert.match(html, /En mantenimiento/)
+    assert.match(html, /Flota de camiones/)
+    assert.match(html, /Agregar camión/)
+    assert.match(html, /Unidad \/ Patente/)
+    assert.match(html, /Marca/)
+    assert.match(html, /Modelo/)
+    assert.match(html, /Año/)
+    assert.match(html, /Conductor/)
 
-  assert.doesNotMatch(html, /<th[^>]*>Zona[^<]*<\/th>/i)
-  assert.match(html, /<th[^>]*>Trayectos<\/th>/i)
-  assert.match(html, /aria-label="Asignar trayectos a Camión 01"/)
+    assert.doesNotMatch(html, /<th[^>]*>Zona[^<]*<\/th>/i)
+    assert.match(html, /<th[^>]*>Trayectos<\/th>/i)
+    assert.match(html, /aria-label="Asignar trayectos a Camión 01"/)
 
-  // Datos alineados con el diagrama
-  assert.match(html, /Camión 01/)
-  assert.match(html, /AE 123 CD/)
-  assert.match(html, /Iveco/)
-  assert.match(html, /Tector 170E28/)
-  assert.match(html, /2022/)
-  assert.match(html, /Carlos González/)
+    // Datos alineados con el diagrama
+    assert.match(html, /Camión 01/)
+    assert.match(html, /AE 123 CD/)
+    assert.match(html, /Iveco/)
+    assert.match(html, /Tector 170E28/)
+    assert.match(html, /2022/)
+    assert.match(html, /Carlos González/)
 
-  // Formato alineado con los demás apartados
-  assert.match(html, /admin-trucks-count/)
-  assert.match(html, /admin-trucks-marker/)
-  assert.match(html, /admin-trucks-assign-btn/)
-  assert.doesNotMatch(html, /<span class="admin-trucks-muted">Sin asignar<\/span>/)
+    // Formato alineado con los demás apartados
+    assert.match(html, /admin-trucks-count/)
+    assert.match(html, /admin-trucks-marker/)
+    assert.match(html, /admin-trucks-assign-btn/)
+    assert.doesNotMatch(html, /<span class="admin-trucks-muted">Sin asignar<\/span>/)
 
-  // Botones de acción operativos
-  assert.match(html, /aria-label="Ver detalle de Camión 01"/)
-  assert.match(html, /aria-label="Editar Camión 01"/)
-  assert.match(html, /aria-label="Eliminar Camión 01"/)
-  assert.doesNotMatch(html, /Esqueleto base/)
+    // Botones de acción operativos
+    assert.match(html, /aria-label="Ver detalle de Camión 01"/)
+    assert.match(html, /aria-label="Editar Camión 01"/)
+    assert.match(html, /aria-label="Eliminar Camión 01"/)
+    assert.doesNotMatch(html, /Esqueleto base/)
+  })
 })
 
 test('el número de trayectos de la tabla es un botón que abre la asignación', () => {

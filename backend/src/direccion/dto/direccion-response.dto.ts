@@ -1,25 +1,53 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { applyDecorators } from '@nestjs/common';
+import {
+  ApiConflictResponse,
+  ApiExtraModels,
+  ApiProperty,
+  getSchemaPath,
+} from '@nestjs/swagger';
+import { CreateDireccionDto } from './create-direccion.dto';
 
-export class DireccionResponseDto {
+export class DireccionResponseDto extends CreateDireccionDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({
-    example: 'Roca 50',
-    description:
-      'Calle y altura disponible, coordenadas del pin o texto libre de una dirección histórica.',
-  })
+  @ApiProperty({ example: 'Roca 50' })
   direccion!: string;
+}
 
-  @ApiProperty({ nullable: true, type: String, example: 'Roca' })
-  calle!: string | null;
+export class PinDireccionDistintoDto {
+  @ApiProperty({ enum: [409] })
+  statusCode!: 409;
 
-  @ApiProperty({ nullable: true, type: Number, example: 50 })
-  altura!: number | null;
+  @ApiProperty({ enum: ['PIN_DIRECCION_DISTINTO'] })
+  code!: 'PIN_DIRECCION_DISTINTO';
 
-  @ApiProperty({ nullable: true, type: Number, example: -35.97 })
-  lat!: number | null;
+  @ApiProperty()
+  message!: string;
 
-  @ApiProperty({ nullable: true, type: Number, example: -62.73 })
-  long!: number | null;
+  @ApiProperty({ type: DireccionResponseDto })
+  direccion!: DireccionResponseDto;
+}
+
+export function ApiConflictoPin(description: string) {
+  return applyDecorators(
+    ApiExtraModels(PinDireccionDistintoDto),
+    ApiConflictResponse({
+      description,
+      schema: {
+        oneOf: [
+          { $ref: getSchemaPath(PinDireccionDistintoDto) },
+          {
+            type: 'object',
+            required: ['statusCode', 'message', 'error'],
+            properties: {
+              statusCode: { type: 'integer', enum: [409] },
+              message: { type: 'string' },
+              error: { type: 'string', example: 'Conflict' },
+            },
+          },
+        ],
+      },
+    }),
+  );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from '../services/authService'
 import { userService } from '../services/userService'
 import { z } from 'zod'
-import { nuevoDomicilioSchema, profileSchema, type DomicilioForm, type NuevoDomicilioForm } from '../schemas/profileSchema'
+import { nuevoDomicilioSchema, profileUpdateSchema, type DomicilioForm, type NuevoDomicilioForm } from '../schemas/profileSchema'
 import { capitalizarInicial } from '../utils/capitalizarInicial'
 import { coordenadasDomicilioSchema, domicilioUbicacionService } from '../services/domicilioUbicacionService'
 
@@ -119,7 +119,7 @@ export function useProfileForm(
     event.preventDefault()
     if (!user || pending) return
     setError('')
-    const validation = profileSchema.safeParse(form)
+    const validation = profileUpdateSchema.safeParse(form)
     if (!validation.success) {
       const errors = z.flattenError(validation.error).fieldErrors
       setFieldErrors(errors)

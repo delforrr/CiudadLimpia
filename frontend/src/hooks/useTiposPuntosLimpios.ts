@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { cargarCatalogoPuntosLimpios } from '../services/puntosLimpiosService'
 import { tipoPuntoLimpioSchema } from '../schemas/tipoPuntoLimpioSchema.ts'
 import type {
   PuntoLimpioAdmin,
@@ -7,6 +8,7 @@ import type {
 import {
   loadPuntos,
   loadTipos,
+  savePuntos,
   saveTipos,
 } from '../utils/puntosLimpiosStorage.ts'
 import { APP_LOGOS_PUNTOS_LIMPIOS, puntoLimpioLogoColor } from '../utils/puntosLimpiosLogos.ts'
@@ -38,7 +40,7 @@ export function useTiposPuntosLimpios() {
     return { tipos, puntos: loadPuntos(tipos) }
   })
   const [tipos, setTipos] = useState<TipoPuntoLimpio[]>(initial.tipos)
-  const puntos: PuntoLimpioAdmin[] = initial.puntos
+  const [puntos, setPuntos] = useState<PuntoLimpioAdmin[]>(initial.puntos)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<TipoPuntoLimpio | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -50,6 +52,20 @@ export function useTiposPuntosLimpios() {
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    let activo = true
+    cargarCatalogoPuntosLimpios()
+      .then((catalogo) => {
+        if (!activo || catalogo.puntos.length === 0) return
+        saveTipos(catalogo.tipos)
+        savePuntos(catalogo.puntos)
+        setTipos(catalogo.tipos)
+        setPuntos(catalogo.puntos)
+      })
+      .catch(() => {})
+    return () => { activo = false }
+  }, [])
 
   const usageCount = useCallback(
     (tipoId: string) =>

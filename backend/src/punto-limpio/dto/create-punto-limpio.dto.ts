@@ -1,9 +1,11 @@
-import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+  PartialType,
+} from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
-  IsLatitude,
-  IsLongitude,
-  IsNumber,
   IsString,
   IsUUID,
   MaxLength,
@@ -13,9 +15,14 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-import { CreateDireccionDto } from '../../direccion/dto/create-direccion.dto';
+import {
+  CoordenadasDireccionDto,
+  FrenteDireccionDto,
+} from '../../direccion/dto/create-direccion.dto';
 
-export class PuntoLimpioFieldsDto {
+export class PuntoLimpioFieldsDto extends PartialType(CoordenadasDireccionDto, {
+  skipNullProperties: false,
+}) {
   @ApiProperty({ example: 'Parque Villegas', minLength: 1, maxLength: 100 })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
@@ -36,18 +43,8 @@ export class PuntoLimpioFieldsDto {
     format: 'uuid',
     example: '00000000-0000-4000-8000-000000000002',
   })
-  @IsUUID('4')
+  @IsUUID()
   direccionId!: string;
-
-  @ApiProperty({ example: -35.97, minimum: -90, maximum: 90 })
-  @IsNumber()
-  @IsLatitude()
-  lat!: number;
-
-  @ApiProperty({ example: -62.73, minimum: -180, maximum: 180 })
-  @IsNumber()
-  @IsLongitude()
-  long!: number;
 }
 
 export class CreatePuntoLimpioDto extends OmitType(PuntoLimpioFieldsDto, [
@@ -55,22 +52,23 @@ export class CreatePuntoLimpioDto extends OmitType(PuntoLimpioFieldsDto, [
 ] as const) {
   @ApiPropertyOptional({
     format: 'uuid',
-    description: 'Dirección existente. Enviar solo este campo o direccion.',
+    description:
+      'Dirección existente. Excluyente con direccion. Si enviás coordenadas, deben coincidir con el pin guardado.',
   })
   @ValidateIf(
     (dto: CreatePuntoLimpioDto) =>
       dto.direccionId !== undefined || dto.direccion === undefined,
   )
-  @IsUUID('4')
+  @IsUUID()
   direccionId?: string;
 
   @ApiPropertyOptional({
-    type: CreateDireccionDto,
-    description: 'Dirección a registrar. Enviar solo este campo o direccionId.',
+    type: FrenteDireccionDto,
+    description: 'Frente a resolver. Requiere lat y long a nivel del punto.',
   })
   @ValidateIf((dto: CreatePuntoLimpioDto) => dto.direccion !== undefined)
   @IsObject()
   @ValidateNested()
-  @Type(() => CreateDireccionDto)
-  direccion?: CreateDireccionDto;
+  @Type(() => FrenteDireccionDto)
+  direccion?: FrenteDireccionDto;
 }

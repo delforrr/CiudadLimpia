@@ -7,16 +7,20 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/configure-app';
+import type { DireccionResponseDto } from '../src/direccion/dto/direccion-response.dto';
+import type { TrayectoResponseDto } from '../src/trayecto/trayecto.dto';
+import type { PublicUser } from '../src/accounts/account.schemas';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { PuntosTrayectoService } from '../src/punto-trayecto/puntos-trayecto.service';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
 
-describePostgres('Trayectos (HTTP y PostgreSQL)', () => {
+describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let admin: string;
-  let privadaId: string;
+  let tipoId: string;
   const clave = randomUUID();
   const nombre = `Centro ${clave}`;
   const nombreEditado = `Centro editado ${clave}`;
@@ -31,30 +35,38 @@ describePostgres('Trayectos (HTTP y PostgreSQL)', () => {
       [-62.74, -35.98],
     ],
   };
-  const origen = { orden: 0, lat: -35.97, long: -62.73 };
-  const destino = { orden: 1, lat: -35.98, long: -62.74 };
-  const entrada = { nombre, localidadId, geometria };
-  const pin = {
-    orden: 3,
-    lat: -35.98 - parseInt(clave.slice(0, 6), 16) / 10_000_000_000,
-    long: -62.7421,
+  const frente = { calle, altura: 850, lat: -35.97, long: -62.73 };
+  const frenteVecino = { calle, altura: 852, lat: -35.98, long: -62.74 };
+  const { lat, long, ...referencia } = frente;
+  const {
+    lat: latVecino,
+    long: longVecino,
+    ...referenciaVecina
+  } = frenteVecino;
+  const origen = { orden: 0, lat, long, direccion: referencia };
+  const destino = {
+    orden: 1,
+    lat: latVecino,
+    long: longVecino,
+    direccion: referenciaVecina,
   };
-  const pinSimultaneo = { ...pin, lat: pin.lat - 0.001 };
-  const consultarGeoref = jest.spyOn(globalThis, 'fetch');
+  const entrada = { nombre, localidadId, geometria, puntos: [origen, destino] };
+  const emails = ['admin', 'vecino', 'vecina'].map(
+    (rol) => `${rol}-${clave}@example.test`,
+  );
   const api = () => request(app.getHttpServer());
   const guardar = () =>
     api().post('/api/trayectos').set('Authorization', admin);
   const editar = (id: string) =>
     api().patch(`/api/trayectos/${id}`).set('Authorization', admin);
+  const leer = (id: string) =>
+    api().get(`/api/trayectos/${id}`).set('Authorization', admin);
 
   beforeAll(async () => {
-    const config = new ConfigService(
-      {
-        DATABASE_URL: databaseUrl,
-        JWT_SECRET: 'test-only-secret-at-least-32-characters',
-      },
-      { skipProcessEnv: true },
-    );
+    const config = new ConfigService({
+      DATABASE_URL: databaseUrl,
+      JWT_SECRET: 'test-only-secret-at-least-32-characters',
+    });
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(ConfigService)
       .useValue(config)
@@ -64,331 +76,350 @@ describePostgres('Trayectos (HTTP y PostgreSQL)', () => {
     await app.init();
     prisma = app.get(PrismaService);
     const usuario = await prisma.user.create({
-      data: {
-        email: `${clave}@example.test`,
-        role: 'ADMIN',
-        passwordHash: 'sin-uso',
-        cliente: {
-          create: {
-            name: 'Prueba',
-            lastName: 'Trayectos',
-            domicilios: { create: { direccion: `${calle} 50` } },
-          },
-        },
-      },
-      include: { cliente: { include: { domicilios: true } } },
+      data: { email: emails[0], role: 'ADMIN', passwordHash: 'sin-uso' },
     });
-    privadaId = usuario.cliente!.domicilios[0].id;
     admin = `Bearer ${await app.get(JwtService).signAsync({ sub: usuario.id })}`;
+    ({ id: tipoId } = await prisma.tipoPuntoLimpio.create({
+      data: { nombre },
+    }));
   });
 
   afterAll(async () => {
-    consultarGeoref.mockRestore();
     if (!app) return;
-    await prisma.trayecto.deleteMany({
-      where: { nombre: { in: [nombre, nombreEditado] } },
-    });
-    await prisma.direccion.deleteMany({
-      where: {
-        clienteId: null,
-        puntosTrayecto: { none: {} },
-        puntosLimpios: { none: {} },
-        OR: [
-          { calle: { calle: { in: [calle, calleRollback] } } },
-          {
-            calleId: null,
-            direccion: null,
-            lat: { in: [pin.lat, pinSimultaneo.lat] },
-            long: pin.long,
-          },
-        ],
-      },
-    });
-    await prisma.calle.deleteMany({
-      where: { calle: { in: [calle, calleRollback] } },
-    });
-    await prisma.user.deleteMany({ where: { email: `${clave}@example.test` } });
-    await app.close();
+    try {
+      if (!prisma) return;
+      await prisma.user.deleteMany({ where: { email: { in: emails } } });
+      await prisma.puntoLimpio.deleteMany({ where: { tipoId, nombre } });
+      await prisma.tipoPuntoLimpio.deleteMany({ where: { nombre } });
+      await prisma.trayecto.deleteMany({
+        where: { nombre: { in: [nombre, nombreEditado] } },
+      });
+      await prisma.direccion.deleteMany({
+        where: { calle: { calle: { in: [calle, calleRollback] } } },
+      });
+      await prisma.calle.deleteMany({
+        where: { calle: { in: [calle, calleRollback] } },
+      });
+    } finally {
+      await app.close();
+    }
   });
 
-  it('guarda sugerencias de Georef y un pin sin dirección durante una caída del proveedor', async () => {
-    await api()
-      .get('/api/localidades')
-      .set('Authorization', admin)
-      .expect(200)
-      .expect([{ id: localidadId, nombre: 'Trenque Lauquen' }]);
-    consultarGeoref
-      .mockResolvedValueOnce(
-        Response.json({
-          direcciones: [
-            {
-              localidad_censal: { id: localidadId },
-              calle: { nombre: calle },
-              altura: { valor: 50 },
-              ubicacion: { lat: -35.971, lon: -62.731 },
-            },
-          ],
-        }),
-      )
-      .mockResolvedValueOnce(
-        Response.json({
-          ubicacion: { calle: { id: `${localidadId}0001135`, nombre: calle } },
-        }),
-      )
-      .mockRejectedValue(new TypeError('Georef no disponible'));
-    const directa = await api()
-      .get('/api/geocodificacion/directa')
-      .set('Authorization', admin)
-      .query({ calle, altura: 50 })
-      .expect(200);
-    const { sugerencias } = directa.body as {
-      sugerencias: { calle: string; altura: number }[];
-    };
-    const inversa = () =>
-      api().get('/api/geocodificacion/inversa').set('Authorization', admin);
-    const parcial = await inversa()
-      .query({ lat: destino.lat, long: destino.long })
-      .expect(200);
-    const { direccionSugerida, lat, long } = parcial.body as {
-      lat: number;
-      long: number;
-      direccionSugerida: { calle: string; altura: null };
-    };
-    await inversa().query({ lat: pin.lat, long: pin.long }).expect(503);
+  it('comparte y corrige el pin sin alterar la LineString ni divulgar etiquetas', async () => {
+    const alta = () => api().post('/direcciones').set('Authorization', admin);
+    await alta()
+      .send({ ...frente, altura: undefined })
+      .expect(400);
+    const direccion = (await alta().send(frente).expect(201))
+      .body as DireccionResponseDto;
+    await alta().send(frente).expect(409);
+    const direccionId = direccion.id;
 
-    const guardado = await guardar()
+    const cliente = { name: 'Ana', lastName: 'Pérez' };
+    const registro = (email: string, domicilios: object[]) =>
+      api()
+        .post('/auth/register')
+        .send({
+          email,
+          password: 'clave-prueba-2026',
+          cliente: { ...cliente, domicilios },
+        });
+    const vecino = await registro(emails[1], [
+      { direccion: frente, etiqueta: 'Casa' },
+    ]).expect(201);
+    const sesion = (vecino.get('Set-Cookie') ?? [''])[0].split(';')[0];
+    const usuario = vecino.body as PublicUser;
+    const vecina = (
+      await registro(emails[2], [{ direccionId, etiqueta: 'Trabajo' }]).expect(
+        201,
+      )
+    ).body as PublicUser;
+    expect(usuario.cliente?.domicilios).toEqual([
+      { ...direccion, etiqueta: 'Casa' },
+    ]);
+    expect(vecina.cliente?.domicilios).toEqual([
+      { ...direccion, etiqueta: 'Trabajo' },
+    ]);
+
+    await guardar()
       .send({
         ...entrada,
-        nombre: ` ${nombre} `,
-        puntos: [
-          { orden: destino.orden, lat, long, direccion: direccionSugerida },
-          { ...origen, direccion: { calle } },
-          { ...origen, orden: 2, direccion: { calle, altura: null } },
-          pin,
-          {
-            ...origen,
-            orden: 4,
-            direccion: {
-              calle: sugerencias[0].calle,
-              altura: sugerencias[0].altura,
-            },
-          },
-        ],
+        puntos: [{ ...origen, lat: lat - 0.001 }, destino],
       })
-      .expect(201);
-    const creado = guardado.body as {
-      id: string;
-      puntos: { direccionId: string }[];
-    };
-    const [primero, segundo, tercero, sinCalle, completa] = creado.puntos;
-    expect(primero.direccionId).toBe(tercero.direccionId);
-    expect(primero.direccionId).not.toBe(segundo.direccionId);
-    expect(completa.direccionId).not.toBe(privadaId);
-    await api()
-      .patch(`/direcciones/${sinCalle.direccionId}`)
-      .set('Authorization', admin)
-      .send({ lat: null, long: null })
-      .expect(400);
-    await api()
-      .get('/direcciones/puntos-limpios')
-      .query({ buscar: calle })
-      .set('Authorization', admin)
-      .expect(200)
-      .expect(({ body }) => {
-        expect(body).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              id: primero.direccionId,
-              direccion: calle,
-            }),
-            expect.objectContaining({
-              id: completa.direccionId,
-              direccion: `${calle} 50`,
-            }),
-          ]),
-        );
+      .expect(409)
+      .expect({
+        statusCode: 409,
+        code: 'PIN_DIRECCION_DISTINTO',
+        message: 'El pin enviado difiere del pin guardado para esta dirección',
+        direccion,
       });
 
-    expect(creado).toMatchObject({
-      ...entrada,
+    const trayecto = (
+      await guardar()
+        .send({
+          ...entrada,
+          puntos: [destino, { orden: 0, direccionId }],
+        })
+        .expect(201)
+    ).body as TrayectoResponseDto;
+    expect(trayecto).toMatchObject({
+      geometria,
       puntos: [
-        { ...origen, direccion: { calle, altura: null } },
-        { ...destino, direccion: { calle, altura: null } },
-        { ...origen, orden: 2 },
-        { ...pin, direccion: { calle: null, altura: null } },
-        { ...origen, orden: 4, direccion: { calle, altura: 50 } },
+        { orden: 0, direccionId, lat, long, direccion },
+        { orden: 1, lat: latVecino, long: longVecino },
       ],
     });
-    const otro = await guardar()
-      .send({
-        ...entrada,
-        puntos: [
-          { ...destino, orden: 0, direccion: { calle, altura: 50 } },
-          { ...origen, orden: 1, direccionId: primero.direccionId },
-          { ...pin, orden: 2 },
-        ],
-      })
+
+    const punto = await api()
+      .post('/puntos-limpios')
+      .set('Authorization', admin)
+      .send({ nombre, tipoId, direccionId, lat, long })
       .expect(201);
-    expect(otro.body).toMatchObject({
-      puntos: [
-        {
-          ...destino,
-          orden: 0,
-          direccionId: completa.direccionId,
-          direccion: { lat: origen.lat },
-        },
-        { ...origen, orden: 1, direccionId: primero.direccionId },
-        { ...pin, orden: 2, direccionId: sinCalle.direccionId },
-      ],
+    const puntoId = (punto.body as { id: string }).id;
+    const pin = { lat: lat - 0.002, long: long - 0.002 };
+    await api()
+      .patch(`/direcciones/${direccionId}`)
+      .set('Cookie', sesion)
+      .send(pin)
+      .expect(403);
+    await api()
+      .patch(`/direcciones/${direccionId}`)
+      .set('Authorization', admin)
+      .send({ ...referencia, ...pin })
+      .expect(200)
+      .expect({ ...direccion, ...pin });
+
+    await leer(trayecto.id)
+      .expect(200)
+      .expect({
+        ...trayecto,
+        puntos: [
+          {
+            ...trayecto.puntos[0],
+            ...pin,
+            direccion: { ...direccion, ...pin },
+          },
+          trayecto.puntos[1],
+        ],
+      });
+    await api()
+      .get(`/puntos-limpios/${puntoId}`)
+      .expect(200)
+      .expect({ id: puntoId, nombre, tipoId, direccionId, ...pin });
+    const editarPunto = () =>
+      api().patch(`/puntos-limpios/${puntoId}`).set('Authorization', admin);
+    await editarPunto().send({ lat, long }).expect(409);
+    await editarPunto()
+      .send(pin)
+      .expect(200)
+      .expect({ id: puntoId, nombre, tipoId, direccionId, ...pin });
+    const nuevoFrente = trayecto.puntos[1].direccionId;
+    await editarPunto().send({ direccionId: nuevoFrente }).expect(200).expect({
+      id: puntoId,
+      nombre,
+      tipoId,
+      direccionId: nuevoFrente,
+      lat: latVecino,
+      long: longVecino,
     });
     await api()
-      .get(`/api/trayectos/${creado.id}`)
-      .set('Authorization', admin)
+      .get('/auth/me')
+      .set('Cookie', sesion)
       .expect(200)
-      .expect(creado);
-    const listado = await api()
-      .get('/api/trayectos')
+      .expect({
+        ...usuario,
+        cliente: {
+          ...usuario.cliente,
+          domicilios: [{ ...direccion, ...pin, etiqueta: 'Casa' }],
+        },
+      });
+    await api()
+      .get('/api/geocodificacion/directa')
       .set('Authorization', admin)
-      .expect(200);
-    expect(listado.body).toEqual(expect.arrayContaining([creado]));
+      .query(referencia)
+      .expect(200)
+      .expect({
+        sugerencias: [{ ...referencia, ...pin }],
+        fuente: 'Catálogo de Ciudad Limpia',
+      });
 
     await api()
-      .delete(`/api/trayectos/${creado.id}`)
+      .patch(`/users/${usuario.id}`)
+      .set('Cookie', sesion)
+      .send({
+        cliente: {
+          ...cliente,
+          domicilios: [{ direccionId, etiqueta: 'Otra' }],
+        },
+      })
+      .expect(200);
+    await api()
+      .patch(`/users/${usuario.id}`)
+      .set('Cookie', sesion)
+      .send({ cliente: { ...cliente, domicilios: [] } })
+      .expect(200);
+    await api()
+      .delete(`/users/${usuario.id}`)
       .set('Authorization', admin)
       .set('Content-Type', 'application/json')
       .expect(204);
-    await api()
-      .get(`/api/trayectos/${creado.id}`)
-      .set('Authorization', admin)
-      .expect(404);
     expect(
-      await prisma.puntoTrayecto.count({ where: { trayectoId: creado.id } }),
-    ).toBe(0);
-    const direccionIds = [...new Set(creado.puntos.map((p) => p.direccionId))];
-    expect(
-      await prisma.direccion.count({ where: { id: { in: direccionIds } } }),
-    ).toBe(direccionIds.length);
+      await prisma.clienteDireccion.findMany({ where: { direccionId } }),
+    ).toEqual([
+      { clienteId: vecina.cliente!.id, direccionId, etiqueta: 'Trabajo' },
+    ]);
   });
 
-  it('rechaza una localidad desconocida y revierte la referencia nueva al rechazar un domicilio', async () => {
+  it('confirma el alta aunque la transacción demore más de cinco segundos', async () => {
+    const servicio = app.get<PuntosTrayectoService>(PuntosTrayectoService);
+    const resolver = servicio.resolverReferencias.bind(
+      servicio,
+    ) as PuntosTrayectoService['resolverReferencias'];
+    const demora = jest
+      .spyOn(servicio, 'resolverReferencias')
+      .mockImplementationOnce(async (tx, puntos) => {
+        await tx.$executeRaw`SELECT pg_sleep(6)`;
+        return resolver(tx, puntos);
+      });
+
+    try {
+      const guardado = await guardar()
+        .send({
+          ...entrada,
+          puntos: [
+            { ...origen, direccion: { ...referencia, altura: 855 } },
+            destino,
+          ],
+        })
+        .expect(201);
+      const { id } = guardado.body as TrayectoResponseDto;
+      await leer(id).expect(200).expect(guardado.body);
+    } finally {
+      demora.mockRestore();
+    }
+  }, 25000);
+
+  it('rechaza referencias inexistentes y revierte las escrituras del alta y la edición', async () => {
+    const guardado = await guardar()
+      .send({
+        ...entrada,
+        puntos: [
+          { ...origen, direccion: { ...referencia, altura: 860 } },
+          destino,
+        ],
+      })
+      .expect(201);
+    const { id } = guardado.body as TrayectoResponseDto;
     const puntos = [
-      { ...origen, direccion: { calle: calleRollback } },
-      { ...destino, direccionId: privadaId },
+      { ...origen, direccion: { ...referencia, calle: calleRollback } },
+      { orden: 1, direccionId: randomUUID() },
     ];
-    const cantidad = await prisma.trayecto.count({ where: { nombre } });
+
     await guardar()
       .send({ ...entrada, localidadId: '99999999', puntos })
       .expect(400);
     await guardar()
       .send({ ...entrada, puntos })
       .expect(400);
-    expect(await prisma.trayecto.count({ where: { nombre } })).toBe(cantidad);
+    await editar(id)
+      .send({ ...entrada, nombre: nombreEditado, puntos })
+      .expect(400);
+    await editar(randomUUID())
+      .send({
+        ...entrada,
+        puntos: [puntos[0], destino],
+      })
+      .expect(404);
     expect(await prisma.calle.count({ where: { calle: calleRollback } })).toBe(
       0,
     );
+    await leer(id).expect(200).expect(guardado.body);
   });
 
-  it('reabre el trayecto con el mismo ID, la línea editada y el nuevo orden de puntos', async () => {
+  it('elimina el trayecto y sus puntos, conservando las direcciones', async () => {
+    const guardado = await guardar().send(entrada).expect(201);
+    const creado = guardado.body as TrayectoResponseDto;
+    await api()
+      .delete(`/api/trayectos/${creado.id}`)
+      .set('Authorization', admin)
+      .set('Content-Type', 'application/json')
+      .expect(204);
+    await leer(creado.id).expect(404);
+    expect(await prisma.puntoTrayecto.count({ where: { trayectoId: creado.id } })).toBe(0);
+    const ids = [...new Set(creado.puntos.map(({ direccionId }) => direccionId))];
+    expect(await prisma.direccion.count({ where: { id: { in: ids } } })).toBe(ids.length);
+  });
+
+  it('guarda la línea editada y el orden de las referencias compartidas', async () => {
     const guardado = await guardar()
       .send({
         ...entrada,
         puntos: [
-          { ...origen, direccion: { calle } },
-          { ...destino, direccion: { calle } },
-          { ...pin, orden: 2 },
+          { ...origen, direccion: { ...referencia, altura: 861 } },
+          destino,
         ],
       })
       .expect(201);
-    const { id, puntos } = guardado.body as {
-      id: string;
-      puntos: { direccionId: string }[];
-    };
-    const movido = { orden: 1, lat: -35.971, long: -62.73 };
+    const { id, puntos } = guardado.body as TrayectoResponseDto;
     const geometriaEditada = {
-      type: 'LineString',
-      coordinates: [
-        [-62.74, -35.98],
-        [-62.733, -35.975],
-        [-62.73, -35.971],
-      ],
+      ...geometria,
+      coordinates: geometria.coordinates.toReversed(),
     };
     const puntosEditados = [
-      { ...destino, orden: 0, direccionId: puntos[1].direccionId },
-      { ...movido, direccionId: puntos[0].direccionId },
+      { orden: 0, direccionId: puntos[1].direccionId },
+      { orden: 1, direccionId: puntos[0].direccionId },
     ];
     const edicion = {
       ...entrada,
       nombre: nombreEditado,
       geometria: geometriaEditada,
-      puntos: puntosEditados.toReversed(),
     };
-
     const editado = await editar(id)
-      .send(edicion)
-      .expect(200)
-      .expect(({ body }) => {
-        expect(body).toMatchObject({ ...edicion, id, puntos: puntosEditados });
-      });
-    await api()
-      .get(`/api/trayectos/${id}`)
-      .set('Authorization', admin)
-      .expect(200)
-      .expect(editado.body);
+      .send({ ...edicion, puntos: puntosEditados.toReversed() })
+      .expect(200);
+    expect(editado.body).toMatchObject({
+      ...edicion,
+      id,
+      puntos: puntosEditados,
+    });
+    await leer(id).expect(200).expect(editado.body);
   });
 
-  it('conserva el trayecto y revierte la referencia nueva al rechazar la edición', async () => {
-    const guardado = await guardar()
-      .send({
-        ...entrada,
-        puntos: [
-          { ...origen, direccion: { calle } },
-          { ...destino, direccion: { calle } },
-        ],
-      })
-      .expect(201);
-    const { id } = guardado.body as { id: string };
-    const edicion = {
+  it('comparte una sola fila en altas simultáneas y PostgreSQL rechaza duplicados y nulos', async () => {
+    const frenteSimultaneo = { ...referencia, altura: 870 };
+    const solicitud = {
       ...entrada,
-      nombre: nombreEditado,
-      puntos: [
-        { ...origen, direccion: { calle: calleRollback } },
-        { ...destino, direccionId: privadaId },
-      ],
+      puntos: [{ ...origen, direccion: frenteSimultaneo }, destino],
     };
-
-    await editar(id).send(edicion).expect(400);
-    await editar(randomUUID())
-      .send({ ...edicion, puntos: [edicion.puntos[0], { ...pin, orden: 1 }] })
-      .expect(404);
-    await api()
-      .get(`/api/trayectos/${id}`)
-      .set('Authorization', admin)
-      .expect(200)
-      .expect(guardado.body);
-    expect(await prisma.calle.count({ where: { calle: calleRollback } })).toBe(
-      0,
-    );
-  });
-
-  it('comparte un pin público creado por dos altas simultáneas', async () => {
-    const puntos = [
-      { ...pinSimultaneo, orden: 0 },
-      { ...destino, direccion: { calle, altura: 51 } },
-    ];
     const respuestas = await Promise.all([
-      guardar()
-        .send({ ...entrada, puntos })
-        .expect(201),
-      guardar()
-        .send({ ...entrada, puntos })
-        .expect(201),
+      guardar().send(solicitud).expect(201),
+      guardar().send(solicitud).expect(201),
     ]);
     const [primera, segunda] = respuestas.map(
-      ({ body }) =>
-        body as {
-          puntos: { direccionId: string }[];
-        },
+      ({ body }) => body as TrayectoResponseDto,
     );
     expect(primera.puntos[0].direccionId).toBe(segunda.puntos[0].direccionId);
+    const calleRegistro = await prisma.calle.findUniqueOrThrow({
+      where: { clave: calle.toLowerCase() },
+    });
+    const { id: calleId } = calleRegistro;
+    expect(
+      await prisma.direccion.count({
+        where: { calleId, altura: frenteSimultaneo.altura },
+      }),
+    ).toBe(1);
+    await expect(
+      prisma.direccion.create({
+        data: { calleId, altura: frenteSimultaneo.altura, lat, long },
+      }),
+    ).rejects.toMatchObject({ code: 'P2002' });
+    await expect(prisma.$executeRaw`
+      INSERT INTO "Direccion" (id, "calleId", altura, lat, long)
+      VALUES (${randomUUID()}, ${calleId}, 999, NULL, ${long})
+    `).rejects.toMatchObject({
+      meta: {
+        driverAdapterError: { cause: { kind: 'NullConstraintViolation' } },
+      },
+    });
   });
 });

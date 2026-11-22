@@ -8,8 +8,6 @@ export const puntosTrayectoArgs = {
   orderBy: { orden: 'asc' },
   select: {
     orden: true,
-    lat: true,
-    long: true,
     direccionId: true,
     direccion: { select: direccionSelect },
   },
@@ -23,5 +21,10 @@ export function toPuntoTrayectoResponse({
   direccion,
   ...punto
 }: PuntoTrayectoRecord) {
-  return { ...punto, direccion: toDireccionResponse(direccion) };
+  return {
+    ...punto,
+    lat: direccion.lat,
+    long: direccion.long,
+    direccion: toDireccionResponse(direccion),
+  };
 }

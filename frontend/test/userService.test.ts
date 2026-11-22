@@ -41,7 +41,7 @@ test('saves the cliente and addresses through the authenticated user endpoint', 
     cliente: {
       name: 'Ana',
       lastName: 'Pérez',
-      domicilios: [{ direccion: 'San Martín 123', etiqueta: 'Casa' }],
+      domicilios: [{ direccion: { calle: 'San Martín', altura: 123, lat: -35.97, long: -62.73 }, etiqueta: 'Casa' }],
     },
   }
   const user = { id: '1', ...profile }

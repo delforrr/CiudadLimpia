@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { z } from 'zod'
+import { sincronizarFlota } from '../services/flotaService.ts'
 import { asignacionesCamion, type ContratoConductor } from '../utils/contratoConductor.ts'
 import { driverSchema } from '../schemas/driverSchema.ts'
 import type { Driver, DriverStatus } from '../utils/driverFormat.ts'
@@ -7,45 +8,6 @@ import type { Driver, DriverStatus } from '../utils/driverFormat.ts'
 export type StatusFilter = 'TODOS' | DriverStatus
 
 const STORAGE_KEY = 'ciudad-limpia:choferes'
-
-const SEED_DRIVERS: Driver[] = [
-  {
-    id: 'd-001',
-    firstName: 'Carlos',
-    lastName: 'González',
-    dni: '28456789',
-    phone: '02392-456789',
-    status: 'ACTIVO',
-    assignedTruck: 'Camión 01',
-  },
-  {
-    id: 'd-002',
-    firstName: 'Miguel',
-    lastName: 'Rodríguez',
-    dni: '30123456',
-    phone: '02392-523456',
-    status: 'ACTIVO',
-    assignedTruck: 'Camión 02',
-  },
-  {
-    id: 'd-003',
-    firstName: 'Jorge',
-    lastName: 'Fernández',
-    dni: '27890432',
-    phone: '02392-478902',
-    status: 'INACTIVO',
-    assignedTruck: null,
-  },
-  {
-    id: 'd-004',
-    firstName: 'Roberto',
-    lastName: 'López',
-    dni: '32567890',
-    phone: '02392-567890',
-    status: 'ACTIVO',
-    assignedTruck: 'Camión 03',
-  },
-]
 
 export type DriverForm = {
   firstName: string
@@ -66,7 +28,7 @@ function normalize(value: string) {
 }
 
 function loadDrivers(): Driver[] {
-  let drivers = SEED_DRIVERS
+  let drivers: Driver[] = []
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     const parsed = raw ? JSON.parse(raw) : null
@@ -151,6 +113,18 @@ export function useDrivers() {
   const [pendingDelete, setPendingDelete] = useState<Driver | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    let activo = true
+    sincronizarFlota()
+      .then(({ drivers: remotos }) => {
+        if (!activo || remotos.length === 0) return
+        setDrivers(remotos)
+        saveDrivers(remotos)
+      })
+      .catch(() => {})
+    return () => { activo = false }
+  }, [])
 
   const filteredDrivers = useMemo(() => {
     const term = normalize(search.trim())
