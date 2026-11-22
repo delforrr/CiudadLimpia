@@ -10,6 +10,9 @@ import { PuntosLimpiosModule } from './punto-limpio/puntos-limpios.module';
 import { TipoPuntoLimpioModule } from './tipo-punto-limpio/tipo-punto-limpio.module';
 import { TrayectosModule } from './trayecto/trayectos.module';
 import { CamionesModule } from './camiones/camiones.module';
+import { TelemetriaModule } from './telemetria/telemetria.module';
+import { HoyModule } from './hoy/hoy.module';
+import { PushModule } from './push/push.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { CamionesModule } from './camiones/camiones.module';
     TipoPuntoLimpioModule,
     TrayectosModule,
     CamionesModule,
+    TelemetriaModule,
+    HoyModule,
+    PushModule,
   ],
   controllers: [AppController],
 })

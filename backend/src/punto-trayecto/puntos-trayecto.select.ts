@@ -13,6 +13,16 @@ export const puntosTrayectoArgs = {
   },
 } as const satisfies Prisma.Trayecto$puntosArgs;
 
+export const referenciasRecorridoArgs = {
+  orderBy: { orden: 'asc' },
+  select: {
+    orden: true,
+    direccion: {
+      select: { calleId: true, altura: true, lat: true, long: true },
+    },
+  },
+} as const satisfies Prisma.Trayecto$puntosArgs;
+
 type PuntoTrayectoRecord = Prisma.PuntoTrayectoGetPayload<
   typeof puntosTrayectoArgs
 >;

@@ -458,7 +458,16 @@ describe('User CRUD (HTTP)', () => {
               create: { ...profile, domicilios: { create: normalized } },
               update: {
                 ...profile,
-                domicilios: { deleteMany: {}, create: normalized },
+                domicilios: {
+                  deleteMany: { direccionId: { notIn: [direccionId] } },
+                  updateMany: [
+                    {
+                      where: { direccionId },
+                      data: { etiqueta: etiqueta?.trim() ?? null },
+                    },
+                  ],
+                  createMany: { data: normalized, skipDuplicates: true },
+                },
               },
             },
           },
@@ -525,8 +534,11 @@ describe('User CRUD (HTTP)', () => {
               update: {
                 ...cliente,
                 domicilios: {
-                  deleteMany: {},
-                  create: [{ direccionId }],
+                  deleteMany: { direccionId: { notIn: [direccionId] } },
+                  updateMany: [
+                    { where: { direccionId }, data: { etiqueta: null } },
+                  ],
+                  createMany: { data: [{ direccionId }], skipDuplicates: true },
                 },
               },
             },
@@ -603,7 +615,10 @@ describe('User CRUD (HTTP)', () => {
               create: { ...cliente, domicilios: { create: [] } },
               update: {
                 ...cliente,
-                domicilios: { deleteMany: {}, create: [] },
+                domicilios: {
+                  deleteMany: { direccionId: { notIn: [] } },
+                  updateMany: [],
+                },
               },
             },
           },

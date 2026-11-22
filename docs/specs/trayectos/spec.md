@@ -79,6 +79,8 @@ Un trayecto cubre un frente cuando recorre su misma calle y la posición del fre
 2. **Confirmar cada candidato.** Proyectar el pin sobre la `LineString` guardada y revisar el tramo que contiene la proyección. Usar `calleId` de los puntos ordenados que enmarcan ese tramo para comprobar la calle. Dos referencias de la misma calle respaldan un tramo cuando la línea entre ellas sigue esa calle sin un desvío ambiguo. Si las referencias no alcanzan para distinguir una esquina, una paralela o un desvío, devolver datos insuficientes. La distancia al pin más cercano ayuda a ordenar los candidatos.
 3. **Ubicar el paso.** Para cada coincidencia confirmada, devolver la distancia acumulada sobre la línea hasta el frente. Mantener la tolerancia lateral separada del límite longitudinal. Incluir el extremo inequívoco y excluir una casa después del fin de la línea. Si el trayecto pasa dos veces por el frente, conservar ambas posiciones para identificar el próximo paso según el avance del camión.
 
+La primera prueba usa 20 m de distancia lateral al frente, 15 m para asociar un pin del editor y un corredor máximo de 12 m y 30° entre las referencias que enmarcan el paso. Las direcciones compartidas y la línea guardada aportan estos datos. El cálculo funciona sin consultar GeoRef.
+
 Para la primera versión se propone cubrir ambas veredas de una calle con calzada simple. Las avenidas con calzadas separadas quedan en revisión hasta confirmar con Recolección qué frentes atiende cada mano. Ajustar las tolerancias con la muestra local antes de habilitar el aviso.
 
 ### Resultado para Hoy
@@ -92,6 +94,8 @@ El backend verifica que el domicilio seleccionado esté vinculado a la cuenta y 
 | Datos insuficientes | Las referencias del trayecto y del domicilio dejan más de una interpretación plausible. |
 
 Hoy muestra en el mapa los camiones de trayectos confirmados para el domicilio seleccionado. Para el push, comparar el avance del camión por la línea con la posición del próximo paso por el frente. Enviar cuando avance hacia el frente y falten más de 0 y hasta 300 metros sobre el trayecto. Cada prestación que cubra el frente puede generar un push.
+
+El proveedor GPS identifica cada prestación mediante un `servicioId` estable. La primera muestra aceptada vincula la prestación al camión y guarda una copia del trayecto y sus referencias. El backend conserva la última posición utilizable y la expone durante 30 segundos. Cada navegador suscribe un domicilio propio y recibe un push por prestación. Dos camiones sobre el mismo frente generan dos avisos. El envío real permanece deshabilitado hasta validar las tolerancias locales y configurar VAPID.
 
 ### Muestra para validar la regla
 

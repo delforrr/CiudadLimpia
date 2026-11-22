@@ -63,6 +63,7 @@ model ClienteDireccion {
   etiqueta    String?   @db.VarChar(100)
   cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   direccion   Direccion @relation(fields: [direccionId], references: [id], onDelete: Restrict)
+  suscripciones SuscripcionPush[]
 
   @@id([clienteId, direccionId])
   @@index([direccionId])
@@ -118,6 +119,7 @@ model Trayecto {
   localidad   Localidad       @relation(fields: [localidadId], references: [id])
   geometria   Json
   puntos      PuntoTrayecto[]
+  servicios   ServicioRecoleccion[]
 
   @@index([localidadId])
 }
@@ -168,4 +170,65 @@ model Camion {
   estado    Estado              @default(ACTIVO)
   patente   String              @unique
   contratos ContratoConductor[]
+  servicios ServicioRecoleccion[]
+}
+
+model ServicioRecoleccion {
+  id            String   @id @default(uuid())
+  proveedorId   String
+  servicioId    String
+  camionId      String
+  camion        Camion   @relation(fields: [camionId], references: [id], onDelete: Cascade)
+  trayectoId    String
+  trayecto      Trayecto @relation(fields: [trayectoId], references: [id], onDelete: Cascade)
+  nombre        String
+  recorrido     Json
+  recorridoId   String
+  muestraEn     DateTime
+  progreso      Json?
+  visibleHasta  DateTime?
+  entregas      EntregaPush[]
+
+  @@unique([proveedorId, servicioId])
+  @@index([trayectoId])
+  @@index([camionId])
+  @@index([visibleHasta])
+}
+
+model SuscripcionPush {
+  id          String           @id @default(uuid())
+  endpoint    String           @unique @db.VarChar(2000)
+  p256dh      String
+  auth        String
+  clienteId   String
+  direccionId String
+  domicilio   ClienteDireccion @relation(fields: [clienteId, direccionId], references: [clienteId, direccionId], onDelete: Cascade)
+  version     Int              @default(1)
+  entregas    EntregaPush[]
+
+  @@index([clienteId, direccionId])
+}
+
+enum EstadoEntregaPush {
+  PENDIENTE
+  ENVIADO
+  CANCELADO
+}
+
+model EntregaPush {
+  id                 String              @id @default(uuid())
+  prestacionId       String
+  prestacion         ServicioRecoleccion @relation(fields: [prestacionId], references: [id], onDelete: Cascade)
+  suscripcionId      String
+  suscripcion        SuscripcionPush     @relation(fields: [suscripcionId], references: [id], onDelete: Cascade)
+  versionSuscripcion Int
+  estado             EstadoEntregaPush   @default(PENDIENTE)
+  intentos           Int                 @default(0)
+  intentoEnvio       Boolean             @default(false)
+  venceEn            DateTime
+  proximoIntentoEn   DateTime            @default(now())
+
+  @@unique([prestacionId, suscripcionId])
+  @@index([suscripcionId])
+  @@index([estado, proximoIntentoEn])
 }
