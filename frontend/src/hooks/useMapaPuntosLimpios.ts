@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { loadPuntos, loadTipos } from '../utils/puntosLimpiosStorage'
-import { PUNTOS_DATA } from '../utils/puntosLimpiosMapa'
+import { cargarCatalogoPuntosLimpios } from '../services/puntosLimpiosService'
+import { loadPuntos, loadTipos, savePuntos, saveTipos } from '../utils/puntosLimpiosStorage'
 import { puntoLimpioIconSrc } from '../utils/puntosLimpiosLogos'
 
 function cargarMapa() {
@@ -11,9 +11,7 @@ function cargarMapa() {
   const puntos = loadPuntos(tipos).flatMap((punto) => {
     if (punto.estado !== 'ACTIVO') return []
     const tipo = tipos.find((item) => item.id === punto.tipoId)
-    const anterior = PUNTOS_DATA.find((item) => item.nombre === punto.nombre && item.direccion === punto.direccion)
-    const lat = punto.lat ?? anterior?.lat
-    const lng = punto.lng ?? anterior?.lng
+    const { lat, lng } = punto
     if (!tipo || lat === undefined || lng === undefined) return []
     return [{ ...punto, lat, lng, tipo }]
   })
@@ -26,7 +24,19 @@ export function useMapaPuntosLimpios() {
     const actualizar = () => setDatos(cargarMapa())
     window.addEventListener('storage', actualizar)
     window.addEventListener('focus', actualizar)
+
+    let activo = true
+    cargarCatalogoPuntosLimpios()
+      .then(({ tipos, puntos }) => {
+        if (!activo || puntos.length === 0) return
+        saveTipos(tipos)
+        savePuntos(puntos)
+        actualizar()
+      })
+      .catch(() => {})
+
     return () => {
+      activo = false
       window.removeEventListener('storage', actualizar)
       window.removeEventListener('focus', actualizar)
     }

@@ -15,6 +15,16 @@ export type BorradorTrayecto = {
   lineaElegida: LineaTrayecto | null;
 };
 
+export function completarAltura(referencia: Referencia, alturaManual: string): Referencia {
+  if (referencia.altura !== null) return referencia;
+  const texto = alturaManual.trim();
+  const altura = Number(texto);
+  if (!/^\d+$/.test(texto) || !Number.isInteger(altura) || altura < 1 || altura > 2147483647) {
+    throw new Error('Campo obligatorio');
+  }
+  return { ...referencia, altura };
+}
+
 export function abrirBorrador(trayecto: Trayecto): BorradorTrayecto {
   const { id, nombre, localidadId, puntos, geometria } = trayecto;
   return {

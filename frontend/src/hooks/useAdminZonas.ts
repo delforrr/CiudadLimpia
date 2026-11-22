@@ -71,5 +71,8 @@ export function useAdminZonas() {
       }
     },
     asignar: (trayectoId: string, zonaId: string) => persistir(asignarZona(catalogo, trayectoId, zonaId)),
+    quitarTrayecto: (trayectoId: string) => setCatalogo((anterior) => ({
+      ...anterior, asignaciones: Object.fromEntries(Object.entries(anterior.asignaciones).filter(([id]) => id !== trayectoId)),
+    })),
   };
 }

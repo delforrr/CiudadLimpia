@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Avatar,
@@ -36,6 +36,7 @@ import PhoneIcon from '@mui/icons-material/Phone'
 import SearchIcon from '@mui/icons-material/Search'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import { useDrivers, type StatusFilter } from '../hooks/useDrivers'
+import { sincronizarFlota } from '../services/flotaService.ts'
 import type { Driver } from '../utils/driverFormat'
 import {
   driverFullName,
@@ -53,17 +54,11 @@ interface SystemTruckOption {
 }
 
 function loadSystemTruckOptions(): SystemTruckOption[] {
-  const fallback: SystemTruckOption[] = [
-    { code: 'Camión 01', label: 'Camión 01 - Iveco Tector 170E28 (AE 123 CD)' },
-    { code: 'Camión 02', label: 'Camión 02 - Mercedes-Benz Atego 1726 (AF 456 TL)' },
-    { code: 'Camión 03', label: 'Camión 03 - Volkswagen Constellation (AD 789 ZX)' },
-    { code: 'Camión 04', label: 'Camión 04 - Ford Cargo 1722 (AC 321 QR)' },
-  ]
   try {
     const raw = localStorage.getItem('ciudad-limpia:camiones')
-    if (!raw) return fallback
+    if (!raw) return []
     const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed) || parsed.length === 0) return fallback
+    if (!Array.isArray(parsed) || parsed.length === 0) return []
     return parsed
       .map((t: { code?: string; brand?: string; model?: string; plate?: string }) => ({
         code: t.code || '',
@@ -71,7 +66,7 @@ function loadSystemTruckOptions(): SystemTruckOption[] {
       }))
       .filter((t: SystemTruckOption) => Boolean(t.code))
   } catch {
-    return fallback
+    return []
   }
 }
 
@@ -85,7 +80,21 @@ export function AdminChoferes() {
   const [detailDriver, setDetailDriver] = useState<Driver | null>(null)
   const [asignacionPendiente, setAsignacionPendiente] = useState<Driver | null>(null)
   const isEditing = Boolean(drivers.editing) || drivers.isCreating
-  const systemTrucks = useMemo(() => loadSystemTruckOptions(), [])
+  const [systemTrucks, setSystemTrucks] = useState<SystemTruckOption[]>(loadSystemTruckOptions)
+
+  useEffect(() => {
+    let activo = true
+    sincronizarFlota()
+      .then(({ trucks }) => {
+        if (!activo || trucks.length === 0) return
+        setSystemTrucks(trucks.map(({ code, brand, model, plate }) => ({
+          code,
+          label: `${code}${brand ? ` - ${brand}` : ''}${model ? ` ${model}` : ''}${plate ? ` (${plate})` : ''}`,
+        })))
+      })
+      .catch(() => {})
+    return () => { activo = false }
+  }, [])
 
   const confirmarAsignacion = (chofer: Driver, truckCode: string | null, contrato?: ContratoConductor) => {
     drivers.assignTruck(chofer.id, truckCode, contrato)

@@ -1,4 +1,4 @@
-import { useState, useMemo, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import {
   Alert,
   Button,
@@ -39,6 +39,7 @@ import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined
 import RouteIcon from '@mui/icons-material/Route'
 import SearchIcon from '@mui/icons-material/Search'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import { sincronizarFlota } from '../services/flotaService.ts'
 import type { Localidad, Trayecto as TrayectoGuardado } from '../services/trayectosService'
 import { DetalleTrayecto } from './AdminTrayectos'
 import { AsignarConductorDialog } from './AsignarConductorDialog'
@@ -80,82 +81,28 @@ export interface AdminCamionesProps {
 const STORAGE_KEY = 'ciudad-limpia:camiones'
 const trayectosDeEjemplo = new Set(['tr-001', 'tr-002', 'tr-003', 'tr-004'])
 
-const INITIAL_TRUCKS: Truck[] = [
-  {
-    id: 't-001',
-    code: 'Camión 01',
-    plate: 'AE 123 CD',
-    brand: 'Iveco',
-    model: 'Tector 170E28',
-    year: 2022,
-    conductores: [{ nombre: 'Carlos González' }],
-    status: 'OPERATIVO',
-    trayectos: [],
-  },
-  {
-    id: 't-002',
-    code: 'Camión 02',
-    plate: 'AF 456 TL',
-    brand: 'Mercedes-Benz',
-    model: 'Atego 1726',
-    year: 2023,
-    conductores: [{ nombre: 'Miguel Rodríguez' }],
-    status: 'OPERATIVO',
-    trayectos: [],
-  },
-  {
-    id: 't-003',
-    code: 'Camión 03',
-    plate: 'AD 789 ZX',
-    brand: 'Volkswagen',
-    model: 'Constellation 17.280',
-    year: 2021,
-    conductores: [{ nombre: 'Roberto López' }],
-    status: 'OPERATIVO',
-    trayectos: [],
-  },
-  {
-    id: 't-004',
-    code: 'Camión 04',
-    plate: 'AC 321 QR',
-    brand: 'Ford',
-    model: 'Cargo 1722',
-    year: 2019,
-    conductores: [],
-    status: 'MANTENIMIENTO',
-    trayectos: [],
-  },
-]
-
 function loadSystemDrivers(): string[] {
-  const fallback = [
-    'Carlos González',
-    'Miguel Rodríguez',
-    'Jorge Fernández',
-    'Roberto López',
-  ]
   try {
     const raw = localStorage.getItem('ciudad-limpia:choferes')
-    if (!raw) return fallback
+    if (!raw) return []
     const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed) || parsed.length === 0) return fallback
-    const names = parsed
+    if (!Array.isArray(parsed) || parsed.length === 0) return []
+    return parsed
       .map((d: { firstName?: string; lastName?: string }) =>
         `${d.firstName ?? ''} ${d.lastName ?? ''}`.trim(),
       )
       .filter(Boolean)
-    return names.length > 0 ? names : fallback
   } catch {
-    return fallback
+    return []
   }
 }
 
 function loadTrucks(): Truck[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return INITIAL_TRUCKS
+    if (!raw) return []
     const parsed = JSON.parse(raw) as Truck[]
-    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_TRUCKS
+    if (!Array.isArray(parsed) || parsed.length === 0) return []
     return parsed.map((t) => ({
       ...t,
       conductores: asignacionesCamion(t),
@@ -164,7 +111,7 @@ function loadTrucks(): Truck[] {
         : [],
     }))
   } catch {
-    return INITIAL_TRUCKS
+    return []
   }
 }
 
@@ -257,7 +204,20 @@ export function AdminCamiones({
   const [editingTruck, setEditingTruck] = useState<Truck | null>(null)
   const [pendingDeleteTruck, setPendingDeleteTruck] = useState<Truck | null>(null)
   const [asignacionPendiente, setAsignacionPendiente] = useState<Truck | null>(null)
-  const systemDrivers = useMemo(() => loadSystemDrivers(), [])
+  const [systemDrivers, setSystemDrivers] = useState<string[]>(loadSystemDrivers)
+
+  useEffect(() => {
+    let activo = true
+    sincronizarFlota()
+      .then(({ trucks: remotos, drivers: remotosDrivers }) => {
+        if (!activo || remotos.length === 0) return
+        setTrucks(remotos)
+        setSystemDrivers(remotosDrivers.map(({ firstName, lastName }) =>
+          `${firstName} ${lastName}`.trim()))
+      })
+      .catch(() => {})
+    return () => { activo = false }
+  }, [])
 
   // Formulario
   const [form, setForm] = useState<TruckFormState>(DEFAULT_FORM)

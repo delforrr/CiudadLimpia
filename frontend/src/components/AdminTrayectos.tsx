@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Alert, Button, Paper, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Paper, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
 import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
@@ -22,6 +21,21 @@ export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTra
   const listado = admin.vista.tipo === 'lista';
 
   return <div className="trayectos-modulo">
+    <Dialog className="admin-module-dialog" open={Boolean(admin.pendienteEliminar)} onClose={admin.cancelarEliminar}
+      fullWidth maxWidth="sm" aria-labelledby="trayecto-eliminar-title">
+      <DialogTitle id="trayecto-eliminar-title">Eliminar trayecto</DialogTitle>
+      <DialogContent>
+        <p>¿Querés eliminar el trayecto {admin.pendienteEliminar?.nombre}?</p>
+        {admin.errorEliminar && <Alert severity="error">{admin.errorEliminar}</Alert>}
+      </DialogContent>
+      <DialogActions>
+        <Button color="inherit" onClick={admin.cancelarEliminar}>Cancelar</Button>
+        <Button color="error" variant="contained" onClick={() => {
+          const id = admin.confirmarEliminar();
+          if (id) zonas.quitarTrayecto(id);
+        }}>Eliminar</Button>
+      </DialogActions>
+    </Dialog>
     {listado && <ToggleButtonGroup className="trayectos-secciones" exclusive color="success" size="small"
       value={apartado} aria-label="Ver trayectos o zonas"
       onChange={(_, valor: typeof apartado | null) => { if (valor) setApartado(valor); }}>
@@ -63,6 +77,7 @@ function TrayectosContenido({ admin, zonas }: {
       <DetalleTrayecto key={trayecto.id} trayecto={trayecto} localidad={nombreLocalidad(trayecto.localidadId)}
         zona={nombreZona(trayecto.id)}
         cargando={cargando} error={error} aviso={aviso} volver={admin.volver}
+        eliminar={() => admin.solicitarEliminar(trayecto)}
         editar={() => void admin.abrir(trayecto.id, true)} />
     );
   }
@@ -81,6 +96,7 @@ function TrayectosContenido({ admin, zonas }: {
           onClick={admin.nuevo}>Nuevo trayecto</Button>
       </div>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => void admin.cargar()}>Reintentar</Button>}>{error}</Alert>}
+      {aviso && <Alert severity="success">{aviso}</Alert>}
       {!cargando && !error && trayectos.length === 0 && (
         <div className="trayectos-vacio">
           <span className="trayectos-icono"><PlaceOutlinedIcon /></span>
@@ -102,10 +118,12 @@ function TrayectosContenido({ admin, zonas }: {
             <div className="trayectos-tarjeta-pie">
               <span className="trayectos-recuento">{trayecto.puntos.length === 1 ? '1 punto' : `${trayecto.puntos.length} puntos`}</span>
               <div className="trayectos-acciones">
-                <Button size="small" color="success" endIcon={<ArrowForwardIcon />} disabled={cargando}
+                <Button size="small" color="success" disabled={cargando}
                   onClick={() => void admin.abrir(trayecto.id, false)} aria-label={`Ver detalle de ${trayecto.nombre}`}>Ver detalle</Button>
                 <Button size="small" color="success" variant="outlined" disabled={cargando}
                   onClick={() => void admin.abrir(trayecto.id, true)} aria-label={`Editar ${trayecto.nombre}`}>Editar</Button>
+                <Button size="small" color="error" disabled={cargando}
+                  onClick={() => admin.solicitarEliminar(trayecto)} aria-label={`Eliminar trayecto ${trayecto.nombre}`}>Eliminar</Button>
               </div>
             </div>
           </li>
@@ -115,7 +133,7 @@ function TrayectosContenido({ admin, zonas }: {
   );
 }
 
-export function DetalleTrayecto({ trayecto, localidad, zona, cargando = false, aviso, error, volver, editar }: {
+export function DetalleTrayecto({ trayecto, localidad, zona, cargando = false, aviso, error, volver, editar, eliminar }: {
   trayecto: Trayecto;
   localidad: string;
   zona?: string;
@@ -124,6 +142,7 @@ export function DetalleTrayecto({ trayecto, localidad, zona, cargando = false, a
   error?: string;
   volver?: () => void;
   editar?: () => void;
+  eliminar?: () => void;
 }) {
   const [panel, setPanel] = useState<'mapa' | 'opciones'>('mapa');
 
@@ -148,11 +167,13 @@ export function DetalleTrayecto({ trayecto, localidad, zona, cargando = false, a
                 {zona && <p className="trayectos-localidad">Zona: {zona}</p>}
               </div>
             </div>
-            {(volver || editar) && <div className="trayectos-acciones">
+            {(volver || editar || eliminar) && <div className="trayectos-acciones">
               {volver && <Button size="small" color="success" startIcon={<ArrowBackIcon />} disabled={cargando}
                 onClick={volver}>Volver al listado</Button>}
               {editar && <Button size="small" variant="outlined" color="success" startIcon={<EditOutlinedIcon />} disabled={cargando}
                 onClick={editar}>Editar trayecto</Button>}
+              {eliminar && <Button size="small" color="error" disabled={cargando}
+                onClick={eliminar}>Eliminar trayecto</Button>}
             </div>}
           </div>
           {aviso && <Alert severity="success">{aviso}</Alert>}

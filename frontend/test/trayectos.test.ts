@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { trayectosService, type Trayecto } from '../src/services/trayectosService.ts';
-import { abrirBorrador, prepararTrayecto, tienePosicionesDistintas } from '../src/utils/trayectoEditor.ts';
+import { abrirBorrador, completarAltura, prepararTrayecto, tienePosicionesDistintas } from '../src/utils/trayectoEditor.ts';
 
 const origen = { lat: -35.97, long: -62.73 };
 const destino = { lat: -35.98, long: -62.74 };
@@ -16,6 +16,22 @@ const guardado: Trayecto = {
 };
 
 afterEach(() => mock.restoreAll());
+
+test('permite completar manualmente una calle sin altura y conserva el pin', () => {
+  const referencia = { calle: 'Dorrego', altura: null };
+  const completada = completarAltura(referencia, ' 860 ');
+  assert.deepEqual(completada, { calle: 'Dorrego', altura: 860 });
+  assert.equal(referencia.altura, null);
+  const envio = prepararTrayecto({ nombre: 'Centro', localidadId: '06826050', lineaElegida: null,
+    puntos: [{ clave: '1', ...origen, referencia: completada }, { clave: '2', ...destino }] });
+  assert.deepEqual(envio.puntos[0], { ...origen, orden: 0, direccion: { calle: 'Dorrego', altura: 860 } });
+});
+
+test('exige una altura manual válida si la referencia de calle no tiene altura', () => {
+  const referencia = { calle: 'Dorrego', altura: null };
+  for (const valor of ['', ' ', '0', '-1', '1.5', 'abc', '2147483648']) assert.throws(() => completarAltura(referencia, valor));
+  assert.equal(completarAltura({ calle: 'Dorrego', altura: 123 }, '860').altura, 123);
+});
 
 test('reabre la geometría guardada y conserva referencias al reordenar puntos', () => {
   const borrador = abrirBorrador(guardado);

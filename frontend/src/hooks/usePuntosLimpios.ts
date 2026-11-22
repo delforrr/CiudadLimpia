@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
+import { cargarCatalogoPuntosLimpios } from '../services/puntosLimpiosService'
 import { trayectosService } from '../services/trayectosService'
 import { puntoLimpioSchema } from '../schemas/puntoLimpioSchema.ts'
 import {
@@ -11,6 +12,7 @@ import {
   loadPuntos,
   loadTipos,
   savePuntos,
+  saveTipos,
 } from '../utils/puntosLimpiosStorage.ts'
 
 export type TipoFilter = 'TODOS' | string
@@ -35,7 +37,7 @@ export function usePuntosLimpios() {
     const tipos = loadTipos()
     return { tipos, puntos: loadPuntos(tipos) }
   })
-  const tipos = initial.tipos
+  const [tipos, setTipos] = useState(initial.tipos)
   const [puntos, setPuntos] = useState<PuntoLimpioAdmin[]>(initial.puntos)
   const loading = false
   const [search, setSearch] = useState('')
@@ -61,6 +63,20 @@ export function usePuntosLimpios() {
   const [pendingDelete, setPendingDelete] = useState<PuntoLimpioAdmin | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    let activo = true
+    cargarCatalogoPuntosLimpios()
+      .then((catalogo) => {
+        if (!activo || catalogo.puntos.length === 0) return
+        saveTipos(catalogo.tipos)
+        savePuntos(catalogo.puntos)
+        setTipos(catalogo.tipos)
+        setPuntos(catalogo.puntos)
+      })
+      .catch(() => {})
+    return () => { activo = false }
+  }, [])
 
   const filteredPuntos = useMemo(() => {
     const term = normalize(search.trim())
