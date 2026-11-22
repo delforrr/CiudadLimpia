@@ -1,4 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { IconButton } from '@mui/material';
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import type { LatLngTuple, LayerGroup, Map as LeafletMap, Marker } from 'leaflet';
 import type { Coordenadas, LineaTrayecto } from '../services/trayectosService';
 import 'leaflet/dist/leaflet.css';
@@ -22,6 +24,7 @@ type Props = {
   zoomFijo?: boolean;
   camiones?: readonly CamionMapa[];
   domicilio?: Coordenadas;
+  mostrarBotonCentrarDomicilio?: boolean;
   onMoverDomicilio?: (posicion: Coordenadas) => void;
   onDescartarDomicilio?: () => void;
 };
@@ -35,7 +38,7 @@ const sinCamiones: readonly CamionMapa[] = [];
 const posiciones = (linea: LineaTrayecto): [number, number][] =>
   linea.coordinates.map(([long, lat]) => [lat, long]);
 
-export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto, zoomInicial = 14, zoomFijo = false, camiones = sinCamiones, domicilio, onMoverDomicilio, onDescartarDomicilio }: Props) {
+export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, centrarEn, onMarcar, onDescartarPin, onEditarPunto, zoomInicial = 14, zoomFijo = false, camiones = sinCamiones, domicilio, mostrarBotonCentrarDomicilio, onMoverDomicilio, onDescartarDomicilio }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const marcadoresCamiones = useRef(new Map<string, Marker>());
   const encuadreEnVivo = useRef(false);
@@ -253,6 +256,12 @@ export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, 
     <>
       {error && <p role="alert">No se pudo abrir el mapa. Recargá la página para reintentar.</p>}
       <div ref={contenedor} className="trayecto-mapa" role="region" aria-label="Mapa del trayecto" />
+      {mostrarBotonCentrarDomicilio && instancia && domicilio && (
+        <IconButton className="hoy-mapa-centrar" aria-label="Centrar domicilio"
+          onClick={() => instancia.mapa.panTo([domicilio.lat, domicilio.long], { animate: false })}>
+          <HomeOutlinedIcon />
+        </IconButton>
+      )}
     </>
   );
 }

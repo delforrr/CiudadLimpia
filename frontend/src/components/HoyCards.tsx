@@ -60,7 +60,7 @@ function SeguimientoHoy({ user }: { user: User }) {
             <div className="mapa-trayecto-card">
               <div className="hoy-mapa">
                 <TrayectoMapa key={actual?.id} puntos={puntosVacios} lineas={lineas}
-                  camiones={camiones} domicilio={mapa.domicilio} zoomInicial={16} />
+                  camiones={camiones} domicilio={mapa.domicilio} zoomInicial={16} mostrarBotonCentrarDomicilio />
               </div>
             </div>
           )}
