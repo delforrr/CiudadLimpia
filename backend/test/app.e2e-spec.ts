@@ -50,6 +50,7 @@ describe('Public API and documentation (HTTP)', () => {
       '/api/contratos-conductor/{idCamion}/{idConductor}/{fechaInicio}',
       '/api/geocodificacion/directa',
       '/api/geocodificacion/inversa',
+      '/api/hoy/domicilios/{direccionId}/mapa',
       '/api/localidades',
       '/api/telemetria/posiciones',
       '/api/trayectos',

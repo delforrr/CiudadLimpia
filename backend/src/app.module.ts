@@ -11,6 +11,7 @@ import { TipoPuntoLimpioModule } from './tipo-punto-limpio/tipo-punto-limpio.mod
 import { TrayectosModule } from './trayecto/trayectos.module';
 import { CamionesModule } from './camiones/camiones.module';
 import { TelemetriaModule } from './telemetria/telemetria.module';
+import { HoyModule } from './hoy/hoy.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TelemetriaModule } from './telemetria/telemetria.module';
     TrayectosModule,
     CamionesModule,
     TelemetriaModule,
+    HoyModule,
   ],
   controllers: [AppController],
 })
