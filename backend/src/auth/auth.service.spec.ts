@@ -1,0 +1,105 @@
+import { UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { AuthService } from './auth.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { UserService } from '../user/user.service';
+import { Prisma } from '../generated/prisma/client';
+
+describe('AuthService', () => {
+  const user = {
+    id: 'user-1',
+    email: 'ana@example.com',
+    role: 'USER' as const,
+    cliente: {
+      id: 'cliente-1',
+      name: 'Ana',
+      lastName: 'Pérez',
+      domicilios: [],
+    },
+  };
+  const direccionId = '00000000-0000-4000-8000-000000000001';
+  const dto = {
+    email: user.email,
+    cliente: {
+      name: 'Ana',
+      lastName: 'Pérez',
+      domicilios: [{ direccionId }],
+    },
+    password: ' contraseña! ',
+  };
+  let service: AuthService;
+  let db: { user: { create: jest.Mock; findUnique: jest.Mock } };
+
+  beforeEach(() => {
+    db = { user: { create: jest.fn(), findUnique: jest.fn() } };
+    service = new AuthService(
+      db as unknown as PrismaService,
+      new JwtService({ secret: 'test-secret-only' }),
+      new UserService({
+        ...db,
+        $transaction: (operation: (tx: object) => unknown) =>
+          operation({
+            ...db,
+            direccion: {
+              findUnique: jest.fn().mockResolvedValue({ id: direccionId }),
+            },
+          }),
+      } as unknown as PrismaService),
+    );
+  });
+
+  it('registers with bcrypt without exposing the hash', async () => {
+    db.user.create.mockImplementation(() => user);
+    const result = await service.register(dto);
+    const hash = (
+      db.user.create.mock.calls as [{ data: { passwordHash: string } }][]
+    )[0][0].data.passwordHash;
+    expect(await bcrypt.compare(dto.password, hash)).toBe(true);
+    expect(bcrypt.getRounds(hash)).toBe(12);
+    expect(result).toEqual(user);
+  });
+
+  it('propagates a duplicate email error from Prisma', async () => {
+    const error = new Prisma.PrismaClientKnownRequestError('Duplicate email', {
+      code: 'P2002',
+      clientVersion: '7.10.1',
+    });
+    db.user.create.mockRejectedValue(error);
+    await expect(service.register(dto)).rejects.toBe(error);
+  });
+
+  it.each([
+    [false, 3600],
+    [true, 604800],
+  ])(
+    'accepts the password and expires the JWT with rememberMe=%s',
+    async (remember, duration) => {
+      db.user.findUnique.mockResolvedValue({
+        ...user,
+        passwordHash: await bcrypt.hash(dto.password, 4),
+      });
+      expect(await service.login(dto)).toEqual(user);
+      const token = await service.createToken(user.id, remember);
+      const payload = new JwtService({ secret: 'test-secret-only' }).verify<{
+        sub: string;
+        exp: number;
+        iat: number;
+      }>(token);
+      expect(payload.sub).toBe(user.id);
+      expect(payload.exp - payload.iat).toBe(duration);
+    },
+  );
+
+  it('uses the same error for unknown emails and incorrect passwords', async () => {
+    db.user.findUnique.mockResolvedValue(null);
+    await expect(service.login(dto)).rejects.toThrow(UnauthorizedException);
+    db.user.findUnique.mockResolvedValue({
+      ...user,
+      passwordHash: await bcrypt.hash('another password', 4),
+    });
+    await expect(service.login(dto)).rejects.toThrow(
+      'Email o contraseña incorrectos',
+    );
+  });
+});

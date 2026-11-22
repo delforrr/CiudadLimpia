@@ -1,0 +1,553 @@
+/* =========================================================
+   MÓDULO DE CAMIONES - PANEL DE ADMINISTRADOR
+   Formato alineado con Choferes y Puntos Limpios
+   ========================================================= */
+
+.admin-trucks {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+/* ===================== TARJETAS DE RESUMEN ===================== */
+.admin-trucks-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.admin-trucks-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.admin-trucks-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: #eef6e8;
+  color: #1e6000;
+}
+
+.admin-trucks-stat-icon .MuiSvgIcon-root {
+  font-size: 1.45rem;
+}
+
+.admin-trucks-stat-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.admin-trucks-stat-value {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.5rem;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #013a27;
+}
+
+/* ===================== PANEL PRINCIPAL ===================== */
+.admin-trucks-panel {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.admin-trucks-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.admin-trucks-search {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.admin-trucks-filter {
+  min-width: 190px;
+}
+
+.admin-trucks-add {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.admin-trucks-table-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem 0.85rem;
+}
+
+.admin-trucks-table-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #013a27;
+}
+
+.admin-trucks-table-header p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.admin-trucks-count {
+  flex-shrink: 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  background-color: #eef6e8;
+  color: #1e6000;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ===================== TABLA ===================== */
+.admin-trucks-table .MuiTableCell-head {
+  background-color: #f8fafc;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-trucks-table .MuiTableCell-body {
+  border-bottom-color: #eef2f7;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.admin-trucks-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 180px;
+}
+
+.admin-trucks-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: #eef6e8;
+  color: #1e6000;
+  border: 1px solid #d4ebcc;
+}
+
+.admin-trucks-marker .MuiSvgIcon-root {
+  font-size: 1.2rem;
+}
+
+.admin-trucks-name {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #013a27;
+}
+
+.admin-trucks-subtext {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.76rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.admin-trucks-cell-text {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.admin-trucks-cell-subtext {
+  font-size: 0.84rem;
+  color: #64748b;
+}
+
+.admin-trucks-driver {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+.admin-trucks-driver .MuiSvgIcon-root {
+  color: #1e6000;
+}
+
+.admin-trucks-muted {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.admin-trucks-assign-btn.MuiButton-root {
+  text-transform: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+  line-height: 1.2;
+}
+
+.admin-trucks-trayectos-count.MuiButton-root {
+  text-transform: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+  line-height: 1.2;
+}
+
+.admin-trucks-status.MuiChip-root {
+  height: 24px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.admin-trucks-status.is-active {
+  background-color: #eef6e8;
+  color: #1e6000;
+}
+
+.admin-trucks-status.is-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.admin-trucks-status.is-inactive {
+  background-color: #fef2f2;
+  color: #991b1b;
+}
+
+.admin-trucks-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.1rem;
+}
+
+/* ===================== ESTADO VACÍO ===================== */
+.admin-trucks-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.admin-trucks-empty-icon.MuiSvgIcon-root {
+  font-size: 3rem;
+  color: #cbd5e1;
+}
+
+.admin-trucks-empty h4 {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  color: #013a27;
+}
+
+.admin-trucks-empty p {
+  max-width: 420px;
+  margin: 0.35rem 0 0.85rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+/* ===================== DETALLE ===================== */
+.admin-trucks-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-trucks-detail-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background-color: #eef6e8;
+  color: #1e6000;
+  border: 1px solid #d4ebcc;
+}
+
+.admin-trucks-detail-avatar .MuiSvgIcon-root {
+  font-size: 1.8rem;
+}
+
+.admin-trucks-detail-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #013a27;
+}
+
+.admin-trucks-detail-header p {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.admin-trucks-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.admin-trucks-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background-color: #f8fafc;
+}
+
+.admin-trucks-detail-card h4 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.admin-trucks-detail-card p {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-trucks-detail-card p .MuiSvgIcon-root {
+  color: #1e6000;
+}
+
+.admin-trucks-driver-assigned-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-trucks-assign-driver-container {
+  margin-top: 0.35rem;
+}
+
+.admin-trucks-drivers-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.admin-trucks-conductores-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.admin-trucks-conductores-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.admin-trucks-conductores-header h4 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #013a27;
+}
+
+.admin-trucks-conductor-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background-color: #f8fafc;
+}
+
+.admin-trucks-conductor-item > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.admin-trucks-conductor-item strong {
+  font-size: 0.86rem;
+  color: #1e293b;
+}
+
+.admin-trucks-conductor-item span {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+/* ===================== SECCIÓN TRAYECTOS ===================== */
+.admin-trucks-trayectos-section {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.admin-trucks-trayectos-header {
+  margin-bottom: 0.75rem;
+}
+
+.admin-trucks-trayectos-header h4 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #013a27;
+}
+
+.admin-trucks-trayectos-nombres {
+  margin: 0 0 0.65rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-trucks-trayectos-opciones {
+  display: grid;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+}
+
+.admin-trucks-trayectos-opciones li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid #dce6df;
+  border-radius: 9px;
+}
+
+.admin-trucks-trayectos-opciones .MuiFormControlLabel-root {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-trucks-trayecto-previa.MuiDialogContent-root {
+  display: flex;
+  flex: 0 1 auto;
+  min-height: 0;
+  height: min(68dvh, 640px);
+  padding: 0.75rem;
+}
+
+.admin-trucks-trayecto-previa .trayectos-detalle {
+  min-width: 0;
+}
+
+/* ===================== FORMULARIO ===================== */
+.admin-trucks-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding-top: 0.25rem;
+}
+
+.admin-trucks-form-full {
+  grid-column: 1 / -1;
+}
+
+.admin-trucks-form-hint {
+  padding: 0.65rem 0.85rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.admin-trucks-delete-confirm-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1024px) {
+  .admin-trucks-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-trucks-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-trucks-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-trucks-filter,
+  .admin-trucks-add {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .admin-trucks-table-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-trucks-detail-grid,
+  .admin-trucks-form {
+    grid-template-columns: 1fr;
+  }
+
+}

@@ -1,29 +1,298 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import type { App } from 'supertest/types';
+import { PrismaService } from '../src/prisma/prisma.service';
+import type { OpenAPIObject } from '@nestjs/swagger';
+import { configureApp } from '../src/configure-app';
+import { AppModule } from '../src/app.module';
+import { JwtService } from '@nestjs/jwt';
 
-describe('AppController (e2e)', () => {
+describe('Public API and documentation (HTTP)', () => {
   let app: INestApplication<App>;
-
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
+  beforeAll(async () => {
+    process.env.JWT_SECRET = 'test-only-secret-at-least-32-characters';
+    const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PrismaService)
+      .useValue({
+        user: { findUnique: () => ({ id: 'vecino', role: 'USER' }) },
+        calle: { findMany: () => [{ id: 'roca', calle: 'Roca' }] },
+      })
+      .compile();
+    app = module.createNestApplication();
+    configureApp(app);
     await app.init();
   });
-
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  afterAll(async () => {
+    await app.close();
   });
 
-  afterEach(async () => {
-    await app.close();
+  it('does not expose the retired auth user list', () =>
+    request(app.getHttpServer()).get('/auth/all').expect(404));
+  it('reports public liveness', () =>
+    request(app.getHttpServer())
+      .get('/health')
+      .expect(200)
+      .expect({ status: 'ok' }));
+
+  it('permite buscar calles como vecino y reserva la edición al administrador', async () => {
+    const api = () => request(app.getHttpServer());
+    const token = await app.get(JwtService).signAsync({ sub: 'vecino' });
+    await api().get('/calles?buscar=Roca').expect(401);
+    await api()
+      .get('/calles?buscar=Roca')
+      .auth(token, { type: 'bearer' })
+      .expect(200, [{ id: 'roca', calle: 'Roca' }]);
+    await api()
+      .post('/calles')
+      .auth(token, { type: 'bearer' })
+      .send({ calle: 'Roca' })
+      .expect(403);
+  });
+
+  it('documents the executable schemas, authentication and public responses', async () => {
+    await request(app.getHttpServer())
+      .get('/api/docs/')
+      .expect(200)
+      .expect(/swagger-ui/);
+    const response = await request(app.getHttpServer())
+      .get('/api/docs-json')
+      .expect(200);
+    const document = response.body as OpenAPIObject;
+    expect(Object.keys(document.paths).sort()).toEqual([
+      '/api/camiones',
+      '/api/camiones/{id}',
+      '/api/camiones/{id}/contrato-vigente',
+      '/api/conductores',
+      '/api/conductores/{id}',
+      '/api/contratos-conductor',
+      '/api/contratos-conductor/{idCamion}/{idConductor}/{fechaInicio}',
+      '/api/geocodificacion/directa',
+      '/api/geocodificacion/inversa',
+      '/api/hoy/domicilios/{direccionId}/camiones',
+      '/api/hoy/domicilios/{direccionId}/mapa',
+      '/api/hoy/domicilios/{direccionId}/trayectos',
+      '/api/localidades',
+      '/api/push/configuracion',
+      '/api/push/suscripciones',
+      '/api/push/suscripciones/{id}',
+      '/api/telemetria/posiciones',
+      '/api/telemetria/servicios/{servicioId}/avisos',
+      '/api/trayectos',
+      '/api/trayectos/sugerencia',
+      '/api/trayectos/{id}',
+      '/auth/login',
+      '/auth/logout',
+      '/auth/me',
+      '/auth/register',
+      '/calles',
+      '/calles/{id}',
+      '/direcciones',
+      '/direcciones/puntos-limpios',
+      '/direcciones/{id}',
+      '/geocodificacion/directa',
+      '/geocodificacion/inversa',
+      '/health',
+      '/puntos-limpios',
+      '/puntos-limpios/{id}',
+      '/tipos-punto-limpio',
+      '/tipos-punto-limpio/{id}',
+      '/users',
+      '/users/{id}',
+    ]);
+    expect(document.components?.securitySchemes?.session).toMatchObject({
+      type: 'apiKey',
+      in: 'cookie',
+      name: 'session',
+    });
+    for (const path of ['/auth/me', '/users']) {
+      expect(document.paths[path].get?.security).toEqual(
+        expect.arrayContaining([{ session: [] }, { bearer: [] }]),
+      );
+    }
+    expect(document.paths['/health'].get?.security).toBeUndefined();
+    for (const [path, method] of [
+      ['/auth/login', 'post'],
+      ['/auth/register', 'post'],
+      ['/users', 'post'],
+      ['/users/{id}', 'patch'],
+    ] as const) {
+      expect(document.paths[path][method]).toHaveProperty(
+        [
+          'requestBody',
+          'content',
+          'application/json',
+          'schema',
+          'properties',
+          'email',
+          'format',
+        ],
+        'email',
+      );
+    }
+    const register = document.paths['/auth/register'].post;
+    expect(register).toHaveProperty(
+      ['requestBody', 'content', 'application/json', 'schema', 'required'],
+      ['email', 'password', 'cliente'],
+    );
+    expect(register).toHaveProperty(
+      [
+        'requestBody',
+        'content',
+        'application/json',
+        'schema',
+        'additionalProperties',
+      ],
+      false,
+    );
+    const calle = document.paths['/calles/{id}'];
+    expect(calle.patch?.summary).toContain('Renombrar');
+    expect(calle.delete?.responses).toHaveProperty('409');
+    expect(calle.patch?.security).toEqual(
+      expect.arrayContaining([{ session: [] }, { bearer: [] }]),
+    );
+    expect(document.paths['/direcciones/{id}'].patch?.description).toContain(
+      'pin compartido',
+    );
+    expect(document.components?.schemas?.CreateDireccionDto).toMatchObject({
+      properties: {
+        lat: { type: 'number', minimum: -90, maximum: 90 },
+        long: { type: 'number', minimum: -180, maximum: 180 },
+      },
+    });
+    expect(document.components?.schemas?.CreateDireccionDto).toHaveProperty(
+      'required',
+      expect.arrayContaining(['calle', 'altura', 'lat', 'long']),
+    );
+    expect(
+      document.paths['/geocodificacion/directa'].get?.description,
+    ).toContain('catálogo compartido');
+    expect(register).toHaveProperty(
+      [
+        'requestBody',
+        'content',
+        'application/json',
+        'schema',
+        'properties',
+        'password',
+        'writeOnly',
+      ],
+      true,
+    );
+    expect(register).toHaveProperty(
+      [
+        'requestBody',
+        'content',
+        'application/json',
+        'schema',
+        'properties',
+        'cliente',
+        'required',
+      ],
+      ['name', 'lastName'],
+    );
+    expect(document.paths['/users'].post?.parameters ?? []).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'role', in: 'query' }),
+      ]),
+    );
+    expect(document.paths['/users'].post).toHaveProperty(
+      ['requestBody', 'content', 'application/json', 'schema', 'required'],
+      ['email', 'password', 'role', 'cliente'],
+    );
+    expect(document.paths['/users/{id}'].patch).toHaveProperty(
+      [
+        'requestBody',
+        'content',
+        'application/json',
+        'schema',
+        'properties',
+        'cliente',
+        'required',
+      ],
+      ['name', 'lastName'],
+    );
+    for (const [path, method, status] of [
+      ['/auth/register', 'post', '201'],
+      ['/auth/login', 'post', '200'],
+      ['/auth/me', 'get', '200'],
+      ['/users', 'get', '200'],
+    ] as const) {
+      const operation = document.paths[path][method];
+      const shape = operation?.responses[status];
+      expect(shape).toHaveProperty(
+        [
+          'content',
+          'application/json',
+          'schema',
+          path === '/users' ? 'items' : 'type',
+        ],
+        path === '/users'
+          ? expect.objectContaining({ type: 'object' })
+          : 'object',
+      );
+      const schema = JSON.stringify(shape);
+      expect(schema).not.toContain('passwordHash');
+      expect(schema).not.toContain('password');
+      expect(schema).not.toContain('token');
+    }
+    expect(document.paths['/auth/me'].get).toHaveProperty(
+      ['responses', '200', 'content', 'application/json', 'schema', 'required'],
+      ['id', 'email', 'role', 'cliente'],
+    );
+    expect(document.paths['/auth/me'].get).toHaveProperty(
+      [
+        'responses',
+        '200',
+        'content',
+        'application/json',
+        'schema',
+        'properties',
+        'cliente',
+        'nullable',
+      ],
+      true,
+    );
+    expect(document.paths['/users'].get?.responses).toHaveProperty('403');
+    expect(register?.responses['409']).toHaveProperty(
+      ['content', 'application/json', 'schema', 'oneOf', '0', '$ref'],
+      '#/components/schemas/PinDireccionDistintoDto',
+    );
+    expect(document.paths['/users/{id}'].patch?.responses).toHaveProperty(
+      '415',
+    );
+    const edicionTrayecto = document.paths['/api/trayectos/{id}'].patch;
+    expect(edicionTrayecto?.requestBody).toEqual(
+      document.paths['/api/trayectos'].post?.requestBody,
+    );
+    expect(Object.keys(edicionTrayecto?.responses ?? {}).sort()).toEqual([
+      '200',
+      '400',
+      '401',
+      '403',
+      '404',
+      '409',
+      '415',
+    ]);
+    const bajaTrayecto = document.paths['/api/trayectos/{id}'].delete;
+    expect(Object.keys(bajaTrayecto?.responses ?? {}).sort()).toEqual([
+      '204',
+      '400',
+      '401',
+      '403',
+      '404',
+      '415',
+    ]);
+    expect(bajaTrayecto?.requestBody).toBeUndefined();
+    expect(document.paths['/users/{id}'].delete?.responses).toHaveProperty(
+      '204',
+    );
+    expect(document.paths['/auth/logout'].post?.responses).toHaveProperty(
+      '204',
+    );
+    await request(app.getHttpServer())
+      .get('/api/docs/swagger-ui-init.js')
+      .expect(200)
+      .expect(/application\/json/);
   });
 });

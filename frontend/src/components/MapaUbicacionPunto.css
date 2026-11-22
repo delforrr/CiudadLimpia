@@ -1,0 +1,15 @@
+.admin-points-map {
+  width: min(100%, 65vh, 520px);
+  height: auto;
+  aspect-ratio: 1;
+  margin-inline: auto;
+  border: 1px solid #cbded0;
+  border-radius: 12px;
+  background: #edf3ee;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.admin-points-new-pin .teardrop-pin-body {
+  outline: 3px solid #1683e8;
+}

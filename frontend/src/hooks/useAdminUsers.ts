@@ -1,0 +1,294 @@
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { z } from 'zod'
+import { adminUserCreateSchema, adminUserSchema } from '../schemas/adminUserSchema.ts'
+import type { DomicilioForm } from '../schemas/profileSchema.ts'
+import type { User } from '../services/authService.ts'
+import { userService } from '../services/userService.ts'
+import { userFullName } from '../utils/userFormat.ts'
+
+export type RoleFilter = 'TODOS' | User['role']
+
+export type AdminUserForm = {
+  name: string
+  lastName: string
+  email: string
+  role: User['role']
+  domicilios: DomicilioForm[]
+  password: string
+  repeatedPassword: string
+}
+
+// Lista ya pedida al servidor; se conserva mientras dure la pestaña.
+// Si se quiere actualizar, se recarga la página o se usa el botón de refrescar.
+let usuariosCache: User[] | null = null
+
+function normalize(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+function loadErrorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : 'No se pudieron cargar los usuarios'
+}
+
+export function useAdminUsers(onUpdated?: (user: User) => void) {
+  const [users, setUsers] = useState<User[]>(() => usuariosCache ?? [])
+  const [loading, setLoading] = useState(() => usuariosCache === null)
+  const [loadError, setLoadError] = useState('')
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('TODOS')
+  const [editing, setEditing] = useState<User | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [form, setForm] = useState<AdminUserForm>({
+    name: '',
+    lastName: '',
+    email: '',
+    role: 'USER',
+    domicilios: [],
+    password: '',
+    repeatedPassword: '',
+  })
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof AdminUserForm, string[]>>
+  >({})
+  const [formError, setFormError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<User | null>(null)
+  const [deleteError, setDeleteError] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [notice, setNotice] = useState('')
+
+  const load = useCallback(async () => {
+    try {
+      const data = await userService.list()
+      usuariosCache = data
+      setUsers(data)
+      setLoadError('')
+    } catch (error) {
+      setLoadError(loadErrorMessage(error))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const reload = useCallback(() => {
+    setLoading(true)
+    setLoadError('')
+    void load()
+  }, [load])
+
+  useEffect(() => {
+    if (usuariosCache !== null) return
+    let activo = true
+    queueMicrotask(() => {
+      if (activo) void load()
+    })
+    return () => {
+      activo = false
+    }
+  }, [load])
+
+  const filteredUsers = useMemo(() => {
+    const term = normalize(search.trim())
+    return users
+      .filter((user) => {
+        if (roleFilter !== 'TODOS' && user.role !== roleFilter) return false
+        if (!term) return true
+        const haystack = normalize(
+          [
+            user.email,
+            user.cliente?.name ?? '',
+            user.cliente?.lastName ?? '',
+            ...(user.cliente?.domicilios.map((domicilio) => domicilio.direccion) ?? []),
+          ].join(' '),
+        )
+        return haystack.includes(term)
+      })
+      .sort((first, second) =>
+        userFullName(first).localeCompare(userFullName(second), 'es'),
+      )
+  }, [users, search, roleFilter])
+
+  const stats = useMemo(
+    () => ({
+      total: users.length,
+      admins: users.filter((user) => user.role === 'ADMIN').length,
+      vecinos: users.filter((user) => user.role === 'USER').length,
+      domicilios: users.reduce(
+        (total, user) => total + (user.cliente?.domicilios.length ?? 0),
+        0,
+      ),
+    }),
+    [users],
+  )
+
+  const startEdit = (user: User) => {
+    setIsCreating(false)
+    setEditing(user)
+    setForm({
+      name: user.cliente?.name ?? '',
+      lastName: user.cliente?.lastName ?? '',
+      email: user.email,
+      role: user.role,
+      password: '',
+      repeatedPassword: '',
+      domicilios: user.cliente?.domicilios.map(({ id, direccion, etiqueta }) => ({
+        id, direccion, etiqueta,
+      })) ?? [],
+    })
+    setFieldErrors({})
+    setFormError('')
+  }
+
+  const openCreate = () => {
+    setEditing(null)
+    setIsCreating(true)
+    setForm({
+      name: '', lastName: '', email: '', role: 'USER',
+      domicilios: [], password: '', repeatedPassword: '',
+    })
+    setFieldErrors({})
+    setFormError('')
+  }
+
+  const closeEdit = () => {
+    if (saving) return
+    setEditing(null)
+    setIsCreating(false)
+    setForm((previous) => ({ ...previous, password: '', repeatedPassword: '' }))
+    setFormError('')
+    setFieldErrors({})
+  }
+
+  const updateField = <K extends keyof AdminUserForm>(
+    field: K,
+    value: AdminUserForm[K],
+  ) => {
+    setForm((previous) => ({ ...previous, [field]: value }))
+  }
+
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if ((!editing && !isCreating) || saving) return
+    setFormError('')
+    const validation = (isCreating ? adminUserCreateSchema : adminUserSchema).safeParse(form)
+    setFieldErrors(
+      validation.success
+        ? {}
+        : (z.flattenError(validation.error)
+            .fieldErrors as Partial<Record<keyof AdminUserForm, string[]>>),
+    )
+    if (!validation.success) return
+    setSaving(true)
+    try {
+      const { name, lastName, email, role, domicilios } = validation.data
+      const payload = {
+        email,
+        role,
+        cliente: { name, lastName, domicilios },
+      }
+      const updated = editing
+        ? await userService.update(editing.id, payload)
+        : await userService.create({ ...payload, password: form.password })
+      setUsers((previous) => {
+        const next = editing
+          ? previous.map((user) => (user.id === updated.id ? updated : user))
+          : [...previous, updated]
+        usuariosCache = next
+        return next
+      })
+      onUpdated?.(updated)
+      setEditing(null)
+      setIsCreating(false)
+      setForm((previous) => ({ ...previous, password: '', repeatedPassword: '' }))
+      if (!editing) {
+        setSearch('')
+        setRoleFilter('TODOS')
+      }
+      setNotice(editing ? 'Usuario actualizado correctamente.' : 'Usuario creado correctamente.')
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo guardar el usuario',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const requestDelete = (user: User) => {
+    setPendingDelete(user)
+    setDeleteError('')
+  }
+
+  const cancelDelete = () => {
+    if (deleting) return
+    setPendingDelete(null)
+    setDeleteError('')
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleting) return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      await userService.remove(pendingDelete.id)
+      setUsers((previous) => {
+        const next = previous.filter((user) => user.id !== pendingDelete.id)
+        usuariosCache = next
+        return next
+      })
+      setPendingDelete(null)
+      setNotice('Usuario eliminado correctamente.')
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo eliminar el usuario',
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return {
+    users,
+    filteredUsers,
+    stats,
+    loading,
+    loadError,
+    search,
+    roleFilter,
+    setSearch,
+    setRoleFilter,
+    clearFilters: () => {
+      setSearch('')
+      setRoleFilter('TODOS')
+    },
+    reload,
+    editing,
+    isCreating,
+    openCreate,
+    form,
+    fieldErrors,
+    formError,
+    saving,
+    startEdit,
+    closeEdit,
+    updateField,
+    save,
+    pendingDelete,
+    deleteError,
+    deleting,
+    requestDelete,
+    cancelDelete,
+    confirmDelete,
+    notice,
+    dismissNotice: () => setNotice(''),
+  }
+}

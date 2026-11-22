@@ -1,0 +1,266 @@
+.admin-wrapper .admin-module-stats {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
+  gap: 0.75rem;
+}
+
+.admin-module-stats .admin-module-stat {
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--admin-borde);
+  border-radius: 13px;
+  box-shadow: none;
+}
+
+.admin-module-stat > div {
+  min-width: 0;
+}
+
+.admin-module-stat .admin-module-stat-icon {
+  background-color: #e7f2ea;
+  color: var(--admin-verde);
+}
+
+.admin-module-stat .admin-module-stat-label {
+  color: #496355;
+  font-size: 0.77rem;
+  letter-spacing: 0;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.admin-module-stat .admin-module-stat-value,
+.admin-module-header .admin-module-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-wrapper .admin-module-panel {
+  min-width: 0;
+  border-color: var(--admin-borde);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgb(1 58 39 / 5%);
+}
+
+.admin-module-panel .admin-module-toolbar {
+  gap: 0.65rem;
+  padding: clamp(0.8rem, 2vw, 1.15rem);
+  border-bottom-color: var(--admin-borde);
+  background: #f3f8f4;
+}
+
+.admin-module-toolbar :is(.admin-module-search, .admin-module-filter) {
+  min-width: min(100%, 9rem);
+  max-width: 100%;
+}
+
+.admin-module-toolbar .MuiOutlinedInput-root {
+  border-radius: 9px;
+  background: #fff;
+}
+
+.admin-module-panel .admin-module-header {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  padding: 0.85rem clamp(0.8rem, 2vw, 1.15rem);
+}
+
+.admin-module-header .admin-module-count {
+  margin-inline-start: auto;
+  background: #e7f2ea;
+  color: var(--admin-verde);
+}
+
+.admin-module-panel .admin-module-table-scroll {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+}
+
+.admin-module-table-scroll:focus-visible {
+  outline: 2px solid #21744f;
+  outline-offset: -2px;
+}
+
+.admin-module-table .MuiTableCell-head {
+  color: #40564b;
+  background-color: #f4f7f5;
+  letter-spacing: 0.015em;
+  text-transform: none;
+  font-size: 0.77rem;
+}
+
+.admin-module-table .MuiTableCell-body {
+  max-inline-size: 20rem;
+  border-bottom-color: #e9efeb;
+  overflow-wrap: anywhere;
+}
+
+.admin-module-table .MuiTableCell-root {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.admin-module-table .MuiTableCell-body > div,
+.admin-module-table .MuiTableCell-body .admin-users-name,
+.admin-module-table .MuiTableCell-body .admin-drivers-contact-item {
+  justify-content: center;
+  align-items: center;
+}
+
+.admin-module-table .MuiTableCell-body > :is(
+  .admin-points-identity,
+  .admin-types-identity,
+  .admin-trucks-identity,
+  .admin-drivers-identity,
+  .admin-users-identity
+) {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  justify-content: normal;
+  width: 100%;
+}
+
+.admin-module-table .MuiTableCell-body :is(.admin-drivers-truck, .admin-drivers-contact-item) {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  width: 100%;
+}
+
+.admin-module-table .MuiTableRow-hover:hover {
+  background-color: #f3f8f4;
+}
+
+.admin-module-table .MuiTableCell-body:first-child > div > :last-child {
+  min-width: 0;
+}
+
+.admin-module-table .MuiTableCell-body:first-child .admin-users-name {
+  flex-wrap: wrap;
+}
+
+.admin-module-actions .MuiIconButton-root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.admin-module-table .MuiTableCell-body :is(.admin-trucks-driver, .admin-drivers-truck, .admin-drivers-contact-item) .MuiSvgIcon-root {
+  flex-shrink: 0;
+}
+
+.admin-module-panel .admin-module-empty {
+  padding: clamp(1.25rem, 5vw, 2.75rem) 1rem;
+}
+
+.admin-wrapper .admin-module-panel .MuiButton-root,
+.admin-module-dialog .MuiButton-root {
+  border-radius: 9px;
+  font-weight: 650;
+  text-transform: none;
+}
+
+.admin-wrapper .admin-module-panel .MuiButton-containedSuccess:not(.Mui-disabled),
+.admin-module-dialog .MuiButton-containedSuccess:not(.Mui-disabled) {
+  background: #013a27;
+  box-shadow: none;
+}
+
+.admin-module-dialog .MuiDialog-paper {
+  border-radius: 16px;
+  overflow-wrap: anywhere;
+}
+
+.admin-module-dialog .MuiDialogTitle-root {
+  color: #013a27;
+  font-weight: 700;
+}
+
+.admin-module-dialog .MuiDialogActions-root {
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid #e9efeb;
+}
+
+.admin-module-dialog .MuiDialogActions-root > :not(style) {
+  margin-inline-start: 0;
+}
+
+.admin-module-dialog .MuiButtonBase-root.Mui-focusVisible {
+  outline: 2px solid #21744f;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .admin-wrapper .admin-module-panel .MuiButton-containedSuccess:not(.Mui-disabled):hover,
+  .admin-module-dialog .MuiButton-containedSuccess:not(.Mui-disabled):hover {
+    background: #12543b;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin-wrapper .admin-module-panel .MuiButton-containedSuccess:not(.Mui-disabled) {
+    transition: background-color 140ms ease, transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .admin-wrapper .admin-module-panel .MuiButton-containedSuccess:not(.Mui-disabled):active {
+    transform: scale(0.97);
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-wrapper .admin-module-stats {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+    gap: 0.5rem;
+  }
+
+  .admin-module-stats .admin-module-stat {
+    gap: 0.55rem;
+    padding: 0.65rem;
+  }
+
+  .admin-module-stat .admin-module-stat-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .admin-module-stat .admin-module-stat-value {
+    font-size: 1.25rem;
+  }
+
+  .admin-module-panel .admin-module-toolbar {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .admin-module-toolbar .admin-module-search {
+    flex-basis: 100%;
+  }
+
+  .admin-module-toolbar .admin-module-filter {
+    flex: 1 1 8rem;
+    width: auto;
+  }
+
+  .admin-module-toolbar .MuiButton-root {
+    flex-grow: 1;
+  }
+
+  .admin-module-panel .admin-module-header {
+    flex-direction: row;
+  }
+
+  .admin-module-dialog .MuiDialog-paper {
+    margin: 12px;
+    max-width: calc(100% - 24px);
+    max-height: calc(100% - 24px);
+  }
+
+  .admin-module-dialog :is(.MuiDialogContent-root, .MuiDialogTitle-root, .MuiDialogActions-root) {
+    padding-inline: 1rem;
+  }
+}

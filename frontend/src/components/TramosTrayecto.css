@@ -1,0 +1,38 @@
+.trayecto-cobertura {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.trayecto-cobertura h4,
+.trayecto-cobertura-lista,
+.trayecto-cobertura-extremos,
+.trayecto-cobertura-extremos dd {
+  margin: 0;
+}
+
+.trayecto-cobertura-lista {
+  list-style: none;
+  padding: 0;
+}
+
+.trayecto-cobertura-lista .MuiButton-root {
+  justify-content: start;
+  text-align: start;
+  width: 100%;
+}
+
+.trayecto-cobertura-lista .MuiButton-root[aria-pressed="true"] {
+  background-color: #ecf3fa;
+}
+
+.trayecto-cobertura-extremos {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.trayecto-cobertura-extremos dt {
+  font-weight: 600;
+}

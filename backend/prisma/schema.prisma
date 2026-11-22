@@ -5,10 +5,256 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  role         Role     @default(USER)
+  passwordHash String
+  cliente      Cliente?
+}
+
+model Cliente {
+  id         String             @id @default(uuid())
+  userId     String             @unique
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  lastName   String
+  domicilios ClienteDireccion[]
+}
+
+model Calle {
+  id          String          @id @default(uuid())
+  calle       String
+  clave       String          @unique
+  direcciones Direccion[]
+  tramos      TramoTrayecto[]
+  calleVigenteId String?
+  calleVigente Calle? @relation("NombresDeCalle", fields: [calleVigenteId], references: [id], onDelete: Restrict)
+  nombresAnteriores Calle[] @relation("NombresDeCalle")
+
+  @@index([calleVigenteId])
+}
+
+model Direccion {
+  id             String             @id @default(uuid())
+  calleId        String
+  calle          Calle              @relation(fields: [calleId], references: [id], onDelete: Restrict)
+  altura         Int
+  lat            Float
+  long           Float
+  domicilios     ClienteDireccion[]
+  puntosLimpios  PuntoLimpio[]
+  puntosTrayecto PuntoTrayecto[]
+
+  @@unique([calleId, altura])
+}
+
+model ClienteDireccion {
+  clienteId   String
+  direccionId String
+  etiqueta    String?   @db.VarChar(100)
+  cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  direccion   Direccion @relation(fields: [direccionId], references: [id], onDelete: Restrict)
+  suscripciones SuscripcionPush[]
+
+  @@id([clienteId, direccionId])
+  @@index([direccionId])
+}
+
+model TipoPuntoLimpio {
+  id            String                   @id @default(uuid())
+  nombre        String                   @unique
+  puntosLimpios PuntoLimpio[]
+  residuos      TipoPuntoLimpioResiduo[]
+}
+
+model PuntoLimpio {
+  id          String          @id @default(uuid())
+  nombre      String
+  tipoId      String
+  tipo        TipoPuntoLimpio @relation(fields: [tipoId], references: [id])
+  direccionId String
+  direccion   Direccion       @relation(fields: [direccionId], references: [id])
+
+  @@index([tipoId])
+  @@index([direccionId])
+}
+
+model Residuo {
+  id               String                   @id @default(uuid())
+  nombre           String                   @unique
+  tiposPuntoLimpio TipoPuntoLimpioResiduo[]
+}
+
+model TipoPuntoLimpioResiduo {
+  tipoPuntoLimpioId String
+  residuoId         String
+
+  tipoPuntoLimpio TipoPuntoLimpio @relation(fields: [tipoPuntoLimpioId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  residuo         Residuo         @relation(fields: [residuoId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([tipoPuntoLimpioId, residuoId])
+  @@index([residuoId])
+  @@map("_TipoPuntoLimpioToResiduo")
+}
+
+model Localidad {
+  id        String     @id
+  nombre    String
+  trayectos Trayecto[]
+}
+
+model Trayecto {
+  id                 String                @id @default(uuid())
+  nombre             String
+  localidadId        String
+  localidad          Localidad             @relation(fields: [localidadId], references: [id])
+  geometria          Json
+  puntos             PuntoTrayecto[]
+  servicios          ServicioRecoleccion[]
+  tramos             TramoTrayecto[]
+
+  @@index([localidadId])
+}
+
+model TramoTrayecto {
+  trayectoId String
+  trayecto   Trayecto @relation(fields: [trayectoId], references: [id], onDelete: Cascade)
+  calleId    String
+  calle      Calle    @relation(fields: [calleId], references: [id], onDelete: Restrict)
+  desde      Int
+  hasta      Int
+  lado       LadoRecoleccion @default(AMBOS)
+
+  @@id([trayectoId, desde])
+  @@index([calleId])
+}
+
+enum LadoRecoleccion {
+  AMBOS
+  IZQUIERDA
+  DERECHA
+}
+
+model PuntoTrayecto {
+  trayectoId  String
+  trayecto    Trayecto  @relation(fields: [trayectoId], references: [id], onDelete: Cascade)
+  orden       Int
+  direccionId String
+  direccion   Direccion @relation(fields: [direccionId], references: [id])
+
+  @@id([trayectoId, orden])
+  @@index([direccionId])
+}
+
+enum Estado {
+  ACTIVO
+  INACTIVO
+}
+
+model Conductor {
+  id        String              @id @default(uuid())
+  nombre    String
+  apellido  String
+  activo    Boolean             @default(true)
+  contratos ContratoConductor[]
+}
+
+model ContratoConductor {
+  idCamion    String
+  idConductor String
+  fechaInicio DateTime
+  fechaFin    DateTime?
+
+  camion    Camion    @relation(fields: [idCamion], references: [id], onDelete: Restrict)
+  conductor Conductor @relation(fields: [idConductor], references: [id], onDelete: Restrict)
+
+  @@id([idCamion, idConductor, fechaInicio])
+  @@index([idCamion, fechaInicio])
+  @@index([idConductor, fechaInicio])
+}
+
+model Camion {
+  id        String              @id @default(uuid())
+  marca     String
+  modelo    String
+  anio      Int
+  estado    Estado              @default(ACTIVO)
+  patente   String              @unique
+  contratos ContratoConductor[]
+  servicios ServicioRecoleccion[]
+}
+
+model ServicioRecoleccion {
+  id            String   @id @default(uuid())
+  proveedorId   String
+  servicioId    String
+  camionId      String
+  camion        Camion   @relation(fields: [camionId], references: [id], onDelete: Cascade)
+  trayectoId    String
+  trayecto      Trayecto @relation(fields: [trayectoId], references: [id], onDelete: Cascade)
+  nombre        String
+  recorrido     Json
+  recorridoId   String
+  muestraEn     DateTime
+  progreso      Json?
+  visibleHasta  DateTime?
+  entregas      EntregaPush[]
+
+  @@unique([proveedorId, servicioId])
+  @@index([trayectoId])
+  @@index([camionId])
+  @@index([visibleHasta])
+}
+
+model SuscripcionPush {
+  id          String           @id @default(uuid())
+  endpoint    String           @unique @db.VarChar(2000)
+  p256dh      String
+  auth        String
+  clienteId   String
+  direccionId String
+  domicilio   ClienteDireccion @relation(fields: [clienteId, direccionId], references: [clienteId, direccionId], onDelete: Cascade)
+  version     Int              @default(1)
+  entregas    EntregaPush[]
+
+  @@index([clienteId, direccionId])
+}
+
+enum EstadoEntregaPush {
+  PENDIENTE
+  ENVIADO
+  CANCELADO
+}
+
+model EntregaPush {
+  id                 String              @id @default(uuid())
+  prestacionId       String
+  prestacion         ServicioRecoleccion @relation(fields: [prestacionId], references: [id], onDelete: Cascade)
+  suscripcionId      String
+  suscripcion        SuscripcionPush     @relation(fields: [suscripcionId], references: [id], onDelete: Cascade)
+  versionSuscripcion Int
+  estado             EstadoEntregaPush   @default(PENDIENTE)
+  intentos           Int                 @default(0)
+  intentoEnvio       Boolean             @default(false)
+  venceEn            DateTime
+  proximoIntentoEn   DateTime            @default(now())
+
+  @@unique([prestacionId, suscripcionId])
+  @@index([suscripcionId])
+  @@index([estado, proximoIntentoEn])
 }

@@ -1,0 +1,714 @@
+import { lazy, Suspense, useState, type FormEvent } from 'react'
+import {
+  Alert,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormHelperText,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
+  Skeleton,
+  Snackbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Tooltip,
+} from '@mui/material'
+import AddIcon from '@mui/icons-material/Add'
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
+import EditIcon from '@mui/icons-material/Edit'
+import Inventory2Icon from '@mui/icons-material/Inventory2'
+import LocalDrinkIcon from '@mui/icons-material/LocalDrink'
+import LocationOnIcon from '@mui/icons-material/LocationOn'
+import RecyclingIcon from '@mui/icons-material/Recycling'
+import SearchIcon from '@mui/icons-material/Search'
+import VisibilityIcon from '@mui/icons-material/Visibility'
+import { SelectorCalle } from './SelectorCalle'
+import {
+  usePuntosLimpios,
+  type EstadoFilter,
+  type TipoFilter,
+} from '../hooks/usePuntosLimpios'
+import {
+  estadoPuntoChipClass,
+  estadoPuntoLabel,
+  findTipoPunto,
+  tipoToneClass,
+  type PuntoLimpioAdmin,
+} from '../utils/puntosLimpiosFormat'
+import './AdminPuntosLimpios.css'
+import { puntoLimpioIconSrc } from '../utils/puntosLimpiosLogos'
+const MapaUbicacionPunto = lazy(() => import('./MapaUbicacionPunto').then((module) => ({ default: module.MapaUbicacionPunto })))
+
+const TIPO_ICONS = [
+  <RecyclingIcon key="punto-limpio" />,
+  <LocalDrinkIcon key="botellero" />,
+  <Inventory2Icon key="latero" />,
+  <LocationOnIcon key="otro" />,
+]
+
+export function AdminPuntosLimpios() {
+  const puntos = usePuntosLimpios()
+  const [detailPunto, setDetailPunto] = useState<PuntoLimpioAdmin | null>(null)
+  const [mapaAbierto, setMapaAbierto] = useState(false)
+  const [ubicacionConfirmada, setUbicacionConfirmada] = useState(false)
+  const [estadoBusqueda, setEstadoBusqueda] = useState<'buscando' | 'encontrada' | 'no-encontrada' | 'error' | null>(null)
+  const isEditing = Boolean(puntos.editing) || puntos.isCreating
+
+  const enviarFormulario = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (puntos.editing) {
+      await puntos.save()
+      return
+    }
+    if (!puntos.validarFormulario()) return
+    setUbicacionConfirmada(false)
+    setEstadoBusqueda('buscando')
+    setMapaAbierto(true)
+    const resultado = await puntos.buscarDireccion()
+    if (resultado !== 'cancelada') setEstadoBusqueda(resultado)
+  }
+
+  const cerrarMapa = () => {
+    puntos.cancelarBusquedaDireccion()
+    setMapaAbierto(false)
+    setEstadoBusqueda(null)
+  }
+
+  const detailTipoIndex = detailPunto
+    ? puntos.tipos.findIndex((tipo) => tipo.id === detailPunto.tipoId)
+    : -1
+  const detailTipo =
+    detailTipoIndex >= 0 ? puntos.tipos[detailTipoIndex] : null
+  const formTipo = findTipoPunto(puntos.tipos, puntos.form.tipoId)
+
+  const stats = [
+    {
+      label: 'Puntos totales',
+      value: puntos.stats.total,
+      icon: <LocationOnIcon />,
+    },
+    ...puntos.tipos.map((tipo, index) => ({
+      label: tipo.nombre,
+      value: puntos.stats.porTipo[tipo.id] ?? 0,
+      icon: tipo.logo ? (
+        <img
+          src={puntoLimpioIconSrc(tipo.logo, tipo.colorFondo)}
+          alt={`Logo ${tipo.nombre}`}
+          className="admin-points-stat-logo"
+        />
+      ) : (
+        TIPO_ICONS[index % TIPO_ICONS.length]
+      ),
+    })),
+  ]
+
+  return (
+    <section className="admin-points" aria-labelledby="admin-points-title">
+      <div className="admin-points-stats admin-module-stats">
+        {stats.map((stat) => (
+          <article className="admin-points-stat admin-module-stat" key={stat.label}>
+            <span className="admin-points-stat-icon admin-module-stat-icon" aria-hidden="true">
+              {stat.icon}
+            </span>
+            <div>
+              <span className="admin-points-stat-label admin-module-stat-label">{stat.label}</span>
+              <strong className="admin-points-stat-value admin-module-stat-value">{stat.value}</strong>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="admin-points-panel admin-module-panel">
+        <div className="admin-points-toolbar admin-module-toolbar">
+          <TextField
+            className="admin-points-search admin-module-search"
+            size="small"
+            color="success"
+            label="Buscar"
+            placeholder="Nombre, dirección o material"
+            value={puntos.search}
+            onChange={(event) => puntos.setSearch(event.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+
+          <FormControl
+            size="small"
+            color="success"
+            className="admin-points-filter admin-module-filter"
+          >
+            <InputLabel id="admin-points-type-filter">Tipo</InputLabel>
+            <Select
+              labelId="admin-points-type-filter"
+              id="admin-points-type-filter-select"
+              label="Tipo"
+              value={puntos.tipoFilter}
+              onChange={(event) =>
+                puntos.setTipoFilter(event.target.value as TipoFilter)
+              }
+            >
+              <MenuItem value="TODOS">Todos los tipos</MenuItem>
+              {puntos.tipos.map((tipo) => (
+                <MenuItem key={tipo.id} value={tipo.id}>
+                  {tipo.nombre}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl
+            size="small"
+            color="success"
+            className="admin-points-filter admin-module-filter"
+          >
+            <InputLabel id="admin-points-status-filter">Estado</InputLabel>
+            <Select
+              labelId="admin-points-status-filter"
+              id="admin-points-status-filter-select"
+              label="Estado"
+              value={puntos.estadoFilter}
+              onChange={(event) =>
+                puntos.setEstadoFilter(event.target.value as EstadoFilter)
+              }
+            >
+              <MenuItem value="TODOS">Todos los estados</MenuItem>
+              <MenuItem value="ACTIVO">Activos</MenuItem>
+              <MenuItem value="INACTIVO">Inactivos</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Button
+            variant="contained"
+            color="success"
+            className="admin-points-add"
+            startIcon={<AddIcon />}
+            onClick={() => { setUbicacionConfirmada(false); puntos.openCreate() }}
+          >
+            Agregar punto limpio
+          </Button>
+        </div>
+
+        <div className="admin-points-table-header admin-module-header">
+          <div>
+            <h3 id="admin-points-title">Puntos limpios registrados</h3>
+            <p>Consultá, agregá y editá las estaciones de reciclaje.</p>
+          </div>
+          <span className="admin-points-count admin-module-count">
+            {puntos.filteredPuntos.length} de {puntos.puntos.length}
+          </span>
+        </div>
+
+        {puntos.loading ? (
+          <div className="admin-points-loading" aria-label="Cargando puntos limpios">
+            {[0, 1, 2, 3].map((row) => (
+              <Skeleton key={row} variant="rounded" height={54} />
+            ))}
+          </div>
+        ) : puntos.filteredPuntos.length === 0 ? (
+          <div className="admin-points-empty admin-module-empty">
+            <LocationOnIcon
+              className="admin-points-empty-icon"
+              aria-hidden="true"
+            />
+            <h4>
+              {puntos.puntos.length === 0
+                ? 'Todavía no hay puntos limpios registrados'
+                : 'No encontramos puntos limpios'}
+            </h4>
+            <p>
+              {puntos.puntos.length === 0
+                ? 'Agregá el primer punto para gestionar las estaciones de reciclaje.'
+                : 'Probá con otra búsqueda o cambiá los filtros.'}
+            </p>
+            {puntos.puntos.length === 0 ? (
+              <Button variant="contained" color="success" onClick={() => { setUbicacionConfirmada(false); puntos.openCreate() }}>
+                Agregar punto limpio
+              </Button>
+            ) : (
+              <Button color="success" onClick={puntos.clearFilters}>
+                Limpiar filtros
+              </Button>
+            )}
+          </div>
+        ) : (
+          <TableContainer className="admin-module-table-scroll" role="region" tabIndex={0} aria-labelledby="admin-points-title">
+            <Table
+              className="admin-points-table admin-module-table"
+              aria-label="Puntos limpios registrados"
+            >
+              <TableHead>
+                <TableRow>
+                  <TableCell>Punto</TableCell>
+                  <TableCell>Tipo</TableCell>
+                  <TableCell>Materiales</TableCell>
+                  <TableCell>Estado</TableCell>
+                  <TableCell align="right">Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {puntos.filteredPuntos.map((punto) => {
+                  const tipoIndex = puntos.tipos.findIndex(
+                    (tipo) => tipo.id === punto.tipoId,
+                  )
+                  const tipo =
+                    tipoIndex >= 0 ? puntos.tipos[tipoIndex] : undefined
+                  const tone = tipoToneClass(tipoIndex)
+                  const materiales = tipo?.materiales ?? []
+
+                  return (
+                    <TableRow key={punto.id} hover>
+                      <TableCell>
+                        <div className="admin-points-identity">
+                          <span
+                            className={`admin-points-marker ${tone}`}
+                            aria-hidden="true"
+                          >
+                            {tipo?.logo ? (
+                              <img
+                                src={puntoLimpioIconSrc(tipo.logo, tipo.colorFondo)}
+                                alt={`Logo de ${tipo.nombre}`}
+                                className="admin-points-marker-img"
+                              />
+                            ) : (
+                              <LocationOnIcon fontSize="small" />
+                            )}
+                          </span>
+                          <div>
+                            <span className="admin-points-name">
+                              {punto.nombre}
+                            </span>
+                            <span className="admin-points-subtext">
+                              {punto.direccion}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          label={tipo?.nombre ?? 'Sin tipo'}
+                          className="admin-points-type"
+                        />
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="admin-points-materials">
+                          {materiales.slice(0, 2).map((material) => (
+                            <Chip
+                              key={material}
+                              size="small"
+                              label={material}
+                              className="admin-points-material"
+                            />
+                          ))}
+                          {materiales.length > 2 && (
+                            <span className="admin-points-muted">
+                              +{materiales.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          label={estadoPuntoLabel(punto.estado)}
+                          className={`admin-points-status ${estadoPuntoChipClass(
+                            punto.estado,
+                          )}`}
+                        />
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <div className="admin-points-actions admin-module-actions">
+                          <Tooltip title="Ver detalle">
+                            <IconButton
+                              size="small"
+                              aria-label={`Ver detalle de ${punto.nombre}`}
+                              onClick={() => setDetailPunto(punto)}
+                            >
+                              <VisibilityIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Editar punto limpio">
+                            <IconButton
+                              size="small"
+                              aria-label={`Editar ${punto.nombre}`}
+                              onClick={() => { setUbicacionConfirmada(false); puntos.startEdit(punto) }}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Eliminar punto limpio">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              aria-label={`Eliminar ${punto.nombre}`}
+                              onClick={() => puntos.requestDelete(punto)}
+                            >
+                              <DeleteOutlineOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </div>
+
+      <Dialog
+        className="admin-module-dialog"
+        open={Boolean(detailPunto)}
+        onClose={() => setDetailPunto(null)}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby="admin-points-detail-title"
+      >
+        <DialogTitle id="admin-points-detail-title">
+          Ficha del punto limpio
+        </DialogTitle>
+        <DialogContent dividers>
+          {detailPunto && (
+            <>
+              <div className="admin-points-detail-header">
+                <span
+                  className={`admin-points-detail-marker ${tipoToneClass(
+                    detailTipoIndex,
+                  )}`}
+                  aria-hidden="true"
+                >
+                  {detailTipo?.logo ? (
+                    <img
+                      src={puntoLimpioIconSrc(detailTipo.logo, detailTipo.colorFondo)}
+                      alt={detailTipo.nombre}
+                      className="admin-points-detail-logo-img"
+                    />
+                  ) : (
+                    <LocationOnIcon />
+                  )}
+                </span>
+                <div>
+                  <h3>{detailPunto.nombre}</h3>
+                  <p>{detailPunto.direccion}</p>
+                  <div className="admin-points-detail-chips">
+                    <Chip
+                      size="small"
+                      label={detailTipo?.nombre ?? 'Sin tipo'}
+                      className="admin-points-type"
+                    />
+                    <Chip
+                      size="small"
+                      label={estadoPuntoLabel(detailPunto.estado)}
+                      className={`admin-points-status ${estadoPuntoChipClass(
+                        detailPunto.estado,
+                      )}`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <h4 className="admin-points-detail-subtitle">
+                Materiales que recibe
+              </h4>
+              <div className="admin-points-materials">
+                {(detailTipo?.materiales ?? []).map((material) => (
+                  <Chip
+                    key={material}
+                    size="small"
+                    label={material}
+                    className="admin-points-material"
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button color="inherit" onClick={() => setDetailPunto(null)}>
+            Cerrar
+          </Button>
+          <Button
+            variant="outlined"
+            color="success"
+            onClick={() => {
+              if (detailPunto) {
+                setDetailPunto(null)
+                setUbicacionConfirmada(false)
+                puntos.startEdit(detailPunto)
+              }
+            }}
+          >
+            Editar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        className="admin-module-dialog"
+        open={isEditing}
+        onClose={puntos.closeForm}
+        fullWidth
+        maxWidth="md"
+        aria-labelledby="admin-points-form-title"
+      >
+        <DialogTitle id="admin-points-form-title">
+          {puntos.editing ? 'Editar punto limpio' : 'Agregar punto limpio'}
+        </DialogTitle>
+        <DialogContent dividers>
+          <form
+            id="admin-points-form"
+            className="admin-points-form"
+            onSubmit={enviarFormulario}
+            noValidate
+          >
+            {puntos.formError && (
+              <div className="admin-points-form-full">
+                <Alert severity="error">{puntos.formError}</Alert>
+              </div>
+            )}
+
+            <TextField
+              className="admin-points-form-full"
+              label="Nombre"
+              required
+              color="success"
+              placeholder="Punto Limpio Barrio Esperanza"
+              slotProps={{ htmlInput: { maxLength: 100 } }}
+              disabled={puntos.saving}
+              error={Boolean(puntos.fieldErrors.nombre)}
+              helperText={puntos.fieldErrors.nombre?.[0]}
+              value={puntos.form.nombre}
+              onChange={(event) =>
+                puntos.updateField('nombre', event.target.value)
+              }
+            />
+
+            <FormControl
+              className={puntos.editing ? undefined : 'admin-points-form-full'}
+              color="success"
+              disabled={puntos.saving}
+              error={Boolean(puntos.fieldErrors.tipoId)}
+            >
+              <InputLabel id="admin-points-form-type">Tipo</InputLabel>
+              <Select
+                labelId="admin-points-form-type"
+                id="admin-points-form-type-select"
+                label="Tipo"
+                value={puntos.form.tipoId}
+                onChange={(event) =>
+                  puntos.updateField('tipoId', event.target.value)
+                }
+              >
+                {puntos.tipos.map((tipo) => (
+                  <MenuItem key={tipo.id} value={tipo.id}>
+                    <div className="admin-points-type-cell">
+                      {tipo.logo && (
+                        <img
+                          src={puntoLimpioIconSrc(tipo.logo, tipo.colorFondo)}
+                          alt=""
+                          aria-hidden="true"
+                          className="admin-points-type-logo-thumb"
+                        />
+                      )}
+                      <span>{tipo.nombre}</span>
+                    </div>
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                {puntos.fieldErrors.tipoId?.[0] ||
+                  'Definí la categoría del punto.'}
+              </FormHelperText>
+            </FormControl>
+
+            {puntos.editing && (
+              <FormControl color="success" disabled={puntos.saving}>
+                <InputLabel id="admin-points-form-status">Estado</InputLabel>
+                <Select
+                  labelId="admin-points-form-status"
+                  id="admin-points-form-status-select"
+                  label="Estado"
+                  value={puntos.form.estado}
+                  onChange={(event) =>
+                    puntos.updateField(
+                      'estado',
+                      event.target.value as PuntoLimpioAdmin['estado'],
+                    )
+                  }
+                >
+                  <MenuItem value="ACTIVO">Activo</MenuItem>
+                  <MenuItem value="INACTIVO">Inactivo</MenuItem>
+                </Select>
+                <FormHelperText>
+                  Definí si el punto se encuentra disponible.
+                </FormHelperText>
+              </FormControl>
+            )}
+
+            <SelectorCalle
+              required
+              disabled={puntos.saving}
+              error={puntos.fieldErrors.direccion?.[0]}
+              calle={puntos.calle}
+              onChange={(opcion) =>
+                { setUbicacionConfirmada(false); puntos.actualizarDireccion(opcion?.calle ?? '', puntos.altura) }
+              }
+            />
+            <TextField label="Altura" required color="success" placeholder="1200"
+              value={puntos.altura} disabled={puntos.saving}
+              slotProps={{ htmlInput: { inputMode: 'numeric', pattern: '[0-9]*' } }}
+              onChange={(event) => { setUbicacionConfirmada(false); puntos.actualizarDireccion(puntos.calle, event.target.value) }}
+            />
+            {puntos.editing && <div className="admin-points-form-full">
+              <Button variant="outlined" color="success" startIcon={<LocationOnIcon />}
+                disabled={!puntos.calle.trim() || !/^\d+$/.test(puntos.altura) || puntos.saving}
+                onClick={() => {
+                  setMapaAbierto(true)
+                  if (!puntos.ubicacion) void puntos.buscarDireccion()
+                }}>
+                Ver mapa
+              </Button>
+            </div>}
+          </form>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            color="inherit"
+            onClick={puntos.closeForm}
+            disabled={puntos.saving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="admin-points-form"
+            variant="contained"
+            color="success"
+            disabled={puntos.saving || puntos.tipos.length === 0}
+            startIcon={!puntos.saving && puntos.editing ? <EditIcon /> : undefined}
+          >
+            {puntos.saving
+              ? 'Guardando…'
+              : puntos.editing
+                ? 'Guardar cambios'
+                : 'Agregar punto limpio'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={mapaAbierto && isEditing} onClose={cerrarMapa}
+        fullWidth maxWidth="sm" aria-labelledby="admin-points-map-title">
+        <DialogTitle id="admin-points-map-title">Ubicación del punto limpio</DialogTitle>
+        <DialogContent>
+          {estadoBusqueda === 'buscando' ? (
+            <Alert severity="info">Buscando la dirección...</Alert>
+          ) : estadoBusqueda === 'no-encontrada' ? (
+            <Alert severity="warning">No encontramos la dirección. Marcá la ubicación manualmente en el mapa.</Alert>
+          ) : estadoBusqueda === 'error' ? (
+            <Alert severity="warning">No se pudo buscar la dirección. Marcá la ubicación manualmente en el mapa.</Alert>
+          ) : (
+            <p>{ubicacionConfirmada && puntos.ubicacion ? 'Ubicación confirmada.' : 'Revisá la ubicación. Podés tocar el mapa o arrastrar el punto para ajustarlo.'}</p>
+          )}
+          {!puntos.editing && puntos.formError && <Alert severity="error">{puntos.formError}</Alert>}
+          <Suspense fallback={<p>Cargando mapa…</p>}>
+            <MapaUbicacionPunto ubicacion={puntos.ubicacion} onChange={puntos.setUbicacion}
+              bloqueado={estadoBusqueda === 'buscando' || (ubicacionConfirmada && Boolean(puntos.ubicacion))}
+              icono={formTipo?.logo ? puntoLimpioIconSrc(formTipo.logo, formTipo.colorFondo) : undefined} />
+          </Suspense>
+        </DialogContent>
+        <DialogActions>
+          <Button color="inherit" onClick={cerrarMapa} disabled={puntos.saving}>Volver</Button>
+          <Button color="success" variant="contained" disabled={!puntos.ubicacion || estadoBusqueda === 'buscando' || puntos.saving}
+            onClick={async () => {
+              if (puntos.editing) {
+                setUbicacionConfirmada(true)
+                cerrarMapa()
+              } else if (await puntos.save()) {
+                cerrarMapa()
+              }
+            }}>{puntos.editing ? 'Listo' : puntos.saving ? 'Guardando...' : 'Confirmar y agregar'}</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        className="admin-module-dialog"
+        open={Boolean(puntos.pendingDelete)}
+        onClose={puntos.cancelDelete}
+        fullWidth
+        maxWidth="xs"
+        aria-labelledby="admin-points-delete-title"
+      >
+        <DialogTitle id="admin-points-delete-title">
+          Eliminar punto limpio
+        </DialogTitle>
+        <DialogContent dividers>
+          <p>
+            ¿Seguro que querés eliminar{' '}
+            <strong>{puntos.pendingDelete?.nombre ?? ''}</strong>? Esta acción
+            no se puede deshacer.
+          </p>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            color="inherit"
+            onClick={puntos.cancelDelete}
+            disabled={puntos.deleting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={puntos.confirmDelete}
+            disabled={puntos.deleting}
+          >
+            {puntos.deleting ? 'Eliminando…' : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={Boolean(puntos.notice)}
+        autoHideDuration={4000}
+        onClose={puntos.dismissNotice}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          severity="success"
+          variant="filled"
+          onClose={puntos.dismissNotice}
+        >
+          {puntos.notice}
+        </Alert>
+      </Snackbar>
+    </section>
+  )
+}
+
+export default AdminPuntosLimpios
