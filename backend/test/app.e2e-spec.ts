@@ -51,6 +51,7 @@ describe('Public API and documentation (HTTP)', () => {
       '/api/geocodificacion/directa',
       '/api/geocodificacion/inversa',
       '/api/localidades',
+      '/api/telemetria/posiciones',
       '/api/trayectos',
       '/api/trayectos/sugerencia',
       '/api/trayectos/{id}',

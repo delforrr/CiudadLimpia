@@ -337,7 +337,15 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
   });
 
   it('elimina el trayecto y sus puntos, conservando las direcciones', async () => {
-    const guardado = await guardar().send(entrada).expect(201);
+    const guardado = await guardar()
+      .send({
+        ...entrada,
+        puntos: [
+          { ...origen, direccion: { ...origen.direccion, altura: 895 } },
+          { ...destino, direccion: { ...destino.direccion, altura: 896 } },
+        ],
+      })
+      .expect(201);
     const creado = guardado.body as TrayectoResponseDto;
     await api()
       .delete(`/api/trayectos/${creado.id}`)
@@ -345,9 +353,15 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
       .set('Content-Type', 'application/json')
       .expect(204);
     await leer(creado.id).expect(404);
-    expect(await prisma.puntoTrayecto.count({ where: { trayectoId: creado.id } })).toBe(0);
-    const ids = [...new Set(creado.puntos.map(({ direccionId }) => direccionId))];
-    expect(await prisma.direccion.count({ where: { id: { in: ids } } })).toBe(ids.length);
+    expect(
+      await prisma.puntoTrayecto.count({ where: { trayectoId: creado.id } }),
+    ).toBe(0);
+    const ids = [
+      ...new Set(creado.puntos.map(({ direccionId }) => direccionId)),
+    ];
+    expect(await prisma.direccion.count({ where: { id: { in: ids } } })).toBe(
+      ids.length,
+    );
   });
 
   it('guarda la línea editada y el orden de las referencias compartidas', async () => {

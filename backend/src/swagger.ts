@@ -19,6 +19,7 @@ export function setupSwagger(app: INestApplication) {
       'Tipos de punto limpio y los residuos que aceptan',
     )
     .addBearerAuth()
+    .addBearerAuth({ type: 'http', scheme: 'bearer' }, 'telemetria')
     .addCookieAuth('session', { type: 'apiKey', in: 'cookie' }, 'session')
     .build();
 

@@ -118,6 +118,7 @@ model Trayecto {
   localidad   Localidad       @relation(fields: [localidadId], references: [id])
   geometria   Json
   puntos      PuntoTrayecto[]
+  servicios   ServicioRecoleccion[]
 
   @@index([localidadId])
 }
@@ -168,4 +169,26 @@ model Camion {
   estado    Estado              @default(ACTIVO)
   patente   String              @unique
   contratos ContratoConductor[]
+  servicios ServicioRecoleccion[]
+}
+
+model ServicioRecoleccion {
+  id            String   @id @default(uuid())
+  proveedorId   String
+  servicioId    String
+  camionId      String
+  camion        Camion   @relation(fields: [camionId], references: [id], onDelete: Cascade)
+  trayectoId    String
+  trayecto      Trayecto @relation(fields: [trayectoId], references: [id], onDelete: Cascade)
+  nombre        String
+  recorrido     Json
+  recorridoId   String
+  muestraEn     DateTime
+  progreso      Json?
+  visibleHasta  DateTime?
+
+  @@unique([proveedorId, servicioId])
+  @@index([trayectoId])
+  @@index([camionId])
+  @@index([visibleHasta])
 }
