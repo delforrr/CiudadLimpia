@@ -163,6 +163,8 @@ Para simular un solo camión sobre un trayecto que acabás de cargar, guardá el
 node --env-file=.tmp/demo/.env scripts/mock-telemetria.mjs .tmp/demo/trayecto.json CAMION_ID
 ```
 
+Si guardaste la respuesta de `GET /api/trayectos` con varios trayectos, pasá también el ID del trayecto elegido como tercer argumento del script.
+
 Si el frente de prueba es Julio A Roca 550, elegí ese domicilio en Hoy y dibujá el paso entre dos referencias de Julio A Roca que lo enmarquen. Si editás la línea, descargá nuevamente el JSON del trayecto antes de repetir el mock.
 
 Los e2e de PostgreSQL usan `TEST_DATABASE_URL` con el esquema ya migrado y un transporte de prueba para Web Push. Mantener `PUSH_HABILITADO=0` hasta validar las tolerancias de cobertura con casos locales. Para pruebas de entrega real, configurar también las tres variables VAPID de `backend/.env.example`; la suscripción del navegador pertenece a la integración de frontend.

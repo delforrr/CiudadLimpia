@@ -17,7 +17,24 @@ if (
   );
 }
 
-const datos = JSON.parse(await readFile(archivo, 'utf8'));
+const contenido = JSON.parse(
+  (await readFile(archivo, 'utf8')).replace(/^\uFEFF/, ''),
+);
+let datos = contenido;
+if (
+  Array.isArray(contenido) &&
+  contenido[0]?.geometria?.type === 'LineString'
+) {
+  datos = trayectoIngresado
+    ? contenido.find(({ id }) => id === trayectoIngresado)
+    : contenido.length === 1
+      ? contenido[0]
+      : undefined;
+  if (!datos)
+    throw new Error(
+      'El archivo contiene un listado de trayectos. Usá el detalle de uno o indicá su ID como tercer argumento.',
+    );
+}
 const linea = datos?.geometria ?? datos;
 const esTrayecto = linea?.type === 'LineString';
 const trayectoId = trayectoIngresado ?? datos?.id;
