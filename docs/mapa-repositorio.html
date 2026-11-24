@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ciudad Limpia · Mapa del repositorio</title>
+  <style>
+    :root { color-scheme: light; --ink: #102b22; --paper: #f8faf7; --sage: #dce8de; --green: #163d30; --lime: #dbf388; --edge: clamp(20px, 5vw, 76px); }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font: 1rem/1.55 system-ui, sans-serif; }
+    :focus-visible { outline: 3px solid #486c28; outline-offset: 5px; }
+    a { color: inherit; text-underline-offset: .2em; }
+    a:hover { text-decoration-thickness: .15em; }
+    .wrap { width: min(100% - 2 * var(--edge), 1250px); margin-inline: auto; }
+    nav { display: flex; gap: .5rem 1.6rem; flex-wrap: wrap; padding-block: 1.35rem; }
+    nav a { font-weight: 650; }
+    .hero { background: var(--green); color: var(--paper); padding-block: clamp(34px, 6vw, 88px); }
+    h1, h2, h3, p, figure { margin: 0; }
+    h1, h2, h3 { line-height: 1.05; letter-spacing: -.045em; }
+    h1 { font-size: clamp(2.25rem, 6.35vw, 6.4rem); max-width: 16ch; }
+    h2 { font-size: clamp(2.6rem, 6vw, 5rem); }
+    h3 { font-size: 1.45rem; }
+    .hero p { margin-top: 1rem; max-width: 55ch; font-size: 1.125rem; }
+    .flow { display: flex; align-items: stretch; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+    .flow li { flex: 1; min-width: 0; display: flex; align-items: center; gap: .45rem; }
+    .flow li:not(:last-child)::after { content: "→"; font-size: 1.45rem; }
+    .flow li span { display: flex; flex: 1; align-self: stretch; flex-direction: column; justify-content: center; background: var(--sage); padding: .65rem .85rem; overflow-wrap: anywhere; }
+    .flow strong { font-size: 1rem; line-height: 1.2; }
+    .flow small { font-size: .875rem; margin-top: .25rem; }
+    .hero figure { margin-top: clamp(30px, 5vw, 68px); }
+    .hero .flow span { color: var(--ink); background: var(--lime); }
+    figcaption { font-size: .875rem; margin-top: .7rem; }
+    .chapter { padding-block: clamp(48px, 7vw, 100px); }
+    #frontend { background: var(--sage); }
+    .chapter > .wrap > header { margin-bottom: clamp(26px, 4vw, 54px); }
+    .topics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(28px, 5vw, 64px); }
+    article > p { margin-top: .85rem; max-width: 69ch; }
+    article > figure { margin-top: 1.15rem; }
+    .wide { grid-column: 1 / -1; }
+    .diagram { background: var(--sage); padding: clamp(16px, 3vw, 30px); }
+    .relationships { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.3rem 2.6rem; margin: 0; }
+    .relationships dt { font-weight: 750; }
+    .relationships dd { margin: .25rem 0 0; overflow-wrap: anywhere; }
+    .modules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem 2.6rem; padding: 0; margin: 1.25rem 0 0; list-style: none; }
+    .modules li { padding: .65rem 0; border-top: 2px solid #b4c8b8; }
+    .modules strong { display: block; }
+    .module-link { font-weight: 750; }
+    #frontend .flow li span { background: var(--paper); }
+    .journey { background: var(--lime); padding-block: clamp(36px, 5vw, 72px); }
+    .journey h2 { font-size: clamp(2rem, 4vw, 3.75rem); margin-bottom: 1.25rem; }
+    .journey .flow span { background: var(--paper); }
+    footer { background: var(--green); color: var(--paper); padding-block: 1.5rem; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; }
+    @media (max-width: 680px) {
+      .topics, .relationships, .modules { grid-template-columns: 1fr; }
+      .flow { flex-direction: column; gap: .2rem; }
+      .flow li { flex-direction: column; align-items: flex-start; gap: .2rem; }
+      .flow li:not(:last-child)::after { content: "↓"; margin-left: .9rem; line-height: 1; }
+      .flow li span { padding: .55rem .8rem; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .hero h1, .hero p, .hero .flow li, .hero figcaption { animation: appear .45s ease-out both; }
+      .hero p { animation-delay: 60ms; }
+      .hero .flow li:nth-child(1) { animation-delay: 120ms; }
+      .hero .flow li:nth-child(2) { animation-delay: 180ms; }
+      .hero .flow li:nth-child(3) { animation-delay: 240ms; }
+      .hero .flow li:nth-child(4) { animation-delay: 300ms; }
+      .hero figcaption { animation-delay: 360ms; }
+      @keyframes appear { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media print {
+      :root { --edge: 0px; }
+      nav { display: none; }
+      .hero, .chapter, .journey { padding-block: 1rem; }
+      .hero, footer { color: var(--ink); background: var(--paper); }
+      figure, .modules li { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="wrap" aria-label="Índice del mapa">
+    <a href="#backend">Backend</a>
+    <a href="#frontend">Frontend</a>
+    <a href="#seguimiento">Flujo de seguimiento</a>
+  </nav>
+  <main>
+    <header class="hero">
+      <div class="wrap">
+        <h1>Ciudad Limpia</h1>
+        <p>Mapa del repositorio de recolección y separación de residuos de Trenque Lauquen.</p>
+        <figure aria-label="Arquitectura de extremo a extremo">
+          <ol class="flow">
+            <li><span><strong>Navegador</strong><small>React, MUI y Leaflet</small></span></li>
+            <li><span><strong>Proxy HTTP</strong><small>Vite en desarrollo, Nginx en Docker</small></span></li>
+            <li><span><strong>API NestJS</strong><small>Controladores, servicios y Prisma</small></span></li>
+            <li><span><strong>PostgreSQL</strong><small>Datos persistentes</small></span></li>
+          </ol>
+          <figcaption>El navegador solicita datos por HTTP. La API aplica las reglas del dominio y accede a la base mediante Prisma.</figcaption>
+        </figure>
+      </div>
+    </header>
+
+    <section class="chapter" id="backend" aria-labelledby="titulo-backend">
+      <div class="wrap">
+        <header><h2 id="titulo-backend">Backend</h2></header>
+        <div class="topics">
+          <article>
+            <h3>Arquitectura</h3>
+            <p><code>AppModule</code> reúne los módulos de una única API REST en NestJS. Los controladores reciben las solicitudes y delegan en servicios, que usan Prisma para consultar y escribir en PostgreSQL 17. Docker Compose arranca PostgreSQL, la API y Nginx. El contenedor de la API aplica las migraciones antes de iniciar, y Swagger describe los endpoints en <code>/api/docs</code>. <a href="../backend/src/app.module.ts">AppModule</a> · <a href="../docker-compose.yml">Compose</a></p>
+          </article>
+          <article>
+            <h3>Decisiones de diseño</h3>
+            <p>La API valida entradas con esquemas Zod o DTOs y aplica permisos con guards. Las cuentas usan bcrypt y una cookie JWT <code>HttpOnly</code> y <code>SameSite=Strict</code>. Una dirección se reutiliza por calle y altura. La cobertura combina el trazado con los tramos confirmados por calle y lado. La telemetría guarda una copia del recorrido al iniciar la prestación para que su seguimiento use ese mismo trazado. <a href="../backend/src/configure-app.ts">Validación</a> · <a href="../backend/src/auth/auth.controller.ts">Sesión</a> · <a href="../backend/src/trayecto/cobertura-trayecto.ts">Cobertura</a> · <a href="../backend/src/telemetria/telemetria.service.ts">Telemetría</a></p>
+          </article>
+          <article class="wide">
+            <h3>Modelo de datos</h3>
+            <p><code>User</code> guarda la cuenta y puede tener un perfil <code>Cliente</code>. <code>Direccion</code> identifica un frente con coordenadas que pueden compartir varios domicilios, puntos limpios y puntos de trayecto. Los puntos limpios reciben los residuos asociados a su tipo. Un <code>Trayecto</code> pertenece a una localidad, guarda una línea GeoJSON y tiene puntos ordenados y tramos de cobertura. Los contratos vinculan camiones y conductores por fechas, y cada servicio vincula un camión con un trayecto y registra su progreso. <a href="../backend/prisma/schema.prisma">Esquema Prisma</a></p>
+            <figure class="diagram" aria-label="Relaciones principales del esquema Prisma">
+              <dl class="relationships">
+                <div><dt>Cuentas y domicilios</dt><dd>User → Cliente → ClienteDireccion → Direccion → Calle</dd></div>
+                <div><dt>Puntos Limpios</dt><dd>PuntoLimpio → Direccion<br>PuntoLimpio → TipoPuntoLimpio ↔ Residuo</dd></div>
+                <div><dt>Trayectos y cobertura</dt><dd>Localidad → Trayecto → PuntoTrayecto → Direccion<br>Trayecto → TramoTrayecto → Calle</dd></div>
+                <div><dt>Flota y seguimiento</dt><dd>Camion → ContratoConductor → Conductor<br>Camion → ServicioRecoleccion → Trayecto</dd></div>
+                <div><dt>Avisos</dt><dd>ClienteDireccion → SuscripcionPush → EntregaPush ← ServicioRecoleccion</dd></div>
+              </dl>
+              <figcaption>Las flechas conectan entidades relacionadas. ↔ indica una relación muchos a muchos, implementada mediante <code>TipoPuntoLimpioResiduo</code>.</figcaption>
+            </figure>
+          </article>
+          <article class="wide">
+            <h3>Módulos y funciones principales</h3>
+            <ul class="modules">
+              <li><a class="module-link" href="../backend/src/accounts/accounts.module.ts">Accounts · Auth y User</a><br>Registro, inicio y cierre de sesión, usuario actual, gestión de cuentas, perfiles y domicilios.</li>
+              <li><a class="module-link" href="../backend/src/calle/calles.service.ts">Calles</a>, <a class="module-link" href="../backend/src/direccion/direcciones.service.ts">Direcciones</a> y <a class="module-link" href="../backend/src/geocodificacion/geocodificacion.service.ts">Geocodificación</a><br>Catálogo de calles y direcciones, más búsqueda por domicilio o coordenadas mediante GeoRef.</li>
+              <li><a class="module-link" href="../backend/src/punto-limpio/puntos-limpios.service.ts">Puntos Limpios</a> y <a class="module-link" href="../backend/src/tipo-punto-limpio/tipo-punto-limpio.service.ts">Tipos</a><br>Consulta pública y gestión por API de estaciones, tipos y residuos aceptados.</li>
+              <li><a class="module-link" href="../backend/src/trayecto/trayectos.module.ts">Trayectos y puntos de trayecto</a><br>Localidades, edición de recorridos y tramos confirmados, y sugerencias de trazado con OSRM.</li>
+              <li><a class="module-link" href="../backend/src/camiones/camiones.module.ts">Camiones, conductores y contratos</a><br>Gestión de flota y choferes, historial de asignaciones y consulta del contrato vigente.</li>
+              <li><a class="module-link" href="../backend/src/telemetria/telemetria.service.ts">Telemetría</a> y <a class="module-link" href="../backend/src/hoy/hoy.service.ts">Hoy</a><br>Recibe posiciones de un proveedor, calcula el avance y devuelve trayectos y camiones vigentes para un domicilio del usuario.</li>
+              <li><a class="module-link" href="../backend/src/push/push.module.ts">Push</a><br>Gestiona suscripciones por domicilio y encola, envía y reintenta avisos de proximidad cuando están habilitados.</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="frontend" aria-labelledby="titulo-frontend">
+      <div class="wrap">
+        <header><h2 id="titulo-frontend">Frontend</h2></header>
+        <div class="topics">
+          <article>
+            <h3>Arquitectura</h3>
+            <p>Es una aplicación de una sola página hecha con React, TypeScript y Vite. <code>main.tsx</code> monta el router y <code>AuthProvider</code>. <code>App.tsx</code> define las pantallas públicas, el perfil y el panel de administración. Las páginas componen la interfaz con MUI y Leaflet, los hooks gestionan estado y efectos, y los servicios concentran las llamadas HTTP. Vite y Nginx reenvían rutas seleccionadas a la API. Las rutas del catálogo <code>/puntos-limpios</code> y <code>/tipos-punto-limpio</code> quedan en el frontend con la configuración incluida. <a href="../frontend/src/App.tsx">Rutas</a> · <a href="../frontend/vite.config.ts">Vite</a> · <a href="../frontend/nginx.conf">Nginx</a></p>
+          </article>
+          <article>
+            <h3>Decisiones de diseño</h3>
+            <p>Los formularios usan Zod y los servicios HTTP envían la cookie al mismo origen. <code>ProfileGate</code> guía a los usuarios comunes autenticados sin domicilio hacia el perfil y <code>AdminPage</code> exige el rol <code>ADMIN</code> para mostrar el panel. Hoy obtiene por separado los trayectos cubiertos y las posiciones vigentes, que vuelve a consultar cada cinco segundos mientras la pestaña está visible. <a href="../frontend/src/services/http.ts">Cliente HTTP</a> · <a href="../frontend/src/components/ProfileGate.tsx">Perfil</a> · <a href="../frontend/src/hooks/useMapaHoy.ts">Seguimiento</a></p>
+          </article>
+          <article class="wide">
+            <h3>Modelo de datos</h3>
+            <p>Los servicios definen tipos TypeScript para usuarios, domicilios, puntos, trayectos y flota. El frontend adapta estos datos a la vista, por ejemplo convirtiendo <code>long</code> de la API en <code>lng</code> para el mapa de puntos. El navegador guarda preferencias de domicilio y avisos, zonas y asignaciones a trayectos, y una copia del catálogo de Puntos Limpios. Las altas, ediciones y bajas de puntos y tipos hechas desde el panel se guardan en esa copia local. <a href="../frontend/src/services/puntosLimpiosService.ts">Catálogo remoto</a> · <a href="../frontend/src/utils/puntosLimpiosStorage.ts">Catálogo local</a> · <a href="../frontend/src/services/zonasService.ts">Zonas</a></p>
+            <figure aria-label="Flujo de datos del frontend">
+              <ol class="flow">
+                <li><span><strong>API</strong><small>Respuestas JSON</small></span></li>
+                <li><span><strong>Servicios</strong><small>Tipos y adaptación de respuestas</small></span></li>
+                <li><span><strong>Hooks</strong><small>Estado, efectos y datos locales</small></span></li>
+                <li><span><strong>Pantallas</strong><small>Formularios, mapas y listas</small></span></li>
+              </ol>
+              <figcaption>Camino de lectura de los datos de la API hacia la interfaz.</figcaption>
+            </figure>
+          </article>
+          <article class="wide">
+            <h3>Módulos y funciones principales</h3>
+            <ul class="modules">
+              <li><a class="module-link" href="../frontend/src/components/HoyCards.tsx">Hoy · /hoy</a><br>Selecciona domicilio, dibuja recorridos y camiones activos y permite activar avisos mediante Web Push y un service worker.</li>
+              <li><a class="module-link" href="../frontend/src/pages/CalendarioPage.tsx">Calendario · /calendario</a><br>Muestra una imagen del cronograma y un video educativo incluidos en el repositorio.</li>
+              <li><a class="module-link" href="../frontend/src/pages/PuntosLimpiosPage.tsx">Puntos Limpios · /puntos-limpios</a><br>Muestra el mapa público, permite filtrar por tipo y ver qué materiales recibe cada punto.</li>
+              <li><a class="module-link" href="../frontend/src/pages/PerfilPage.tsx">Perfil y Registro · /perfil y /registro</a><br>Inicio de sesión, registro, edición de perfil y gestión de domicilios.</li>
+              <li><a class="module-link" href="../frontend/src/pages/AdminPage.tsx">Administración · /admin</a><br>Gestiona usuarios, camiones, choferes y contratos. Incluye el editor de trayectos y tramos y las pantallas de zonas, puntos limpios y tipos.</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="journey" id="seguimiento" aria-labelledby="titulo-seguimiento">
+      <div class="wrap">
+        <h2 id="titulo-seguimiento">Del GPS al mapa de Hoy</h2>
+        <figure>
+          <ol class="flow">
+            <li><span><strong>Proveedor de GPS</strong><small>Envía una posición del camión</small></span></li>
+            <li><span><strong>Telemetría</strong><small>Proyecta la posición sobre el recorrido de la prestación</small></span></li>
+            <li><span><strong>API de Hoy</strong><small>Filtra los camiones vigentes según la cobertura del domicilio</small></span></li>
+            <li><span><strong>Mapa de Hoy</strong><small>Actualiza los marcadores en Leaflet</small></span></li>
+          </ol>
+          <figcaption>Cuando el camión avanza, el backend también puede encolar avisos para los domicilios cubiertos y suscritos.</figcaption>
+        </figure>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap"><strong>Fuentes de entrada</strong><a href="../README.md">README</a><a href="../GLOSSARY.md">Glosario</a><a href="../backend/prisma/schema.prisma">Esquema Prisma</a></div></footer>
+</body>
+</html>
