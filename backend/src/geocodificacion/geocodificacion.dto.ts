@@ -1,6 +1,12 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsLatitude, IsLongitude, IsNumber } from 'class-validator';
+import {
+  Equals,
+  IsLatitude,
+  IsLongitude,
+  IsNumber,
+  ValidateIf,
+} from 'class-validator';
 import { CreateDireccionDto } from '../direccion/dto/create-direccion.dto';
 
 function numeroDecimal({ value }: { value: unknown }): unknown {
@@ -15,6 +21,14 @@ export class GeocodificacionDirectaQuery extends PickType(CreateDireccionDto, [
 ] as const) {
   @Transform(numeroDecimal)
   declare altura: number;
+
+  @ApiPropertyOptional({
+    enum: ['true'],
+    description: 'Pedir a GeoRef el pin desplazado hacia el frente.',
+  })
+  @ValidateIf((_, valor: unknown) => valor !== undefined)
+  @Equals('true')
+  desplazar?: 'true';
 }
 
 export class GeocodificacionInversaQuery {

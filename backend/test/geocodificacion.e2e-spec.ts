@@ -177,13 +177,26 @@ describe('Geocodificación (HTTP)', () => {
     },
   );
 
-  it.each([directa, inversa])('requiere ADMIN para %s', async (path) => {
+  it('requiere ADMIN para la geocodificación inversa', async () => {
+    const path = inversa;
     await request(app.getHttpServer()).get(path).expect(401);
     await request(app.getHttpServer())
       .get(path)
       .set('Cookie', `session=${user}`)
       .expect(403);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('permite la búsqueda directa con sesión y pide el pin desplazado', async () => {
+    await request(app.getHttpServer()).get(directa).expect(401);
+    fetchMock.mockResolvedValueOnce(Response.json({ direcciones: [] }));
+    await request(app.getHttpServer())
+      .get(directa + '&desplazar=true')
+      .set('Cookie', 'session=' + user)
+      .expect(200);
+    expect(fetchMock).toHaveBeenCalledWith(expect.any(URL), expect.anything());
+    const url = fetchMock.mock.calls[0][0] as URL;
+    expect(url.searchParams.get('desplazar')).toBe('true');
   });
 
   it.each([

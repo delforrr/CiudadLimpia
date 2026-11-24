@@ -1,8 +1,11 @@
+import { teselasOpenStreetMap, atribucionOpenStreetMap } from '../utils/cartografia';
 import { useEffect, useRef } from 'react'
-import L from 'leaflet'
+import type { Map as MapaLeaflet, Marker } from 'leaflet'
+import { useLeaflet } from '../hooks/useLeaflet'
+import { Alert } from '@mui/material'
 import 'leaflet/dist/leaflet.css'
 import { useMapaPuntosLimpios } from '../hooks/useMapaPuntosLimpios'
-import { usePuntosLimpiosMapIcons } from '../hooks/usePuntosLimpiosMapIcons'
+import { puntoLimpioIconSrc } from '../utils/puntosLimpiosLogos'
 import './PuntosLimpios.css'
 import './MapaUbicacionPunto.css'
 
@@ -14,11 +17,11 @@ export function MapaUbicacionPunto({ ubicacion, onChange, icono, bloqueado = fal
   icono?: string
   bloqueado?: boolean
 }) {
-  const iconos = usePuntosLimpiosMapIcons()
+  const { leaflet: L, errorMapa } = useLeaflet()
   const { puntos } = useMapaPuntosLimpios()
   const contenedor = useRef<HTMLDivElement>(null)
-  const mapa = useRef<L.Map | null>(null)
-  const marcador = useRef<L.Marker | null>(null)
+  const mapa = useRef<MapaLeaflet | null>(null)
+  const marcador = useRef<Marker | null>(null)
   const centrado = useRef(false)
   const cambio = useRef(onChange)
   const soloLectura = useRef(bloqueado)
@@ -27,12 +30,12 @@ export function MapaUbicacionPunto({ ubicacion, onChange, icono, bloqueado = fal
   useEffect(() => { soloLectura.current = bloqueado }, [bloqueado])
 
   useEffect(() => {
-    if (!contenedor.current) return
+    if (!L || !contenedor.current) return
     const instancia = L.map(contenedor.current, { scrollWheelZoom: false }).setView([-35.973, -62.734], 14)
     mapa.current = instancia
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer(teselasOpenStreetMap, {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: atribucionOpenStreetMap,
     }).addTo(instancia)
     instancia.on('click', (evento) => {
       if (!soloLectura.current) cambio.current({ lat: evento.latlng.lat, lng: evento.latlng.lng })
@@ -40,10 +43,10 @@ export function MapaUbicacionPunto({ ubicacion, onChange, icono, bloqueado = fal
     const observer = new ResizeObserver(() => instancia.invalidateSize({ pan: false }))
     observer.observe(contenedor.current)
     return () => { observer.disconnect(); instancia.remove(); mapa.current = null; marcador.current = null }
-  }, [])
+  }, [L])
 
   useEffect(() => {
-    if (!mapa.current) return
+    if (!L || !mapa.current) return
     const capa = L.layerGroup().addTo(mapa.current)
     puntos.forEach((punto) => {
       const icon = L.divIcon({
@@ -51,15 +54,17 @@ export function MapaUbicacionPunto({ ubicacion, onChange, icono, bloqueado = fal
         html: `<div class="teardrop-pin-container"><div class="teardrop-pin-body"><img src="${punto.tipo.icono}" alt="" class="teardrop-icon-white" /></div><div class="teardrop-shadow"></div></div>`,
         iconSize: [36, 48], iconAnchor: [18, 46],
       })
+      const etiqueta = document.createElement('span')
+      etiqueta.textContent = punto.nombre
       L.marker([punto.lat, punto.lng], { icon, title: punto.nombre })
-        .bindTooltip(punto.nombre).addTo(capa)
+        .bindTooltip(etiqueta).addTo(capa)
     })
     return () => { capa.remove() }
-  }, [puntos])
+  }, [L, puntos])
 
   useEffect(() => {
     const instancia = mapa.current
-    if (!instancia) return
+    if (!L || !instancia) return
     marcador.current?.remove()
     marcador.current = null
     if (!ubicacion) { centrado.current = false; return }
@@ -67,7 +72,7 @@ export function MapaUbicacionPunto({ ubicacion, onChange, icono, bloqueado = fal
       instancia.setView([ubicacion.lat, ubicacion.lng], 17)
       centrado.current = true
     }
-    const imagen = icono ?? iconos['punto-limpio']
+    const imagen = icono ?? puntoLimpioIconSrc()
     const icon = L.divIcon({
       className: 'custom-teardrop-wrapper admin-points-new-pin',
       html: `<div class="teardrop-pin-container"><div class="teardrop-pin-body"><img src="${imagen}" alt="" class="teardrop-icon-white" /></div><div class="teardrop-shadow"></div></div>`,
@@ -75,10 +80,11 @@ export function MapaUbicacionPunto({ ubicacion, onChange, icono, bloqueado = fal
     })
     marcador.current = L.marker([ubicacion.lat, ubicacion.lng], { icon, draggable: !bloqueado, title: 'Ubicación del nuevo punto limpio' })
       .on('dragend', (evento) => {
-        const posicion = (evento.target as L.Marker).getLatLng()
+        const posicion = (evento.target as Marker).getLatLng()
         cambio.current({ lat: posicion.lat, lng: posicion.lng })
       }).addTo(instancia)
-  }, [ubicacion, icono, iconos, bloqueado])
+  }, [L, ubicacion, icono, bloqueado])
 
+  if (errorMapa) return <Alert severity="error">No se pudo cargar el mapa.</Alert>
   return <div ref={contenedor} className="admin-points-map" role="region" aria-label="Mapa para seleccionar la ubicación" />
 }

@@ -14,6 +14,7 @@ type PuntoEnvio = Coordenadas & { orden: number; direccionId?: string; direccion
 export type TrayectoEnvio = {
   nombre: string;
   localidadId: string;
+  zonaId: string;
   geometria: LineaTrayecto;
   puntos: PuntoEnvio[];
   tramos: Omit<TramoConfirmado, 'calle'>[];

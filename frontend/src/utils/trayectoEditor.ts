@@ -28,9 +28,9 @@ export function completarAltura(referencia: Referencia, alturaManual: string): R
 }
 
 export function abrirBorrador(trayecto: Trayecto): BorradorTrayecto {
-  const { id, nombre, localidadId, puntos, geometria, tramos } = trayecto;
+  const { id, nombre, localidadId, zonaId, puntos, geometria, tramos } = trayecto;
   return {
-    id, nombre, localidadId, lineaElegida: geometria,
+    id, nombre, localidadId, zonaId, lineaElegida: geometria,
     tramos: tramos ?? undefined,
     puntos: [...puntos].sort((a, b) => a.orden - b.orden)
       .map(({ lat, long, orden, direccionId, direccion }) => ({
@@ -50,7 +50,10 @@ export function tienePosicionesDistintas(puntos: Coordenadas[]) {
 }
 
 export function prepararTrayecto(borrador: BorradorTrayecto): TrayectoEnvio {
+  const { zonaId } = borrador;
+  if (!zonaId) throw new Error('Elegí una zona.');
   return {
+    zonaId,
     nombre: borrador.nombre.trim(),
     localidadId: borrador.localidadId,
     geometria: borrador.lineaElegida ?? lineaManual(borrador.puntos),

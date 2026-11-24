@@ -48,8 +48,14 @@ describe('PuntosLimpiosService', () => {
   it('devuelve el punto creado', async () => {
     const punto = { id: 'punto-id', ...dto };
     const { lat, long, ...record } = punto;
-    create.mockResolvedValue({ ...record, direccion: { lat, long } });
-    await expect(service.create(dto)).resolves.toEqual(punto);
+    create.mockResolvedValue({
+      ...record,
+      direccion: { lat, long, altura: 50, calle: { calle: 'Roca' } },
+    });
+    await expect(service.create(dto)).resolves.toEqual({
+      ...punto,
+      direccion: 'Roca 50',
+    });
   });
 
   it.each([

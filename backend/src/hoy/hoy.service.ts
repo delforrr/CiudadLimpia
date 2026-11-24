@@ -2,12 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { leerProgreso } from '../telemetria/progreso-trayecto';
 import { esLineaValida } from '../trayecto/line-string';
+import { calcularCobertura } from '../trayecto/cobertura-trayecto';
 import {
-  calcularCobertura,
   frenteCoberturaSelect,
   tramosRecorridoArgs,
-  type Recorrido,
-} from '../trayecto/cobertura-trayecto';
+} from '../trayecto/cobertura.select';
+import { leerRecorrido } from '../trayecto/recorrido-guardado';
 import type {
   MapaHoyResponseDto,
   TrayectoHoyDto,
@@ -85,9 +85,9 @@ export class HoyService {
     const coberturas = new Map<string, ReturnType<typeof calcularCobertura>>();
     const ordenados = servicios
       .flatMap((servicio) => {
-        const recorrido = servicio.recorrido as unknown as Recorrido;
+        const recorrido = leerRecorrido(servicio.recorrido);
         const progreso = leerProgreso(servicio.progreso);
-        if (!progreso) return [];
+        if (!progreso || !recorrido) return [];
         const cobertura =
           coberturas.get(servicio.recorridoId) ??
           calcularCobertura(frente, recorrido);

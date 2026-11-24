@@ -7,14 +7,14 @@ import { useDomicilioActual } from '../hooks/useDomicilioActual';
 import { capitalizarInicial } from '../utils/capitalizarInicial';
 import './DomiciliosCard.css';
 
-export default function HoyDomicilio({ actual, domicilios, elegir }: ReturnType<typeof useDomicilioActual>) {
+export default function HoyDomicilio({ actual, domicilios, elegir, guardando }: ReturnType<typeof useDomicilioActual>) {
   const buttonId = useId();
   const menuId = useId();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 
   return (
     <>
-      <Button id={buttonId} className="direccion-header" startIcon={<PlaceIcon className="icono-pin" />}
+      <Button disabled={guardando} id={buttonId} className="direccion-header" startIcon={<PlaceIcon className="icono-pin" />}
         endIcon={<ExpandMoreIcon />} aria-haspopup="menu" aria-expanded={Boolean(anchor)}
         aria-controls={anchor ? menuId : undefined} onClick={(event) => setAnchor(event.currentTarget)}>
         {actual ? capitalizarInicial(actual.direccion) : 'Elegir domicilio'}
@@ -30,7 +30,7 @@ export default function HoyDomicilio({ actual, domicilios, elegir }: ReturnType<
           return (
             <MenuItem key={id} className="direccion-opcion" selected={seleccionada} role="menuitemradio"
               aria-checked={seleccionada} onClick={() => {
-                elegir(domicilio);
+                void elegir(domicilio);
                 setAnchor(null);
               }}>
               <span>{capitalizarInicial(direccion)}</span>

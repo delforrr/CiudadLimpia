@@ -25,6 +25,11 @@ export const nuevoDomicilioSchema = z.object({
 
 export type NuevoDomicilioForm = z.input<typeof nuevoDomicilioSchema> & { ubicacion?: Coordenadas }
 
+export const confirmarDomicilioSchema = z.intersection(
+  nuevoDomicilioSchema,
+  z.object({ ubicacion: coordenadasDomicilioSchema }),
+)
+
 export const profileSchema = z.object({
   name: nameSchema,
   lastName: lastNameSchema,

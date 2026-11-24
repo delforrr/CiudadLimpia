@@ -1,10 +1,8 @@
 import {
   resolverDireccion,
-  transaccionConDirecciones,
   type ReferenciaDireccion,
 } from './direccion-referencia';
-import { Prisma } from '../generated/prisma/client';
-import type { PrismaService } from '../prisma/prisma.service';
+import type { Prisma } from '../generated/prisma/client';
 
 describe('resolverDireccion', () => {
   const registro = {
@@ -48,37 +46,4 @@ describe('resolverDireccion', () => {
       });
     },
   );
-});
-
-describe('transaccionConDirecciones', () => {
-  it('vuelve a ejecutar la operación completa tras un conflicto de escritura', async () => {
-    const anterior = {};
-    const siguiente = {};
-    const guardar = jest.fn().mockResolvedValue('dirección resuelta');
-    const $transaction = jest
-      .fn()
-      .mockImplementationOnce(
-        async (operacion: (tx: object) => Promise<unknown>) => {
-          await operacion(anterior);
-          throw new Prisma.PrismaClientKnownRequestError(
-            'Conflicto de escritura',
-            {
-              code: 'P2034',
-              clientVersion: 'test',
-            },
-          );
-        },
-      )
-      .mockImplementationOnce((operacion: (tx: object) => Promise<unknown>) =>
-        operacion(siguiente),
-      );
-
-    await expect(
-      transaccionConDirecciones(
-        { $transaction } as unknown as PrismaService,
-        guardar,
-      ),
-    ).resolves.toBe('dirección resuelta');
-    expect(guardar.mock.calls).toEqual([[anterior], [siguiente]]);
-  });
 });

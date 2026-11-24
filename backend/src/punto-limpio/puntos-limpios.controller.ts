@@ -1,3 +1,4 @@
+import { Admin } from '../auth/admin.decorator';
 import {
   Body,
   Controller,
@@ -8,13 +9,10 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiConsumes,
-  ApiCookieAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNoContentResponse,
@@ -26,18 +24,13 @@ import {
   ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
 import { ApiConflictoPin } from '../direccion/dto/direccion-response.dto';
-import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
-import { AuthGuard } from '@nestjs/passport';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
-import { Role } from '../generated/prisma/enums';
 import { CreatePuntoLimpioDto } from './dto/create-punto-limpio.dto';
 import { PuntoLimpioResponseDto } from './dto/punto-limpio-response.dto';
 import { UpdatePuntoLimpioDto } from './dto/update-punto-limpio.dto';
 import { PuntosLimpiosService } from './puntos-limpios.service';
 
 @ApiTags('puntos-limpios')
-@Controller('puntos-limpios')
+@Controller(['puntos-limpios', 'api/puntos-limpios'])
 export class PuntosLimpiosController {
   constructor(private readonly puntos: PuntosLimpiosService) {}
 
@@ -46,6 +39,14 @@ export class PuntosLimpiosController {
   @ApiOkResponse({ type: PuntoLimpioResponseDto, isArray: true })
   findAll() {
     return this.puntos.findAll();
+  }
+
+  @Get('administracion')
+  @Admin()
+  @ApiOperation({ summary: 'Listar puntos activos e inactivos (ADMIN)' })
+  @ApiOkResponse({ type: PuntoLimpioResponseDto, isArray: true })
+  findAllAdmin() {
+    return this.puntos.findAll(true);
   }
 
   @Get(':id')
@@ -58,10 +59,7 @@ export class PuntosLimpiosController {
   }
 
   @Post()
-  @Roles([Role.ADMIN])
-  @UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
-  @ApiCookieAuth('session')
-  @ApiBearerAuth()
+  @Admin()
   @ApiConsumes('application/json')
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',
@@ -87,10 +85,7 @@ export class PuntosLimpiosController {
   }
 
   @Patch(':id')
-  @Roles([Role.ADMIN])
-  @UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
-  @ApiCookieAuth('session')
-  @ApiBearerAuth()
+  @Admin()
   @ApiConsumes('application/json')
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',
@@ -98,7 +93,7 @@ export class PuntosLimpiosController {
   @ApiOperation({
     summary: 'Editar un punto limpio (ADMIN)',
     description:
-      'Enviá direccionId para cambiar el frente. El par opcional lat y long debe coincidir con el pin de la dirección resultante.',
+      'Enviá direccionId o una dirección con coordenadas para cambiar el frente. El pin de un frente existente debe coincidir con el guardado.',
   })
   @ApiOkResponse({ type: PuntoLimpioResponseDto })
   @ApiBadRequestResponse({
@@ -120,11 +115,8 @@ export class PuntosLimpiosController {
   }
 
   @Delete(':id')
-  @Roles([Role.ADMIN])
-  @UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
+  @Admin()
   @HttpCode(204)
-  @ApiCookieAuth('session')
-  @ApiBearerAuth()
   @ApiConsumes('application/json')
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',

@@ -14,12 +14,15 @@ export class ClavesPushDto {
   @ApiProperty() @Matches(/^[A-Za-z0-9_-]{22}$/) auth!: string;
 }
 
-export class GuardarSuscripcionPushDto {
-  @ApiProperty({ format: 'uuid' }) @IsUUID() direccionId!: string;
+export class EndpointPushDto {
   @ApiProperty({ format: 'uri', maxLength: 2000 })
   @IsString()
   @MaxLength(2000)
   endpoint!: string;
+}
+
+export class GuardarSuscripcionPushDto extends EndpointPushDto {
+  @ApiProperty({ format: 'uuid' }) @IsUUID() direccionId!: string;
   @ApiProperty({ type: ClavesPushDto })
   @IsObject()
   @ValidateNested()
@@ -30,6 +33,11 @@ export class GuardarSuscripcionPushDto {
 export class SuscripcionPushResponseDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty({ format: 'uuid' }) direccionId!: string;
+}
+
+export class EstadoSuscripcionPushDto {
+  @ApiProperty({ type: SuscripcionPushResponseDto, nullable: true })
+  suscripcion!: SuscripcionPushResponseDto | null;
 }
 
 export class ConfiguracionPushDto {

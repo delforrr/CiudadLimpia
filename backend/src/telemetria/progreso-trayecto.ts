@@ -5,6 +5,7 @@ import {
 } from '../trayecto/proyeccion-linea';
 import type { LineStringDto } from '../trayecto/trayecto.dto';
 import type { PosicionTelemetriaDto } from './telemetria.dto';
+import { z } from 'zod';
 
 export type ProgresoTrayecto = {
   metros: number;
@@ -55,12 +56,17 @@ export function proyectarProgreso(
   };
 }
 
-type ProgresoGuardado = Omit<ProgresoTrayecto, 'registradoEn'> & {
-  registradoEn: string;
-};
+const progresoSchema = z.object({
+  metros: z.number().nonnegative(),
+  registradoEn: z.iso.datetime().transform((fecha) => new Date(fecha)),
+  posicion: z.object({
+    lat: z.number().min(-90).max(90),
+    long: z.number().min(-180).max(180),
+  }),
+  avanza: z.boolean(),
+});
 
 export function leerProgreso(progreso: unknown): ProgresoTrayecto | null {
-  if (!progreso) return null;
-  const guardado = progreso as ProgresoGuardado;
-  return { ...guardado, registradoEn: new Date(guardado.registradoEn) };
+  const resultado = progresoSchema.safeParse(progreso);
+  return resultado.success ? resultado.data : null;
 }

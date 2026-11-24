@@ -3,19 +3,15 @@ import { after, before, test } from 'node:test'
 import { createElement, type ComponentType } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
-import { createServer, type ViteDevServer } from 'vite'
+import type { ViteDevServer } from 'vite'
+import { crearServidorPruebas } from './servidorPruebas.ts'
 import { conLocalStorage } from './fixtures.ts'
 
 let server: ViteDevServer
 let AdminCamiones: ComponentType
 
 before(async () => {
-  server = await createServer({
-    configFile: false,
-    server: { middlewareMode: true },
-    appType: 'custom',
-    ssr: { external: ['react', 'react/jsx-runtime', 'react-router-dom'] },
-  })
+  server = await crearServidorPruebas(['react', 'react/jsx-runtime', 'react-router-dom'])
   ;({ AdminCamiones } = await server.ssrLoadModule(
     '/src/components/AdminCamiones.tsx',
   ))

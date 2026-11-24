@@ -2,9 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from '../services/authService'
 import { userService } from '../services/userService'
 import { z } from 'zod'
-import { nuevoDomicilioSchema, profileUpdateSchema, type DomicilioForm, type NuevoDomicilioForm } from '../schemas/profileSchema'
+import { confirmarDomicilioSchema, nuevoDomicilioSchema, profileUpdateSchema, type DomicilioForm, type NuevoDomicilioForm } from '../schemas/profileSchema'
 import { capitalizarInicial } from '../utils/capitalizarInicial'
-import { coordenadasDomicilioSchema, domicilioUbicacionService } from '../services/domicilioUbicacionService'
+import { coordenadasDomicilioSchema } from '../services/domicilioUbicacionService'
 
 const domicilioVacio: NuevoDomicilioForm = { calle: '', altura: '', etiqueta: '' }
 
@@ -13,8 +13,9 @@ function datosPerfil(user: User | null) {
     name: capitalizarInicial(user?.cliente?.name ?? ''),
     lastName: capitalizarInicial(user?.cliente?.lastName ?? ''),
     email: user?.email ?? '',
-    domicilios: user?.cliente?.domicilios.map(({ id, direccion, etiqueta }): DomicilioForm =>
-      ({ id, direccion, etiqueta, ubicacion: user ? domicilioUbicacionService.leer(user.id, direccion) : undefined })) ?? [],
+    domicilios: user?.cliente?.domicilios.map(({ id, direccion, etiqueta, lat, long }): DomicilioForm => ({
+      id, direccion, etiqueta, ubicacion: coordenadasDomicilioSchema.safeParse({ lat, long }).data,
+    })) ?? [],
   }
 }
 
@@ -85,21 +86,15 @@ export function useProfileForm(
     event.preventDefault()
     if (!domicilioNuevo) return
 
-    const validation = nuevoDomicilioSchema.safeParse(domicilioNuevo)
+    const validation = confirmarDomicilioSchema.safeParse(domicilioNuevo)
     if (!validation.success) {
       setErroresDomicilioNuevo(z.flattenError(validation.error).fieldErrors)
       return
     }
 
-    const ubicacion = coordenadasDomicilioSchema.safeParse(domicilioNuevo.ubicacion)
-    if (!ubicacion.success) {
-      setErroresDomicilioNuevo({ ubicacion: ['Ubicá tu casa en el mapa antes de confirmar.'] })
-      return
-    }
-
     setForm((previous) => {
       if (previous.domicilios.some((domicilio) => !domicilio.id)) return previous
-      return { ...previous, domicilios: [...previous.domicilios, { ...validation.data, ubicacion: ubicacion.data }] }
+      return { ...previous, domicilios: [...previous.domicilios, validation.data] }
     })
     setFieldErrors((previous) => ({ ...previous, domicilios: undefined }))
     setDomicilioNuevo(null)
@@ -138,11 +133,7 @@ export function useProfileForm(
           domicilios,
         },
       })
-      for (const domicilio of form.domicilios) {
-        if (!domicilio.ubicacion) continue
-        try { domicilioUbicacionService.guardar(user.id, domicilio.direccion, domicilio.ubicacion) }
-        catch { setError('Los datos se guardaron, pero el navegador no pudo conservar la ubicación del domicilio.') }
-      }
+      setForm(datosPerfil(updated))
       onUpdated(updated)
       setEditando(false)
       setMensajeExito(true)

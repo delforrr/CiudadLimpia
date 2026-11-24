@@ -1,8 +1,10 @@
+import { teselasOpenStreetMap, atribucionOpenStreetMap } from '../utils/cartografia';
 import React, { useState, useEffect, useRef } from 'react';
-import { Badge, Button, Collapse, IconButton } from '@mui/material';
+import { Alert, Badge, Button, Collapse, IconButton } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import L from 'leaflet';
+import type { LayerGroup, Map as MapaLeaflet } from 'leaflet';
+import { useLeaflet } from '../hooks/useLeaflet';
 import 'leaflet/dist/leaflet.css';
 import fotoPunto1 from '../assets/punto-limpio-1.jpg';
 import fotoPunto2 from '../assets/punto-limpio-2.jpg';
@@ -11,20 +13,6 @@ import figuraPuntosLimpios from '../assets/figura-puntos-limpios.png';
 import { useMapaPuntosLimpios } from '../hooks/useMapaPuntosLimpios';
 import './PuntosLimpios.css';
 
-export type TipoPunto = 'punto-limpio' | 'botellero' | 'botellero-latero';
-
-export interface PuntoLimpio {
-  id: string;
-  nombre: string;
-  tipo: TipoPunto;
-  direccion: string;
-  lat: number;
-  lng: number;
-  materiales: string[];
-}
-
-export type TipoFiltro = 'todos' | TipoPunto;
-
 const FOTOS_CARRUSEL = [
   { id: '1', src: fotoPunto1, alt: 'Punto Limpio - Módulo de separación y botellero' },
   { id: '2', src: fotoPunto2, alt: 'Punto Limpio - Supermercado con contenedores de reciclaje' },
@@ -32,7 +20,8 @@ const FOTOS_CARRUSEL = [
 ];
 
 export const PuntosLimpios: React.FC = () => {
-  const { puntos, tipos } = useMapaPuntosLimpios();
+  const { leaflet: L, errorMapa } = useLeaflet();
+  const { puntos, tipos, error, loading } = useMapaPuntosLimpios();
   const [fotoActiva, setFotoActiva] = useState(0);
   const [filtroActivo, setFiltroActivo] = useState<string>('todos');
   const [mapReady, setMapReady] = useState(false);
@@ -41,8 +30,8 @@ export const PuntosLimpios: React.FC = () => {
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const tarjetaMapaRef = useRef<HTMLElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const mapRef = useRef<MapaLeaflet | null>(null);
+  const markersLayerRef = useRef<LayerGroup | null>(null);
 
   // Conteo de ubicaciones por categoría
 
@@ -58,7 +47,7 @@ export const PuntosLimpios: React.FC = () => {
   // Inicialización del Mapa
   useEffect(() => {
     const container = mapContainerRef.current;
-    if (!container) return;
+    if (!container || !L) return;
 
     if (mapRef.current) {
       mapRef.current.remove();
@@ -86,8 +75,8 @@ export const PuntosLimpios: React.FC = () => {
       zoomControl: true,
     });
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
+    L.tileLayer(teselasOpenStreetMap, {
+      attribution: atribucionOpenStreetMap,
       minZoom: 12,
       maxZoom: 17,
     }).addTo(map);
@@ -112,13 +101,13 @@ export const PuntosLimpios: React.FC = () => {
         delete (container as unknown as { _leaflet_id?: number })._leaflet_id;
       }
     };
-  }, []);
+  }, [L]);
 
   // Actualización de marcadores y popups según el filtro activo
   useEffect(() => {
     const map = mapRef.current;
     const markersLayer = markersLayerRef.current;
-    if (!map || !markersLayer || !mapReady) return;
+    if (!L || !map || !markersLayer || !mapReady) return;
 
     const puntosAMostrar = filtroActivo === 'todos'
       ? puntos
@@ -172,7 +161,7 @@ export const PuntosLimpios: React.FC = () => {
     } else if (filtroActivo === 'todos') {
       map.flyTo([-35.973, -62.734], 13, { duration: 0.6 });
     }
-  }, [mapReady, filtroActivo, puntos]);
+  }, [L, mapReady, filtroActivo, puntos]);
 
   return (
     <div className="puntos-page-container">
@@ -220,6 +209,9 @@ export const PuntosLimpios: React.FC = () => {
           });
         }}>
         <div className="mapa-tarjeta-body">
+          {error && <Alert severity="error">{error}</Alert>}
+          {errorMapa && <Alert severity="error">No se pudo cargar el mapa.</Alert>}
+          {loading && <p role="status">Cargando puntos limpios…</p>}
           <div
             ref={mapContainerRef}
             className="leaflet-card-canvas"

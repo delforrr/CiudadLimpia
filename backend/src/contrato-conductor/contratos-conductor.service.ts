@@ -1,3 +1,4 @@
+import { transaccionConReintento } from '../prisma/transaccion-con-reintento';
 import {
   BadRequestException,
   ConflictException,
@@ -146,27 +147,12 @@ export class ContratosConductorService {
     }
   }
 
-  private async escribir<T>(
-    operacion: (tx: Prisma.TransactionClient) => Promise<T>,
-  ): Promise<T> {
-    for (let intento = 0; ; intento++) {
-      try {
-        return await this.prisma.$transaction(operacion, {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        });
-      } catch (error: unknown) {
-        if (
-          !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-          error.code !== 'P2034'
-        ) {
-          throw error;
-        }
-        if (intento >= 2) {
-          throw new ConflictException(
-            'Cambió un contrato durante la operación. Volvé a intentar.',
-          );
-        }
-      }
-    }
+  private escribir<T>(operacion: (tx: Prisma.TransactionClient) => Promise<T>) {
+    return transaccionConReintento(
+      this.prisma,
+      operacion,
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      'Cambió un contrato durante la operación. Volvé a intentar.',
+    );
   }
 }

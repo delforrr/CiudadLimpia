@@ -126,7 +126,8 @@ export function AdminTiposPuntosLimpios() {
           </span>
         </div>
 
-        {tipos.filteredTipos.length === 0 ? (
+        {tipos.error && <Alert severity="error">{tipos.error}</Alert>}
+        {tipos.loading ? <p role="status">Cargando tipos…</p> : tipos.filteredTipos.length === 0 ? (
           <div className="admin-types-empty admin-module-empty">
             <CategoryIcon className="admin-types-empty-icon" aria-hidden="true" />
             <h4>

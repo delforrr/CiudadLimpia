@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -25,6 +26,8 @@ import {
   ApiUnauthorizedResponse,
   ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
+import type { AuthRequest } from '../auth/auth.guard';
+import { z } from 'zod';
 import { ApiConflictoPin } from '../direccion/dto/direccion-response.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
@@ -40,6 +43,8 @@ import {
 } from './user.schemas';
 import { UserService } from './user.service';
 import { Role } from '../generated/prisma/enums';
+
+const domicilioActualSchema = z.strictObject({ direccionId: z.uuid() });
 
 @ApiTags('users')
 @ApiCookieAuth('session')
@@ -78,6 +83,21 @@ export class UserController {
   @ApiOkResponse({ standardSchema: publicUserSchema.array() })
   findAll() {
     return this.users.findAll();
+  }
+
+  @Patch('me/domicilio-actual')
+  @HttpCode(204)
+  @ApiConsumes('application/json')
+  @ApiOperation({ summary: 'Elegir un domicilio propio para la pantalla Hoy' })
+  @ApiNoContentResponse()
+  @ApiNotFoundResponse({ description: 'Domicilio propio no encontrado.' })
+  @ApiBadRequestResponse({ description: 'Identificador inválido.' })
+  elegirDomicilio(
+    @Req() request: AuthRequest,
+    @Body({ schema: domicilioActualSchema })
+    { direccionId }: z.infer<typeof domicilioActualSchema>,
+  ) {
+    return this.users.elegirDomicilio(request.user.id, direccionId);
   }
 
   @Get(':id')

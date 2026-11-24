@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
-import { cargarCatalogoPuntosLimpios } from '../services/puntosLimpiosService'
+import { puntosLimpiosService } from '../services/puntosLimpiosService'
 import { trayectosService } from '../services/trayectosService'
 import { puntoLimpioSchema } from '../schemas/puntoLimpioSchema.ts'
 import {
@@ -8,12 +8,7 @@ import {
   type EstadoPuntoLimpio,
   type PuntoLimpioAdmin,
 } from '../utils/puntosLimpiosFormat.ts'
-import {
-  loadPuntos,
-  loadTipos,
-  savePuntos,
-  saveTipos,
-} from '../utils/puntosLimpiosStorage.ts'
+import { useCatalogoPuntosLimpios } from './useCatalogoPuntosLimpios'
 
 export type TipoFilter = 'TODOS' | string
 export type EstadoFilter = 'TODOS' | EstadoPuntoLimpio
@@ -33,13 +28,7 @@ function normalize(value: string) {
 }
 
 export function usePuntosLimpios() {
-  const [initial] = useState(() => {
-    const tipos = loadTipos()
-    return { tipos, puntos: loadPuntos(tipos) }
-  })
-  const [tipos, setTipos] = useState(initial.tipos)
-  const [puntos, setPuntos] = useState<PuntoLimpioAdmin[]>(initial.puntos)
-  const loading = false
+  const { tipos, puntos, setCatalogo, loading, error } = useCatalogoPuntosLimpios(true)
   const [search, setSearch] = useState('')
   const [tipoFilter, setTipoFilter] = useState<TipoFilter>('TODOS')
   const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('TODOS')
@@ -61,22 +50,11 @@ export function usePuntosLimpios() {
   const [altura, setAltura] = useState('')
   const busquedaDireccion = useRef<AbortController | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PuntoLimpioAdmin | null>(null)
+  const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState('')
 
-  useEffect(() => {
-    let activo = true
-    cargarCatalogoPuntosLimpios()
-      .then((catalogo) => {
-        if (!activo || catalogo.puntos.length === 0) return
-        saveTipos(catalogo.tipos)
-        savePuntos(catalogo.puntos)
-        setTipos(catalogo.tipos)
-        setPuntos(catalogo.puntos)
-      })
-      .catch(() => {})
-    return () => { activo = false }
-  }, [])
+  useEffect(() => () => busquedaDireccion.current?.abort(), [])
 
   const filteredPuntos = useMemo(() => {
     const term = normalize(search.trim())
@@ -174,44 +152,37 @@ export function usePuntosLimpios() {
               .fieldErrors as Partial<Record<keyof PuntoLimpioForm, string[]>>),
       )
       if (!validation.success) return null
-      if (!editing && (!calle.trim() || !/^\d+$/.test(altura))) {
+      if (!calle.trim() || !/^\d+$/.test(altura)) {
         setFormError('Ingresá la calle y la altura.')
         return null
       }
       return validation.data
-  }, [form, editing, calle, altura])
+  }, [form, calle, altura])
 
   const save = useCallback(
     async () => {
       if (saving) return false
       const data = validarFormulario()
       if (!data) return false
-      if (!editing && !ubicacion) {
+      if (!ubicacion) {
         setFormError('Marcá la ubicación del punto en el mapa.')
         return false
       }
 
       setSaving(true)
       try {
-        const payload: PuntoLimpioAdmin = {
-          id: editing?.id ?? `pl-${Date.now()}`,
-          nombre: data.nombre,
-          tipoId: data.tipoId,
-          direccion: data.direccion,
-          estado: editing ? data.estado : 'ACTIVO',
-          lat: ubicacion?.lat,
-          lng: ubicacion?.lng,
-        }
-
-        setPuntos((previous) => {
-          const next = editing
-            ? previous.map((punto) =>
-                punto.id === editing.id ? payload : punto,
-              )
-            : [payload, ...previous]
-          savePuntos(next)
-          return next
-        })
+        const cambioFrente = !editing || data.direccion !== editing.direccion ||
+          ubicacion.lat !== editing.lat || ubicacion.lng !== editing.lng
+        const guardado = await puntosLimpiosService.guardarPunto({
+          nombre: data.nombre, tipoId: data.tipoId, estado: data.estado,
+          ...(cambioFrente && {
+            direccion: { calle: calle.trim(), altura: Number(altura) },
+            lat: ubicacion.lat, long: ubicacion.lng,
+          }),
+        }, editing?.id)
+        setCatalogo((anterior) => ({
+          ...anterior, puntos: [guardado, ...anterior.puntos.filter(({ id }) => id !== guardado.id)],
+        }))
 
         setEditing(null)
         setIsCreating(false)
@@ -228,11 +199,12 @@ export function usePuntosLimpios() {
         setSaving(false)
       }
     },
-    [editing, saving, ubicacion, validarFormulario],
+    [editing, saving, ubicacion, calle, altura, setCatalogo, validarFormulario],
   )
 
   const requestDelete = useCallback((punto: PuntoLimpioAdmin) => {
     setPendingDelete(punto)
+    setDeleteError('')
   }, [])
 
   const cancelDelete = useCallback(() => {
@@ -240,20 +212,26 @@ export function usePuntosLimpios() {
     setPendingDelete(null)
   }, [deleting])
 
-  const confirmDelete = useCallback(() => {
+  const confirmDelete = useCallback(async () => {
     if (!pendingDelete || deleting) return
     setDeleting(true)
-    setPuntos((previous) => {
-      const next = previous.filter((punto) => punto.id !== pendingDelete.id)
-      savePuntos(next)
-      return next
-    })
-    setPendingDelete(null)
-    setNotice('Punto limpio eliminado correctamente.')
-    setDeleting(false)
-  }, [deleting, pendingDelete])
+    setDeleteError('')
+    try {
+      await puntosLimpiosService.eliminarPunto(pendingDelete.id)
+      setCatalogo((anterior) => ({
+        ...anterior, puntos: anterior.puntos.filter(({ id }) => id !== pendingDelete.id),
+      }))
+      setPendingDelete(null)
+      setNotice('Punto limpio eliminado correctamente.')
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar el registro.')
+    } finally {
+      setDeleting(false)
+    }
+  }, [deleting, pendingDelete, setCatalogo])
 
   return {
+    error,
     puntos,
     tipos,
     filteredPuntos,
@@ -319,6 +297,7 @@ export function usePuntosLimpios() {
     requestDelete,
     cancelDelete,
     confirmDelete,
+    deleteError,
     deleting,
     notice,
     dismissNotice: () => setNotice(''),

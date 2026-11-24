@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { z } from 'zod';
-import { nuevoDomicilioSchema, type DomicilioForm, type NuevoDomicilioForm } from '../schemas/profileSchema';
+import { confirmarDomicilioSchema, nuevoDomicilioSchema, type DomicilioForm, type NuevoDomicilioForm } from '../schemas/profileSchema';
 import { coordenadasDomicilioSchema } from '../services/domicilioUbicacionService';
 import { direccionesService } from '../services/direccionesService';
 import type { Coordenadas } from '../services/trayectosService';
@@ -86,21 +86,19 @@ export function useAdminDomicilio(onConfirmarNuevo: (domicilio: DomicilioForm, a
   const continuarNuevo = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (editor?.tipo !== 'nuevo') return;
-    const validacion = nuevoDomicilioSchema.safeParse(editor.datos);
-    if (!validacion.success) {
-      setEditor({ ...editor, errores: z.flattenError(validacion.error).fieldErrors });
-      return;
-    }
     if (editor.paso === 'datos') {
-      setEditor({ ...editor, paso: 'mapa', errores: {} });
+      const validacion = nuevoDomicilioSchema.safeParse(editor.datos);
+      setEditor(validacion.success
+        ? { ...editor, paso: 'mapa', errores: {} }
+        : { ...editor, errores: z.flattenError(validacion.error).fieldErrors });
       return;
     }
-    const ubicacion = coordenadasDomicilioSchema.safeParse(editor.datos.ubicacion);
-    if (!ubicacion.success) {
-      setEditor({ ...editor, errores: { ubicacion: ['Ubicá el frente en el mapa antes de confirmar.'] } });
+    const confirmacion = confirmarDomicilioSchema.safeParse(editor.datos);
+    if (!confirmacion.success) {
+      setEditor({ ...editor, errores: z.flattenError(confirmacion.error).fieldErrors });
       return;
     }
-    onConfirmarNuevo({ ...validacion.data, ubicacion: ubicacion.data }, editor.anterior);
+    onConfirmarNuevo(confirmacion.data, editor.anterior);
     cerrar();
   };
 

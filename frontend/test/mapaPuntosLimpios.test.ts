@@ -1,44 +1,38 @@
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
-import { createElement } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
-import { createServer, type ViteDevServer } from 'vite'
+import type { ViteDevServer } from 'vite'
+import { crearServidorPruebas } from './servidorPruebas.ts'
 
 let server: ViteDevServer
-let useMapaPuntosLimpios: () => { puntos: unknown[]; tipos: unknown[] }
-
+let catalogo: typeof import('../src/services/puntosLimpiosService.ts')
 before(async () => {
-  server = await createServer({ configFile: false, server: { middlewareMode: true }, appType: 'custom',
-    ssr: { external: ['react', 'react/jsx-runtime'] } })
-  ;({ useMapaPuntosLimpios } = await server.ssrLoadModule('/src/hooks/useMapaPuntosLimpios.ts'))
+  server = await crearServidorPruebas([])
+  catalogo = await server.ssrLoadModule('/src/services/puntosLimpiosService.ts') as typeof catalogo
 })
-after(async () => server?.close())
+after(async () => server.close())
 
-test('el mapa usa puntos activos y tipos guardados en administración', () => {
-  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-  const datos: Record<string, string> = {
-    'ciudad-limpia:tipos-puntos-limpios': JSON.stringify([
-      { id: 'pilas', nombre: 'Pilero', materiales: ['Pilas'], logo: 'pilas', colorFondo: '#cc0033' },
-    ]),
-    'ciudad-limpia:puntos-limpios': JSON.stringify([
-      { id: '1', nombre: 'Nuevo', tipoId: 'pilas', direccion: 'Roca 123', estado: 'ACTIVO', lat: -35.97, lng: -62.73 },
-      { id: '2', nombre: 'Cerrado', tipoId: 'pilas', direccion: 'Roca 124', estado: 'INACTIVO', lat: -35.97, lng: -62.73 },
-      { id: '3', nombre: 'Sin ubicación', tipoId: 'pilas', direccion: 'Roca 125', estado: 'ACTIVO' },
-    ]),
-  }
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: (key: string) => datos[key] ?? null } })
-  try {
-    function Vista() {
-      const { puntos, tipos } = useMapaPuntosLimpios()
-      return createElement('p', null, JSON.stringify({ puntos, tipos }))
-    }
-    const html = renderToStaticMarkup(createElement(Vista))
-    assert.match(html, /Nuevo/)
-    assert.match(html, /Pilero/)
-    assert.match(html, /Pilas/)
-    assert.doesNotMatch(html, /Cerrado|Sin ubicación/)
-  } finally {
-    if (original) Object.defineProperty(globalThis, 'localStorage', original)
-    else Reflect.deleteProperty(globalThis, 'localStorage')
-  }
+test('consulta los alias, conserva un catálogo vacío y usa la lista administrativa', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async () => Response.json([]))
+  assert.deepEqual(await catalogo.cargarCatalogoPuntosLimpios(false), { tipos: [], puntos: [] })
+  await catalogo.cargarCatalogoPuntosLimpios(true)
+  assert.deepEqual(fetch.mock.calls.map(({ arguments: [url] }) => url), [
+    '/api/tipos-punto-limpio', '/api/puntos-limpios',
+    '/api/tipos-punto-limpio', '/api/puntos-limpios/administracion',
+  ])
+})
+
+test('edita el tipo en la API y usa los materiales y el ícono devueltos', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async () => Response.json({
+    id: 'tipo', nombre: 'Envases', residuos: [{ id: 'r', nombre: 'Vidrio' }],
+    logo: 'botellero', colorFondo: '#36cc00',
+  }))
+  const datos = { nombre: 'Envases', materiales: ['Vidrio'], logo: 'botellero', colorFondo: '#36cc00' }
+  const guardado = await catalogo.puntosLimpiosService.guardarTipo(datos, 'tipo')
+  assert.equal(guardado.colorFondo, '#36cc00')
+  assert.deepEqual(guardado.materiales, ['Vidrio'])
+  const [url, options] = fetch.mock.calls[0].arguments
+  assert.equal(url, '/api/tipos-punto-limpio/tipo')
+  assert.ok(options)
+  assert.equal(options.method, 'PATCH')
+  assert.deepEqual(JSON.parse(String(options.body)), datos)
 })

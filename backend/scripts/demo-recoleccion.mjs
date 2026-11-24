@@ -129,6 +129,7 @@ async function prepararDemo() {
         cuerpo: {
           nombre,
           localidadId: '06826050',
+          zonaId: '3b37670f-24b7-4a4b-afdf-1b13ca5af001',
           geometria,
           puntos,
           tramos: [{ desde: 0, hasta: 1, calleId: calleDemo.id }],

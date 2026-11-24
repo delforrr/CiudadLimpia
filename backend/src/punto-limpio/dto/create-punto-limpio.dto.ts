@@ -7,6 +7,7 @@ import {
 import { Transform, Type } from 'class-transformer';
 import {
   IsString,
+  IsEnum,
   IsUUID,
   MaxLength,
   MinLength,
@@ -19,10 +20,16 @@ import {
   CoordenadasDireccionDto,
   FrenteDireccionDto,
 } from '../../direccion/dto/create-direccion.dto';
+import { Estado } from '../../generated/prisma/enums';
 
 export class PuntoLimpioFieldsDto extends PartialType(CoordenadasDireccionDto, {
   skipNullProperties: false,
 }) {
+  @ApiPropertyOptional({ enum: Estado, default: Estado.ACTIVO })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsEnum(Estado)
+  estado?: Estado;
+
   @ApiProperty({ example: 'Parque Villegas', minLength: 1, maxLength: 100 })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,

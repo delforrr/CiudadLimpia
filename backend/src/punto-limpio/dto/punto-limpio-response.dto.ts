@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Estado } from '../../generated/prisma/enums';
 
 export class PuntoLimpioResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -6,6 +7,12 @@ export class PuntoLimpioResponseDto {
 
   @ApiProperty({ example: 'Parque Villegas' })
   nombre!: string;
+
+  @ApiProperty({ enum: Estado })
+  estado!: Estado;
+
+  @ApiProperty({ example: 'San Martín 123' })
+  direccion!: string;
 
   @ApiProperty({ format: 'uuid' })
   tipoId!: string;

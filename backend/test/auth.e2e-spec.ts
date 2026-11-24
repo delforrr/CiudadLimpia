@@ -80,6 +80,7 @@ describe('Email/password authentication (HTTP)', () => {
                 domicilios: profile.domicilios.create.map((domicilio) => ({
                   direccion,
                   etiqueta: domicilio.etiqueta ?? null,
+                  preferenciaActual: null,
                 })),
               },
             };

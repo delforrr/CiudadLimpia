@@ -217,6 +217,7 @@ export function AdminPuntosLimpios() {
           </span>
         </div>
 
+        {puntos.error && <Alert severity="error">{puntos.error}</Alert>}
         {puntos.loading ? (
           <div className="admin-points-loading" aria-label="Cargando puntos limpios">
             {[0, 1, 2, 3].map((row) => (
@@ -668,6 +669,7 @@ export function AdminPuntosLimpios() {
           Eliminar punto limpio
         </DialogTitle>
         <DialogContent dividers>
+          {puntos.deleteError && <Alert severity="error">{puntos.deleteError}</Alert>}
           <p>
             ¿Seguro que querés eliminar{' '}
             <strong>{puntos.pendingDelete?.nombre ?? ''}</strong>? Esta acción

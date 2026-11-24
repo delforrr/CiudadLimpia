@@ -1,78 +1,87 @@
-import { useRef, useState } from 'react';
-import { asignarZona, eliminarZona, guardarZona, zonasService, type CatalogoZonas, type Zona } from '../services/zonasService';
+import { useEffect, useRef, useState } from 'react';
+import { zonasService, type Zona } from '../services/zonasService';
 
-function cargar() {
-  try {
-    return { catalogo: zonasService.cargar(), error: '' };
-  } catch {
-    return { catalogo: { zonas: [], asignaciones: {} } as CatalogoZonas,
-      error: 'No se pudieron leer las zonas guardadas. Recargá la página para reintentar.' };
-  }
-}
-
-export function useAdminZonas() {
-  const [inicial] = useState(cargar);
-  const [catalogo, setCatalogo] = useState(inicial.catalogo);
-  const [error, setError] = useState(inicial.error);
+export function useAdminZonas(localidadId?: string) {
+  const [zonas, setZonas] = useState<Zona[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [intento, setIntento] = useState(0);
+  const [error, setError] = useState('');
   const [formulario, setFormulario] = useState<{ id?: string; nombre: string; descripcion: string } | null>(null);
   const [errorForm, setErrorForm] = useState('');
+  const [guardando, setGuardando] = useState(false);
   const [detalle, setDetalle] = useState<Zona | null>(null);
   const [pendienteEliminar, setPendienteEliminar] = useState<Zona | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState('');
   const alGuardar = useRef<((zona: Zona) => void) | undefined>(undefined);
 
-  const persistir = (nuevo: CatalogoZonas) => {
-    if (inicial.error) return false;
+  useEffect(() => {
+    const solicitud = new AbortController();
+    void zonasService.listar(solicitud.signal).then(
+      (datos) => { if (!solicitud.signal.aborted) setZonas(datos); },
+      (error: unknown) => {
+        if (!solicitud.signal.aborted) setError(error instanceof Error ? error.message : 'No se pudieron cargar las zonas.');
+      },
+    ).finally(() => { if (!solicitud.signal.aborted) setCargando(false); });
+    return () => solicitud.abort();
+  }, [intento]);
+
+  async function guardar() {
+    if (!formulario || !localidadId || guardando) return;
+    const { id, nombre, descripcion } = formulario;
+    setGuardando(true);
+    setErrorForm('');
     try {
-      zonasService.guardar(nuevo);
-      setCatalogo(nuevo);
-      setError('');
-      return true;
-    } catch {
-      setError('No se pudo guardar el cambio. Revisá que el navegador permita almacenamiento local e intentá de nuevo.');
-      return false;
+      const datos = { nombre: nombre.trim(), descripcion: descripcion.trim() };
+      const zona = id ? await zonasService.editar(id, datos) : await zonasService.crear({ ...datos, localidadId });
+      setZonas((actual) => [...actual.filter((item) => item.id !== zona.id), zona]);
+      alGuardar.current?.(zona);
+      alGuardar.current = undefined;
+      setFormulario(null);
+    } catch (error) {
+      setErrorForm(error instanceof Error ? error.message : 'No se pudo guardar la zona.');
+    } finally {
+      setGuardando(false);
     }
-  };
+  }
+
+  async function eliminar() {
+    if (!pendienteEliminar || eliminando) return;
+    setEliminando(true);
+    setErrorEliminar('');
+    try {
+      await zonasService.eliminar(pendienteEliminar.id);
+      setZonas((actual) => actual.filter(({ id }) => id !== pendienteEliminar.id));
+      setPendienteEliminar(null);
+    } catch (error) {
+      setErrorEliminar(error instanceof Error ? error.message : 'No se pudo eliminar la zona.');
+    } finally {
+      setEliminando(false);
+    }
+  }
 
   return {
-    ...catalogo, error, formulario, errorForm, detalle, setDetalle, pendienteEliminar, setPendienteEliminar,
-    bloqueado: Boolean(inicial.error),
+    zonas: zonas.filter((zona) => zona.localidadId === localidadId).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+    error, cargando, formulario, errorForm, guardando, detalle, setDetalle, pendienteEliminar, errorEliminar,
+    eliminando, guardar, eliminar,
+    reintentar: () => { setCargando(true); setError(''); setIntento((actual) => actual + 1); },
+    setPendienteEliminar: (zona: Zona | null) => {
+      if (eliminando) return;
+      setErrorEliminar('');
+      setPendienteEliminar(zona);
+    },
+    bloqueado: cargando || Boolean(error) || !localidadId,
     abrirFormulario: (zona?: Zona, onGuardada?: (zona: Zona) => void) => {
       alGuardar.current = onGuardada;
       setErrorForm('');
       setFormulario(zona ?? { nombre: '', descripcion: '' });
     },
     cerrarFormulario: () => {
+      if (guardando) return;
       alGuardar.current = undefined;
       setFormulario(null);
     },
     cambiarCampo: (campo: 'nombre' | 'descripcion', valor: string) =>
       setFormulario((actual) => actual ? { ...actual, [campo]: valor } : actual),
-    guardar: () => {
-      if (!formulario) return;
-      try {
-        const nuevo = guardarZona(catalogo, formulario, formulario.id);
-        if (persistir(nuevo)) {
-          const guardada = formulario.id ? nuevo.zonas.find((zona) => zona.id === formulario.id) : nuevo.zonas.at(-1);
-          if (guardada) alGuardar.current?.(guardada);
-          alGuardar.current = undefined;
-          setFormulario(null);
-        }
-      } catch (error) {
-        setErrorForm(error instanceof Error ? error.message : 'Revisá los datos.');
-      }
-    },
-    eliminar: () => {
-      if (!pendienteEliminar) return;
-      try {
-        if (persistir(eliminarZona(catalogo, pendienteEliminar.id))) setPendienteEliminar(null);
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'No se pudo eliminar la zona.');
-        setPendienteEliminar(null);
-      }
-    },
-    asignar: (trayectoId: string, zonaId: string) => persistir(asignarZona(catalogo, trayectoId, zonaId)),
-    quitarTrayecto: (trayectoId: string) => setCatalogo((anterior) => ({
-      ...anterior, asignaciones: Object.fromEntries(Object.entries(anterior.asignaciones).filter(([id]) => id !== trayectoId)),
-    })),
   };
 }

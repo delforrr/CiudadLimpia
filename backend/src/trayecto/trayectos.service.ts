@@ -1,18 +1,23 @@
+import { transaccionConReintento } from '../prisma/transaccion-con-reintento';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { transaccionConDirecciones } from '../direccion/direccion-referencia';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   puntosTrayectoArgs,
   toPuntoTrayectoResponse,
-} from '../punto-trayecto/puntos-trayecto.select';
-import { PuntosTrayectoService } from '../punto-trayecto/puntos-trayecto.service';
+} from './puntos-trayecto.select';
+import { PuntosTrayectoService } from './puntos-trayecto.service';
 import { esLineaValida } from './line-string';
-import type { CreateTrayectoDto, TramoTrayectoDto } from './trayecto.dto';
+import type {
+  CreateTrayectoDto,
+  LineStringDto,
+  TramoTrayectoDto,
+  UpdateTrayectoDto,
+} from './trayecto.dto';
 
 const trayectoInclude = {
   puntos: puntosTrayectoArgs,
@@ -35,6 +40,37 @@ function toTrayectoResponse(
     ...trayecto,
     puntos: trayecto.puntos.map(toPuntoTrayectoResponse),
   };
+}
+
+function validarTramos(geometria: LineStringDto, tramos: TramoTrayectoDto[]) {
+  const tramosOrdenados = [...tramos].sort((a, b) => a.desde - b.desde);
+  const { coordinates } = geometria;
+  const hayLongitud = (desde: number, hasta: number) =>
+    coordinates
+      .slice(desde + 1, hasta + 1)
+      .some(
+        ([long, lat]) =>
+          long !== coordinates[desde][0] || lat !== coordinates[desde][1],
+      );
+  let fin = 0;
+  const errorCobertura =
+    'Asigná una calle a toda la línea, sin huecos ni tramos superpuestos.';
+  for (const { desde, hasta } of tramosOrdenados) {
+    if (
+      desde < fin ||
+      hasta <= desde ||
+      hasta >= coordinates.length ||
+      hayLongitud(fin, desde) ||
+      !hayLongitud(desde, hasta)
+    ) {
+      throw new BadRequestException(errorCobertura);
+    }
+    fin = hasta;
+  }
+  if (hayLongitud(fin, coordinates.length - 1))
+    throw new BadRequestException(errorCobertura);
+
+  return tramosOrdenados;
 }
 
 @Injectable()
@@ -75,18 +111,22 @@ export class TrayectosService {
     );
   }
 
-  async update(id: string, dto: CreateTrayectoDto) {
-    return this.guardar(dto, async (tx, data) => {
-      await tx.tramoTrayecto.deleteMany({ where: { trayectoId: id } });
-      await this.puntosTrayecto.eliminarDeTrayecto(tx, id);
-      return toTrayectoResponse(
-        await tx.trayecto.update({
-          where: { id },
-          data,
-          include: trayectoInclude,
-        }),
-      );
-    });
+  async update(id: string, dto: UpdateTrayectoDto) {
+    return this.guardar(
+      dto,
+      async (tx, data) => {
+        await tx.tramoTrayecto.deleteMany({ where: { trayectoId: id } });
+        await tx.puntoTrayecto.deleteMany({ where: { trayectoId: id } });
+        return toTrayectoResponse(
+          await tx.trayecto.update({
+            where: { id },
+            data,
+            include: trayectoInclude,
+          }),
+        );
+      },
+      id,
+    );
   }
 
   async remove(id: string) {
@@ -94,11 +134,19 @@ export class TrayectosService {
   }
 
   private async guardar<T>(
-    { geometria, localidadId, nombre, puntos, tramos }: CreateTrayectoDto,
+    {
+      geometria,
+      localidadId,
+      zonaId,
+      nombre,
+      puntos,
+      tramos,
+    }: UpdateTrayectoDto,
     escribir: (
       tx: Prisma.TransactionClient,
       data: Prisma.TrayectoUncheckedCreateInput,
     ) => Promise<T>,
+    trayectoId?: string,
   ) {
     if (!esLineaValida(geometria)) {
       throw new BadRequestException(
@@ -107,34 +155,9 @@ export class TrayectosService {
     }
 
     const ordenados = this.puntosTrayecto.ordenar(puntos);
-    const tramosOrdenados = [...tramos].sort((a, b) => a.desde - b.desde);
-    const { coordinates } = geometria;
-    const hayLongitud = (desde: number, hasta: number) =>
-      coordinates
-        .slice(desde + 1, hasta + 1)
-        .some(
-          ([long, lat]) =>
-            long !== coordinates[desde][0] || lat !== coordinates[desde][1],
-        );
-    let fin = 0;
-    const errorCobertura =
-      'Asigná una calle a toda la línea, sin huecos ni tramos superpuestos.';
-    for (const { desde, hasta } of tramosOrdenados) {
-      if (
-        desde < fin ||
-        hasta <= desde ||
-        hasta >= coordinates.length ||
-        hayLongitud(fin, desde) ||
-        !hayLongitud(desde, hasta)
-      ) {
-        throw new BadRequestException(errorCobertura);
-      }
-      fin = hasta;
-    }
-    if (hayLongitud(fin, coordinates.length - 1))
-      throw new BadRequestException(errorCobertura);
+    const tramosOrdenados = validarTramos(geometria, tramos);
 
-    return transaccionConDirecciones(
+    return transaccionConReintento(
       this.prisma,
       async (tx) => {
         const localidad = await tx.localidad.findUnique({
@@ -143,6 +166,27 @@ export class TrayectosService {
         });
         if (!localidad)
           throw new BadRequestException('La localidad indicada no existe');
+
+        const zonaElegida =
+          zonaId ??
+          (trayectoId
+            ? (
+                await tx.trayecto.findUniqueOrThrow({
+                  where: { id: trayectoId },
+                  select: { zonaId: true },
+                })
+              ).zonaId
+            : undefined);
+        const zona =
+          zonaElegida &&
+          (await tx.zona.findUnique({
+            where: { id_localidadId: { id: zonaElegida, localidadId } },
+            select: { id: true },
+          }));
+        if (!zona)
+          throw new BadRequestException(
+            'Elegí una zona de la localidad del trayecto',
+          );
 
         const referencias = await this.puntosTrayecto.resolverReferencias(
           tx,
@@ -158,6 +202,7 @@ export class TrayectosService {
         return escribir(tx, {
           nombre,
           localidadId,
+          zonaId: zona.id,
           geometria: {
             type: geometria.type,
             coordinates: geometria.coordinates,

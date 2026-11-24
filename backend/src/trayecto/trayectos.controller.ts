@@ -1,3 +1,4 @@
+import { Admin } from '../auth/admin.decorator';
 import {
   Body,
   Controller,
@@ -8,14 +9,10 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiConsumes,
-  ApiCookieAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNoContentResponse,
@@ -27,20 +24,17 @@ import {
   ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
 import { ApiConflictoPin } from '../direccion/dto/direccion-response.dto';
-import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
-import { Role } from '../generated/prisma/enums';
-import { CreateTrayectoDto, TrayectoResponseDto } from './trayecto.dto';
+import {
+  CreateTrayectoDto,
+  TrayectoResponseDto,
+  UpdateTrayectoDto,
+} from './trayecto.dto';
 import { TrayectosService } from './trayectos.service';
 
 @ApiTags('trayectos')
-@ApiCookieAuth('session')
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Sesión ausente o inválida.' })
 @ApiForbiddenResponse({ description: 'Se requiere el rol ADMIN.' })
-@Roles([Role.ADMIN])
-@UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
+@Admin()
 @Controller('api/trayectos')
 export class TrayectosController {
   constructor(private readonly trayectos: TrayectosService) {}
@@ -100,7 +94,7 @@ export class TrayectosController {
   })
   update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: CreateTrayectoDto,
+    @Body() dto: UpdateTrayectoDto,
   ) {
     return this.trayectos.update(id, dto);
   }

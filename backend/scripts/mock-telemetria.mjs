@@ -25,11 +25,9 @@ if (
   Array.isArray(contenido) &&
   contenido[0]?.geometria?.type === 'LineString'
 ) {
-  datos = trayectoIngresado
-    ? contenido.find(({ id }) => id === trayectoIngresado)
-    : contenido.length === 1
-      ? contenido[0]
-      : undefined;
+  if (trayectoIngresado)
+    datos = contenido.find(({ id }) => id === trayectoIngresado);
+  else datos = contenido.length === 1 ? contenido[0] : undefined;
   if (!datos)
     throw new Error(
       'El archivo contiene un listado de trayectos. Usá el detalle de uno o indicá su ID como tercer argumento.',

@@ -25,6 +25,10 @@ export type AdminUserUpdate = {
 export type AdminUserCreate = AdminUserUpdate & { password: string }
 
 export const userService = {
+  elegirDomicilio: (direccionId: string, signal: AbortSignal) =>
+    httpRequest<void>('/users/me/domicilio-actual', {
+      method: 'PATCH', signal, body: JSON.stringify({ direccionId }),
+    }),
   updateProfile: (id: string, profile: ProfileUpdate) =>
     httpRequest<User>(`/users/${encodeURIComponent(id)}`, {
       method: 'PATCH',

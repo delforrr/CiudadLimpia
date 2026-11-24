@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
 import { createElement, type ComponentType, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { createServer, type ViteDevServer } from 'vite'
+import type { ViteDevServer } from 'vite'
+import { crearServidorPruebas } from './servidorPruebas.ts'
 
 let server: ViteDevServer
 let AuthProvider: ComponentType<{ children?: ReactNode }>
@@ -10,12 +11,7 @@ let AuthContext: typeof import('../src/context/auth-context.ts').AuthContext
 let useAuthContext: typeof import('../src/hooks/useAuthContext.ts').useAuthContext
 
 before(async () => {
-  server = await createServer({
-    configFile: false,
-    server: { middlewareMode: true },
-    appType: 'custom',
-    ssr: { external: ['react', 'react/jsx-runtime'] },
-  })
+  server = await crearServidorPruebas(['react', 'react/jsx-runtime'])
   ;({ AuthProvider } = await server.ssrLoadModule('/src/context/AuthContext.tsx'))
   ;({ AuthContext } = await server.ssrLoadModule('/src/context/auth-context.ts'))
   ;({ useAuthContext } = await server.ssrLoadModule('/src/hooks/useAuthContext.ts'))

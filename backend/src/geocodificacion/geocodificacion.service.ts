@@ -49,6 +49,7 @@ export class GeocodificacionService {
   async directa({
     calle,
     altura,
+    desplazar,
   }: GeocodificacionDirectaQuery): Promise<GeocodificacionDirectaResponse> {
     const local = await this.prisma.direccion.findFirst({
       where: {
@@ -77,6 +78,7 @@ export class GeocodificacionService {
       localidad_censal: LOCALIDAD_CENSAL,
       campos: 'completo',
       max: '10',
+      ...(desplazar && { desplazar }),
     });
     if (!Array.isArray(datos?.direcciones)) {
       throw new BadGatewayException('Respuesta inválida de Georef');

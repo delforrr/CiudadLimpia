@@ -1,3 +1,4 @@
+import { Admin } from '../auth/admin.decorator';
 import {
   Body,
   Controller,
@@ -8,14 +9,11 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiConflictResponse,
   ApiConsumes,
-  ApiCookieAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNoContentResponse,
@@ -26,18 +24,13 @@ import {
   ApiUnauthorizedResponse,
   ApiUnsupportedMediaTypeResponse,
 } from '@nestjs/swagger';
-import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
-import { AuthGuard } from '@nestjs/passport';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
-import { Role } from '../generated/prisma/enums';
 import { CreateTipoPuntoLimpioDto } from './dto/create-tipo-punto-limpio.dto';
 import { TipoPuntoLimpioResponseDto } from './dto/tipo-punto-limpio-response.dto';
 import { UpdateTipoPuntoLimpioDto } from './dto/update-tipo-punto-limpio.dto';
 import { TipoPuntoLimpioService } from './tipo-punto-limpio.service';
 
 @ApiTags('tipos-punto-limpio')
-@Controller('tipos-punto-limpio')
+@Controller(['tipos-punto-limpio', 'api/tipos-punto-limpio'])
 export class TipoPuntoLimpioController {
   constructor(private readonly tipos: TipoPuntoLimpioService) {}
 
@@ -58,10 +51,7 @@ export class TipoPuntoLimpioController {
   }
 
   @Post()
-  @Roles([Role.ADMIN])
-  @UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
-  @ApiCookieAuth('session')
-  @ApiBearerAuth()
+  @Admin()
   @ApiConsumes('application/json')
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',
@@ -83,10 +73,7 @@ export class TipoPuntoLimpioController {
   }
 
   @Patch(':id')
-  @Roles([Role.ADMIN])
-  @UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
-  @ApiCookieAuth('session')
-  @ApiBearerAuth()
+  @Admin()
   @ApiConsumes('application/json')
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',
@@ -116,11 +103,8 @@ export class TipoPuntoLimpioController {
   }
 
   @Delete(':id')
-  @Roles([Role.ADMIN])
-  @UseGuards(AuthEndpointGuard, AuthGuard('jwt'), RolesGuard)
+  @Admin()
   @HttpCode(204)
-  @ApiCookieAuth('session')
-  @ApiBearerAuth()
   @ApiConsumes('application/json')
   @ApiUnsupportedMediaTypeResponse({
     description: 'Se requiere application/json.',

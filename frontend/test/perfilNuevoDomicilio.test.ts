@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { createElement, type ComponentType, type FormEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { createServer, type ViteDevServer } from 'vite';
+import type { ViteDevServer } from 'vite'
+import { crearServidorPruebas } from './servidorPruebas.ts';
 import type { NuevoDomicilioForm } from '../src/schemas/profileSchema.ts';
 
 type Props = { domicilio: NuevoDomicilioForm; errores: Record<string, string[]>; paso: 'datos' | 'mapa';
@@ -11,8 +12,7 @@ type Props = { domicilio: NuevoDomicilioForm; errores: Record<string, string[]>;
 let server: ViteDevServer;
 let PerfilNuevoDomicilio: ComponentType<Props>;
 before(async () => {
-  server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false }, appType: 'custom',
-    ssr: { external: ['react', 'react/jsx-runtime'] } });
+  server = await crearServidorPruebas(['react', 'react/jsx-runtime']);
   ({ default: PerfilNuevoDomicilio } = await server.ssrLoadModule('/src/components/PerfilNuevoDomicilio.tsx'));
 });
 after(async () => server?.close());

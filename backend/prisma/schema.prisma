@@ -70,14 +70,25 @@ model ClienteDireccion {
   cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   direccion   Direccion @relation(fields: [direccionId], references: [id], onDelete: Restrict)
   suscripciones SuscripcionPush[]
+  preferenciaActual PreferenciaDomicilio?
 
   @@id([clienteId, direccionId])
   @@index([direccionId])
 }
 
+model PreferenciaDomicilio {
+  clienteId   String @id
+  direccionId String
+  domicilio   ClienteDireccion @relation(fields: [clienteId, direccionId], references: [clienteId, direccionId], onDelete: Cascade)
+
+  @@unique([clienteId, direccionId])
+}
+
 model TipoPuntoLimpio {
   id            String                   @id @default(uuid())
   nombre        String                   @unique
+  logo          String?
+  colorFondo    String?                  @db.VarChar(7)
   puntosLimpios PuntoLimpio[]
   residuos      TipoPuntoLimpioResiduo[]
 }
@@ -85,6 +96,7 @@ model TipoPuntoLimpio {
 model PuntoLimpio {
   id          String          @id @default(uuid())
   nombre      String
+  estado      Estado          @default(ACTIVO)
   tipoId      String
   tipo        TipoPuntoLimpio @relation(fields: [tipoId], references: [id])
   direccionId String
@@ -116,6 +128,20 @@ model Localidad {
   id        String     @id
   nombre    String
   trayectos Trayecto[]
+  zonas     Zona[]
+}
+
+model Zona {
+  id          String    @id @default(uuid())
+  nombre      String
+  clave       String
+  descripcion String    @default("")
+  localidadId String
+  localidad   Localidad @relation(fields: [localidadId], references: [id], onDelete: Restrict)
+  trayectos   Trayecto[]
+
+  @@unique([localidadId, clave])
+  @@unique([id, localidadId])
 }
 
 model Trayecto {
@@ -123,12 +149,15 @@ model Trayecto {
   nombre             String
   localidadId        String
   localidad          Localidad             @relation(fields: [localidadId], references: [id])
+  zonaId             String
+  zona               Zona                  @relation(fields: [zonaId, localidadId], references: [id, localidadId], onDelete: Restrict)
   geometria          Json
   puntos             PuntoTrayecto[]
   servicios          ServicioRecoleccion[]
   tramos             TramoTrayecto[]
 
   @@index([localidadId])
+  @@index([zonaId, localidadId])
 }
 
 model TramoTrayecto {

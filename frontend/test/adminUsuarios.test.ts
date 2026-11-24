@@ -3,7 +3,8 @@ import { after, before, test } from 'node:test'
 import { createElement, type ComponentType } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
-import { createServer, type ViteDevServer } from 'vite'
+import type { ViteDevServer } from 'vite'
+import { crearServidorPruebas } from './servidorPruebas.ts'
 import type { User } from '../src/services/authService.ts'
 
 let server: ViteDevServer
@@ -11,12 +12,7 @@ let AdminUsuarios: ComponentType
 let AuthContext: typeof import('../src/context/auth-context.ts').AuthContext
 
 before(async () => {
-  server = await createServer({
-    configFile: false,
-    server: { middlewareMode: true },
-    appType: 'custom',
-    ssr: { external: ['react', 'react/jsx-runtime', 'react-router-dom'] },
-  })
+  server = await crearServidorPruebas(['react', 'react/jsx-runtime', 'react-router-dom'])
   ;({ AdminUsuarios } = await server.ssrLoadModule(
     '/src/components/AdminUsuarios.tsx',
   ))

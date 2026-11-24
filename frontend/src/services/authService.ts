@@ -6,11 +6,12 @@ export type User = {
   id: string
   email: string
   role: 'USER' | 'ADMIN'
+  domicilioActualId?: string
   cliente: {
     id: string
     name: string
     lastName: string
-    domicilios: (Domicilio & { id: string })[]
+    domicilios: (Domicilio & { id: string; lat?: number; long?: number })[]
   } | null
 }
 export type LoginCredentials = {

@@ -16,7 +16,8 @@ import { ZonaFormulario } from './ZonaFormulario';
 import './AdminTrayectos.css';
 
 export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTrayectos> }) {
-  const zonas = useAdminZonas();
+  const zonas = useAdminZonas(admin.vista.tipo === 'editor'
+    ? admin.vista.borrador.localidadId : admin.localidadFija?.id);
   const [apartado, setApartado] = useState<'trayectos' | 'zonas'>('trayectos');
   const listado = admin.vista.tipo === 'lista';
 
@@ -30,10 +31,7 @@ export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTra
       </DialogContent>
       <DialogActions>
         <Button color="inherit" disabled={admin.eliminando} onClick={admin.cancelarEliminar}>Cancelar</Button>
-        <Button color="error" variant="contained" loading={admin.eliminando} onClick={async () => {
-          const id = await admin.confirmarEliminar();
-          if (id) zonas.quitarTrayecto(id);
-        }}>Eliminar</Button>
+        <Button color="error" variant="contained" loading={admin.eliminando} onClick={admin.confirmarEliminar}>Eliminar</Button>
       </DialogActions>
     </Dialog>
     {listado && <ToggleButtonGroup className="trayectos-secciones" exclusive color="success" size="small"
@@ -43,7 +41,7 @@ export function AdminTrayectos({ admin }: { admin: ReturnType<typeof useAdminTra
       <ToggleButton value="zonas"><PlaceOutlinedIcon fontSize="small" />Zonas</ToggleButton>
     </ToggleButtonGroup>}
     {listado && apartado === 'zonas' ? <AdminZonas admin={zonas} trayectos={admin.trayectos} /> : <>
-      {zonas.error && <Alert severity="error">{zonas.error}</Alert>}
+      {zonas.error && <Alert severity="error" action={<Button onClick={zonas.reintentar}>Reintentar</Button>}>{zonas.error}</Alert>}
       {listado && zonas.zonas.length === 0 && !zonas.bloqueado && <Alert severity="info"
         action={<Button color="inherit" onClick={() => setApartado('zonas')}>Ir a Zonas</Button>}>
         Podés crear una zona desde Zonas o al cargar un nuevo trayecto.
@@ -60,22 +58,19 @@ function TrayectosContenido({ admin, zonas }: {
 }) {
   const { vista, localidades, localidadFija, trayectos, cargando, error, aviso } = admin;
   const nombreLocalidad = (id: string) => localidades.find((localidad) => localidad.id === id)?.nombre ?? id;
-  const nombreZona = (id: string) => zonas.zonas.find((zona) => zona.id === zonas.asignaciones[id])?.nombre ?? 'Sin zona asignada';
+  const nombreZona = (zonaId: string) => zonas.zonas.find((zona) => zona.id === zonaId)?.nombre;
 
   if (vista.tipo === 'editor') {
-    return <TrayectoEditor inicial={{ ...vista.borrador, zonaId: vista.borrador.id ? zonas.asignaciones[vista.borrador.id] : undefined }}
+    return <TrayectoEditor inicial={vista.borrador}
       zonas={zonas.zonas} onAgregarZona={(alCrear) => zonas.abrirFormulario(undefined, alCrear)}
-      onCancelar={admin.volver} onGuardado={(trayecto, zonaId) => {
-        zonas.asignar(trayecto.id, zonaId);
-        admin.guardado(trayecto);
-      }} />;
+      onCancelar={admin.volver} onGuardado={admin.guardado} />;
   }
 
   if (vista.tipo === 'detalle') {
     const { trayecto } = vista;
     return (
       <DetalleTrayecto key={trayecto.id} trayecto={trayecto} localidad={nombreLocalidad(trayecto.localidadId)}
-        zona={nombreZona(trayecto.id)}
+        zona={nombreZona(trayecto.zonaId)}
         cargando={cargando} error={error} aviso={aviso} volver={admin.volver}
         eliminar={() => admin.solicitarEliminar(trayecto)}
         editar={() => void admin.abrir(trayecto.id, true)} />
@@ -112,7 +107,7 @@ function TrayectosContenido({ admin, zonas }: {
               <span className="trayectos-icono"><RouteOutlinedIcon fontSize="small" /></span>
               <div>
                 <h4>{trayecto.nombre}</h4>
-                <p className="trayectos-localidad"><PlaceOutlinedIcon />{nombreZona(trayecto.id)}</p>
+                <p className="trayectos-localidad"><PlaceOutlinedIcon />{nombreZona(trayecto.zonaId)}</p>
               </div>
             </div>
             <div className="trayectos-tarjeta-pie">

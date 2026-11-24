@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { trayectosService, type Coordenadas, type LadoRecoleccion, type Referencia, type SugerenciaTrayecto, type Trayecto, type UbicacionSugerida } from '../services/trayectosService';
 import type { CalleCatalogo } from '../services/callesService';
 import { completarAltura, lineaManual, prepararTrayecto, tienePosicionesDistintas, type BorradorTrayecto, type PuntoEditor } from '../utils/trayectoEditor';
+import { reducirBorrador } from '../utils/borradorTrayecto';
 import type { Zona } from '../services/zonasService';
 import { dividirTramo, tramosDeLinea, type TramoEditor } from '../utils/tramosTrayecto';
 
@@ -11,8 +12,8 @@ type ReferenciaElegida = 'original' | 'georef' | null;
 
 const mensaje = (error: unknown) => error instanceof Error ? error.message : 'No se pudo completar la solicitud.';
 
-export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayecto: Trayecto, zonaId: string) => void, zonas: Zona[]) {
-  const [borrador, setBorrador] = useState(inicial);
+export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayecto: Trayecto) => void, zonas: Zona[]) {
+  const [{ borrador, revisarCobertura }, modificar] = useReducer(reducirBorrador, { borrador: inicial, revisarCobertura: false });
   const [pin, setPin] = useState<Pin | null>(null);
   const [centrarEn, setCentrarEn] = useState<Coordenadas | null>(null);
   const [referenciaElegida, setReferenciaElegida] = useState<ReferenciaElegida>(null);
@@ -26,7 +27,6 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
   const [sugerencia, setSugerencia] = useState<Consulta<SugerenciaTrayecto>>({ cargando: false });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
-  const [revisarCobertura, setRevisarCobertura] = useState(false);
   const solicitudPin = useRef<AbortController | null>(null);
   const solicitudBusqueda = useRef<AbortController | null>(null);
   const solicitudLinea = useRef<AbortController | null>(null);
@@ -76,10 +76,7 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
   const cambiarPuntos = (puntos: PuntoEditor[]) => {
     solicitudLinea.current?.abort();
     setSugerencia({ cargando: false });
-    if (borrador.tramos?.length) setRevisarCobertura(true);
-    setBorrador((previo) => ({
-      ...previo, puntos, lineaElegida: null, cortes: undefined, tramos: previo.tramos && [],
-    }));
+    modificar({ tipo: 'puntos', puntos });
   };
 
   const aplicarPunto = (datos: Omit<PuntoEditor, 'clave'>, origen?: PuntoEditor) => {
@@ -178,10 +175,7 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
 
   const elegirLinea = (usarSugerencia: boolean) => {
     const lineaElegida = usarSugerencia ? sugerencia.resultado?.geometria ?? null : null;
-    if (borrador.tramos?.length) setRevisarCobertura(true);
-    setBorrador((previo) => ({
-      ...previo, lineaElegida, cortes: undefined, tramos: previo.tramos && [],
-    }));
+    modificar({ tipo: 'linea', linea: lineaElegida });
     descartarSugerencia();
   };
 
@@ -189,43 +183,17 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
   const linea = useMemo(() => borrador.lineaElegida ?? lineaManual(borrador.puntos), [borrador.lineaElegida, borrador.puntos]);
   const tramos = useMemo(() => tramosDeLinea(linea, borrador), [linea, borrador]);
 
-  const asignarCalle = ({ desde, hasta, lado }: TramoEditor, calle: CalleCatalogo | null) => {
-    setBorrador((previo) => {
-      const confirmados = (previo.tramos ?? []).filter((tramo) => tramo.desde !== desde);
-      if (calle) confirmados.push({ desde, hasta, calleId: calle.id, calle, lado });
-      return {
-        ...previo, tramos: confirmados,
-        cortes: [...new Set(tramos.flatMap((tramo) => [tramo.desde, tramo.hasta]))],
-      };
-    });
-  };
+  const asignarCalle = (tramo: TramoEditor, calle: CalleCatalogo | null) =>
+    modificar({ tipo: 'calle', tramo, calle });
 
-  const cambiarLado = (desde: number, lado: LadoRecoleccion) => {
-    setBorrador((previo) => ({
-      ...previo,
-      tramos: previo.tramos?.map((tramo) => tramo.desde === desde ? { ...tramo, lado } : tramo),
-    }));
-  };
+  const cambiarLado = (desde: number, lado: LadoRecoleccion) =>
+    modificar({ tipo: 'lado', desde, lado });
 
   const cortarTramo = (tramo: TramoEditor, posicion: Coordenadas) => {
     const corte = dividirTramo(linea, tramo, posicion);
     if (!corte) return;
-    const { indice } = corte;
-    const coordinates = [...linea.coordinates];
-    if (corte.posicion) coordinates.splice(indice, 0, corte.posicion);
-    const desplazar = (vertice: number) => corte.posicion && vertice >= indice ? vertice + 1 : vertice;
-    setBorrador((previo) => ({
-      ...previo,
-      lineaElegida: { ...linea, coordinates },
-      cortes: [...new Set([...tramos.flatMap(({ desde, hasta }) => [desplazar(desde), desplazar(hasta)]), indice])],
-      tramos: previo.tramos?.flatMap((confirmado) => {
-        const ajustado = { ...confirmado, desde: desplazar(confirmado.desde), hasta: desplazar(confirmado.hasta) };
-        return confirmado.desde === tramo.desde
-          ? [{ ...ajustado, hasta: indice }, { ...ajustado, desde: indice }]
-          : [ajustado];
-      }),
-    }));
-    return indice;
+    modificar({ tipo: 'corte', desde: tramo.desde, corte });
+    return corte.indice;
   };
 
   const guardar = async () => {
@@ -246,7 +214,7 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     setGuardando(true);
     setError('');
     try {
-      onGuardado(await trayectosService.guardar(prepararTrayecto(borrador), borrador.id), zonaId);
+      onGuardado(await trayectosService.guardar(prepararTrayecto(borrador), borrador.id));
     } catch (error) {
       setError(mensaje(error));
     } finally {
@@ -270,8 +238,8 @@ export function useTrayectoEditor(inicial: BorradorTrayecto, onGuardado: (trayec
     },
     marcarEnMapa, editarPunto, confirmarPin, descartarPin,
     quitarPunto: (clave: string) => cambiarPuntos(borrador.puntos.filter((punto) => punto.clave !== clave)),
-    actualizarNombre: (nombre: string) => setBorrador((previo) => ({ ...previo, nombre })),
-    actualizarZona: (zonaId: string) => setBorrador((previo) => ({ ...previo, zonaId })),
+    actualizarNombre: (nombre: string) => modificar({ tipo: 'nombre', nombre }),
+    actualizarZona: (zonaId: string) => modificar({ tipo: 'zona', zonaId }),
     calle, altura, busqueda, actualizarBusqueda, buscarDireccion, usarUbicacion,
     tieneLinea, linea, sugerencia, calcular, elegirLinea, descartarSugerencia, guardar, guardando, error,
     tramos, asignarCalle, cambiarLado, cortarTramo, revisarCobertura,

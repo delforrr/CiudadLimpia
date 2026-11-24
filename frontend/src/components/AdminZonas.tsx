@@ -6,8 +6,8 @@ import type { useAdminZonas } from '../hooks/useAdminZonas';
 import type { Trayecto } from '../services/trayectosService';
 
 export function AdminZonas({ admin, trayectos }: { admin: ReturnType<typeof useAdminZonas>; trayectos: Trayecto[] }) {
-  const asignados = (id: string) => trayectos.filter((trayecto) => admin.asignaciones[trayecto.id] === id);
-  const cantidad = (id: string) => Object.values(admin.asignaciones).filter((zonaId) => zonaId === id).length;
+  const asignados = (id: string) => trayectos.filter((trayecto) => trayecto.zonaId === id);
+  const cantidad = (id: string) => asignados(id).length;
 
   return <Paper component="section" variant="outlined" className="trayectos-panel" aria-label="Zonas de recolección">
     <div className="trayectos-cabecera">
@@ -18,9 +18,9 @@ export function AdminZonas({ admin, trayectos }: { admin: ReturnType<typeof useA
       <Button variant="contained" color="success" startIcon={<AddIcon />} disabled={admin.bloqueado}
         onClick={() => admin.abrirFormulario()}>Nueva zona</Button>
     </div>
-    <p className="trayectos-ayuda">Las zonas y sus asignaciones se guardan en este navegador.</p>
-    {admin.error && <Alert severity="error">{admin.error}</Alert>}
-    {admin.zonas.length === 0 && <div className="trayectos-vacio">
+    {admin.error && <Alert severity="error" action={<Button onClick={admin.reintentar}>Reintentar</Button>}>{admin.error}</Alert>}
+    {admin.cargando && <p role="status">Cargando zonas…</p>}
+    {!admin.cargando && !admin.error && admin.zonas.length === 0 && <div className="trayectos-vacio">
       <span className="trayectos-icono"><PlaceOutlinedIcon /></span>
       <h4>Todavía no hay zonas</h4><p>Creá una zona para agrupar los recorridos de recolección.</p>
     </div>}
@@ -55,11 +55,12 @@ export function AdminZonas({ admin, trayectos }: { admin: ReturnType<typeof useA
     <Dialog className="admin-module-dialog" open={Boolean(admin.pendienteEliminar)} onClose={() => admin.setPendienteEliminar(null)} fullWidth maxWidth="sm" aria-labelledby="zona-delete-title">
       <DialogTitle id="zona-delete-title">Eliminar zona</DialogTitle>
       <DialogContent>
+        {admin.errorEliminar && <Alert severity="error">{admin.errorEliminar}</Alert>}
         <p>¿Querés eliminar la zona {admin.pendienteEliminar?.nombre}?</p>
         {admin.pendienteEliminar && cantidad(admin.pendienteEliminar.id) > 0 && <Alert severity="warning">Reasigná sus trayectos a otra zona antes de eliminarla.</Alert>}
       </DialogContent>
       <DialogActions><Button color="inherit" onClick={() => admin.setPendienteEliminar(null)}>Cancelar</Button>
-        <Button color="error" disabled={Boolean(admin.pendienteEliminar && cantidad(admin.pendienteEliminar.id) > 0)} onClick={admin.eliminar}>Eliminar</Button></DialogActions>
+        <Button color="error" loading={admin.eliminando} disabled={Boolean(admin.pendienteEliminar && cantidad(admin.pendienteEliminar.id) > 0)} onClick={admin.eliminar}>Eliminar</Button></DialogActions>
     </Dialog>
   </Paper>;
 }

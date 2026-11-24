@@ -1,55 +1,34 @@
 import assert from 'node:assert/strict';
-import { afterEach, mock, test } from 'node:test';
+import { test } from 'node:test';
 import { domicilioUbicacionService, coordenadasDomicilioSchema } from '../src/services/domicilioUbicacionService.ts';
 
-const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-afterEach(() => {
-  mock.restoreAll();
-  if (original) Object.defineProperty(globalThis, 'localStorage', original);
-  else Reflect.deleteProperty(globalThis, 'localStorage');
-});
 const posicion = { lat: -35.973, long: -62.734 };
 
-test('pide a Georef una sugerencia dentro de la manzana de Trenque Lauquen', async () => {
-  mock.method(globalThis, 'fetch', async (url: string, opciones: RequestInit) => {
-    const consulta = new URL(url);
-    assert.equal(consulta.searchParams.get('direccion'), 'Roca 860');
-    assert.equal(consulta.searchParams.get('localidad_censal'), '06826050');
-    assert.equal(consulta.searchParams.get('desplazar'), 'true');
-    assert.equal(opciones.credentials, 'omit');
-    return Response.json({ direcciones: [
-      { localidad_censal: { id: '06826050' }, ubicacion: { lat: posicion.lat, lon: posicion.long }, nomenclatura: 'Roca 860' },
-      { localidad_censal: { id: 'otra-ciudad' }, ubicacion: { lat: posicion.lat, lon: posicion.long } },
-      { localidad_censal: { id: '06826050' }, ubicacion: { lat: null, lon: null } },
-      { localidad_censal: { id: '06826050' }, ubicacion: { lat: 0, lon: 0 } },
-    ] });
-  });
+test('busca el frente con la sesión y descarta pines fuera de Trenque Lauquen', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async () => Response.json({ sugerencias: [
+    { ...posicion, calle: 'Roca', altura: 860 },
+    { lat: 0, long: 0, calle: 'Fuera de la ciudad', altura: 860 },
+  ] }));
   assert.deepEqual(await domicilioUbicacionService.buscar(' Roca ', ' 860 ', new AbortController().signal), [
     { ...posicion, nombre: 'Roca 860' },
   ]);
+  const [url, opciones] = fetch.mock.calls[0].arguments;
+  const consulta = new URL(String(url), 'http://localhost');
+  assert.equal(consulta.pathname, '/api/geocodificacion/directa');
+  assert.equal(consulta.searchParams.get('calle'), 'Roca');
+  assert.equal(consulta.searchParams.get('altura'), '860');
+  assert.equal(consulta.searchParams.get('desplazar'), 'true');
+  assert.equal(opciones?.credentials, 'same-origin');
 });
 
-test('sin coincidencias devuelve una lista vacía para habilitar la elección manual', async () => {
-  mock.method(globalThis, 'fetch', async () => Response.json({ direcciones: [] }));
+test('sin coincidencias devuelve una lista vacía para habilitar el mapa manual', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ sugerencias: [] }));
   assert.deepEqual(await domicilioUbicacionService.buscar('Prueba', '123', new AbortController().signal), []);
 });
 
-test('informa fallas de geocodificación y descarta respuestas inválidas', async () => {
-  const fetch = mock.method(globalThis, 'fetch', async () => new Response('', { status: 503 }));
+test('informa fallas de geocodificación', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => new Response('', { status: 503 }));
   await assert.rejects(domicilioUbicacionService.buscar('Prueba', '123', new AbortController().signal));
-  fetch.mock.mockImplementation(async () => Response.json({}));
-  await assert.rejects(domicilioUbicacionService.buscar('Prueba', '123', new AbortController().signal));
-});
-
-test('guarda la ubicación confirmada por usuario y dirección sin depender de los IDs regenerados', () => {
-  const datos = new Map<string, string>();
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
-    getItem: (key: string) => datos.get(key) ?? null, setItem: (key: string, valor: string) => datos.set(key, valor),
-  } });
-  domicilioUbicacionService.guardar('vecino-1', ' Roca  860 ', posicion);
-  assert.deepEqual(domicilioUbicacionService.leer('vecino-1', 'roca 860'), posicion);
-  assert.equal(domicilioUbicacionService.leer('vecino-2', 'Roca 860'), undefined);
-  assert.equal(domicilioUbicacionService.leer('vecino-1', 'Roca 123'), undefined);
 });
 
 test('admite coordenadas válidas dentro de la ciudad', () => {

@@ -5,7 +5,6 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
-import CloseIcon from '@mui/icons-material/Close';
 import AddLocationAltOutlinedIcon from '@mui/icons-material/AddLocationAltOutlined';
 import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -26,7 +25,7 @@ const referenciaTexto = ({ calle, altura }: Referencia) => `${calle} ${altura ??
 type Props = {
   inicial: BorradorTrayecto;
   onCancelar: () => void;
-  onGuardado: (trayecto: Trayecto, zonaId: string) => void;
+  onGuardado: (trayecto: Trayecto) => void;
   zonas: Zona[];
   onAgregarZona: (alCrear: (zona: Zona) => void) => void;
 };
@@ -208,16 +207,13 @@ export function TrayectoEditor({ inicial, onCancelar, onGuardado, zonas, onAgreg
             onChange={(event) => editor.actualizarNombre(event.target.value)} />}
           {mostrarDatos && <div className="trayectos-zona-selector">
             <TextField label="Zona" select required size="small" color="success"
-            value={borrador.zonaId ?? ''} disabled={guardando || zonas.length === 0}
+            value={zonas.some(({ id }) => id === borrador.zonaId) ? borrador.zonaId : ''} disabled={guardando || zonas.length === 0}
             helperText={zonas.length === 0 ? 'Usá Agregar zona para crear la primera.' : <span className="trayectos-zona-ayuda">Zona a la que pertenece este trayecto.</span>}
             onChange={(event) => editor.actualizarZona(event.target.value)}>
             {zonas.map((zona) => <MenuItem key={zona.id} value={zona.id}>{zona.nombre}</MenuItem>)}
             </TextField>
-            {borrador.zonaId ? <IconButton color="success" disabled={guardando}
-              className="trayectos-zona-quitar" aria-label="Quitar zona seleccionada" title="Quitar zona seleccionada"
-              onClick={() => editor.actualizarZona('')}><CloseIcon fontSize="small" /></IconButton>
-              : <Button variant="outlined" color="success" startIcon={<AddIcon />} disabled={guardando}
-                onClick={() => onAgregarZona((zona) => editor.actualizarZona(zona.id))}>Agregar zona</Button>}
+            <Button variant="outlined" color="success" startIcon={<AddIcon />} disabled={guardando}
+              onClick={() => onAgregarZona((zona) => editor.actualizarZona(zona.id))}>Agregar zona</Button>
           </div>}
           {!borrador.localidadId && <Alert severity="warning">Trenque Lauquen no está disponible en el catálogo de localidades.</Alert>}
           {puedeEditarPuntos && (

@@ -137,6 +137,7 @@ export async function prepararRecoleccion(push = false) {
       data: {
         nombre: `${prefijo} ${nombre}`,
         localidadId,
+        zonaId: '3b37670f-24b7-4a4b-afdf-1b13ca5af001',
         geometria: { ...geometria(vertices) },
         puntos: { create: referencia },
         tramos: { create: { desde: 0, hasta: vertices.length - 1, calleId } },

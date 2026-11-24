@@ -77,6 +77,7 @@ export const publicUserSchema = z.strictObject({
   id: z.uuid(),
   email: z.email(),
   role: roleSchema,
+  domicilioActualId: z.uuid().optional(),
   cliente: z
     .strictObject({
       id: z.uuid(),

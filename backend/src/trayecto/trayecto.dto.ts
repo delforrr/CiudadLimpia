@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMinSize,
@@ -20,7 +20,7 @@ import { LadoRecoleccion } from '../generated/prisma/enums';
 import {
   CreatePuntoTrayectoDto,
   PuntoTrayectoResponseDto,
-} from '../punto-trayecto/punto-trayecto.dto';
+} from './punto-trayecto.dto';
 
 export class LineStringDto {
   @ApiProperty({ enum: ['LineString'] })
@@ -103,6 +103,13 @@ class TramoTrayectoResponseDto extends TramoTrayectoDto {
 }
 
 export class CreateTrayectoDto extends TrayectoDto {
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Zona de la localidad del trayecto.',
+  })
+  @IsUUID()
+  zonaId!: string;
+
   @ApiProperty({ type: [CreatePuntoTrayectoDto], minItems: 2 })
   @IsArray()
   @ArrayMinSize(2)
@@ -125,9 +132,24 @@ export class CreateTrayectoDto extends TrayectoDto {
   tramos!: TramoTrayectoDto[];
 }
 
+export class UpdateTrayectoDto extends OmitType(CreateTrayectoDto, [
+  'zonaId',
+] as const) {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Omitir para conservar la zona actual.',
+  })
+  @ValidateIf((_, valor: unknown) => valor !== undefined)
+  @IsUUID()
+  zonaId?: string;
+}
+
 export class TrayectoResponseDto extends TrayectoDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  zonaId!: string;
 
   @ApiProperty({ type: [PuntoTrayectoResponseDto] })
   puntos!: PuntoTrayectoResponseDto[];

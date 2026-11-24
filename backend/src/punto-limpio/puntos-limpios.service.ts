@@ -1,11 +1,12 @@
+import { transaccionConReintento } from '../prisma/transaccion-con-reintento';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   parCoordenadas,
   referenciaConPin,
   resolverDireccion,
-  transaccionConDirecciones,
 } from '../direccion/direccion-referencia';
 import { Prisma } from '../generated/prisma/client';
+import { Estado } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePuntoLimpioDto } from './dto/create-punto-limpio.dto';
 import type { UpdatePuntoLimpioDto } from './dto/update-punto-limpio.dto';
@@ -20,10 +21,15 @@ export class PuntosLimpiosService {
 
   async create(dto: CreatePuntoLimpioDto) {
     const referencia = referenciaConPin(dto);
-    return transaccionConDirecciones(this.prisma, async (tx) => {
+    return transaccionConReintento(this.prisma, async (tx) => {
       const { id } = await resolverDireccion(tx, referencia);
       const punto = await tx.puntoLimpio.create({
-        data: { nombre: dto.nombre, tipoId: dto.tipoId, direccionId: id },
+        data: {
+          nombre: dto.nombre,
+          estado: dto.estado,
+          tipoId: dto.tipoId,
+          direccionId: id,
+        },
         select: puntoLimpioSelect,
       });
       return toPuntoLimpioResponse(punto);
@@ -32,11 +38,14 @@ export class PuntosLimpiosService {
 
   async update(id: string, dto: UpdatePuntoLimpioDto) {
     const coordenadas = parCoordenadas(dto);
-    return transaccionConDirecciones(
+    return transaccionConReintento(
       this.prisma,
       async (tx) => {
-        const { nombre, tipoId, direccionId } = dto;
-        if (direccionId !== undefined || coordenadas) {
+        const { nombre, estado, tipoId, direccionId, direccion } = dto;
+        let frenteId = direccionId;
+        if (direccion) {
+          frenteId = (await resolverDireccion(tx, referenciaConPin(dto))).id;
+        } else if (direccionId !== undefined || coordenadas) {
           const referencia =
             direccionId ??
             (
@@ -49,7 +58,7 @@ export class PuntosLimpiosService {
         }
         const punto = await tx.puntoLimpio.update({
           where: { id },
-          data: { nombre, tipoId, direccionId },
+          data: { nombre, estado, tipoId, direccionId: frenteId },
           select: puntoLimpioSelect,
         });
         return toPuntoLimpioResponse(punto);
@@ -58,9 +67,10 @@ export class PuntosLimpiosService {
     );
   }
 
-  async findAll() {
+  async findAll(incluirInactivos = false) {
     const puntos = await this.prisma.puntoLimpio.findMany({
       select: puntoLimpioSelect,
+      where: incluirInactivos ? undefined : { estado: Estado.ACTIVO },
       orderBy: { nombre: 'asc' },
     });
     return puntos.map(toPuntoLimpioResponse);
@@ -68,7 +78,7 @@ export class PuntosLimpiosService {
 
   async findOne(id: string) {
     const punto = await this.prisma.puntoLimpio.findUnique({
-      where: { id },
+      where: { id, estado: Estado.ACTIVO },
       select: puntoLimpioSelect,
     });
     if (!punto) throw new NotFoundException('Punto limpio no encontrado');

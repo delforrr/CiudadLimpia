@@ -24,7 +24,7 @@ function SeguimientoHoy({ user }: { user: User }) {
   const domicilio = useDomicilioActual(user);
   const { actual } = domicilio;
   const { mapa, camiones, cargando, errorMapa, errorPosiciones } = useMapaHoy(actual?.id);
-  const { estado: avisos, activar } = useAvisosPush(user.id, actual?.id, user.cliente?.domicilios);
+  const { estado: avisos, activar } = useAvisosPush(actual?.id);
   const lineas = useMemo(() => mapa?.trayectos.map(({ geometria }) => geometria), [mapa]);
   const cantidad = camiones?.length ?? 0;
 
@@ -35,7 +35,7 @@ function SeguimientoHoy({ user }: { user: User }) {
         <div className="saludo-acciones">
           {actual && !avisos?.activo && (
             <Tooltip title="Activar notificaciones">
-              <IconButton className="hoy-activar-avisos" aria-label="Activar notificaciones" onClick={activar}>
+              <IconButton className="hoy-activar-avisos" aria-label="Activar notificaciones" loading={avisos?.activando} onClick={activar}>
                 <NotificationsNoneIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -64,6 +64,7 @@ function SeguimientoHoy({ user }: { user: User }) {
               <img src={camionRecolector} alt="" className="tarjeta-camion-img" />
             </div>
           </div>
+          {domicilio.error && <Alert severity="error">{domicilio.error}</Alert>}
           {avisos?.error && <Alert severity="warning">{avisos.error}</Alert>}
           {avisos?.activo && <p className="estado-descripcion">Avisos activados para este domicilio.</p>}
           {mapa && (

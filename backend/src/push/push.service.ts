@@ -8,11 +8,9 @@ import {
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { ProgresoTrayecto } from '../telemetria/progreso-trayecto';
-import {
-  calcularCobertura,
-  frenteCoberturaSelect,
-  type Recorrido,
-} from '../trayecto/cobertura-trayecto';
+import { calcularCobertura } from '../trayecto/cobertura-trayecto';
+import { frenteCoberturaSelect } from '../trayecto/cobertura.select';
+import { leerRecorrido } from '../trayecto/recorrido-guardado';
 import type {
   GuardarSuscripcionPushDto,
   SuscripcionPushResponseDto,
@@ -119,12 +117,25 @@ export class PushService {
     usuarioId: string,
     id: string,
   ): Promise<SuscripcionPushResponseDto> {
-    const suscripcion = await this.prisma.suscripcionPush.findFirst({
-      where: { id, domicilio: { cliente: { userId: usuarioId } } },
-      select: resumen,
-    });
+    const suscripcion = await this.suscripcionPropia(usuarioId, { id });
     if (!suscripcion) throw new NotFoundException('Suscripción no encontrada');
     return suscripcion;
+  }
+
+  consultarEndpoint(usuarioId: string, endpoint: string) {
+    return this.suscripcionPropia(usuarioId, {
+      endpoint: validarEndpointPush(endpoint).href,
+    });
+  }
+
+  private suscripcionPropia(
+    usuarioId: string,
+    filtro: { id: string } | { endpoint: string },
+  ) {
+    return this.prisma.suscripcionPush.findFirst({
+      where: { ...filtro, domicilio: { cliente: { userId: usuarioId } } },
+      select: resumen,
+    });
   }
 
   async eliminarSuscripcion(usuarioId: string, id: string): Promise<void> {
@@ -144,7 +155,8 @@ export class PushService {
       where: { id: prestacionId },
       select: { recorrido: true },
     });
-    const recorrido = prestacion.recorrido as unknown as Recorrido;
+    const recorrido = leerRecorrido(prestacion.recorrido);
+    if (!recorrido) return;
     const suscripciones = await tx.suscripcionPush.findMany({
       where: {
         entregas: {

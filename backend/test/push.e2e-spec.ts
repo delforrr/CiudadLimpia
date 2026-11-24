@@ -86,6 +86,17 @@ describePostgres('Suscripciones y entregas push (HTTP y PostgreSQL)', () => {
     suscripcionId = (respuesta.body as { id: string }).id;
     await guardar(f.domicilios[0].id).expect(200, respuesta.body as object);
     await f.api().get(suscripcion()).set('Authorization', f.otro).expect(404);
+    const estado = () =>
+      f.api().post('/api/push/suscripciones/estado').send({ endpoint });
+    await estado().expect(401);
+    await estado()
+      .set('Authorization', f.otro)
+      .expect(200, { suscripcion: null });
+    await estado()
+      .set('Authorization', f.vecino)
+      .expect(200, {
+        suscripcion: { id: suscripcionId, direccionId: f.domicilios[0].id },
+      });
     await f
       .api()
       .delete(suscripcion())

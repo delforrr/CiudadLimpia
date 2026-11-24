@@ -33,8 +33,18 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
     id: residuoId,
     calle: { calle: 'Roca' },
   };
-  const record = { id: tipoId, ...puntoData, direccion: pin };
-  const response = { id: tipoId, ...body };
+  const record = {
+    id: tipoId,
+    ...puntoData,
+    estado: 'ACTIVO',
+    direccion: direccionRecord,
+  };
+  const response = {
+    id: tipoId,
+    ...body,
+    estado: 'ACTIVO',
+    direccion: 'Roca 50',
+  };
   const db = {
     user: { findUnique: jest.fn() },
     $transaction: jest.fn(),
@@ -101,11 +111,12 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
 
   it('lista y consulta puntos públicamente', async () => {
     await request(app.getHttpServer())
-      .get('/puntos-limpios')
+      .get('/api/puntos-limpios')
       .expect(200)
       .expect([response]);
     expect(db.puntoLimpio.findMany).toHaveBeenCalledWith({
       select: puntoLimpioSelect,
+      where: { estado: 'ACTIVO' },
       orderBy: { nombre: 'asc' },
     });
 
@@ -121,6 +132,23 @@ describe('PuntosLimpios CRUD (HTTP)', () => {
     await request(app.getHttpServer())
       .get('/puntos-limpios/invalid')
       .expect(400);
+  });
+
+  it('limita la lista de puntos inactivos a la administración', async () => {
+    const url = '/api/puntos-limpios/administracion';
+    await request(app.getHttpServer()).get(url).expect(401);
+    await request(app.getHttpServer())
+      .get(url)
+      .auth(userToken, { type: 'bearer' })
+      .expect(403);
+    await request(app.getHttpServer())
+      .get(url)
+      .auth(adminToken, { type: 'bearer' })
+      .expect(200);
+    expect(db.puntoLimpio.findMany).toHaveBeenCalledWith({
+      select: puntoLimpioSelect,
+      orderBy: { nombre: 'asc' },
+    });
   });
 
   it('requires an admin session to create, edit and delete', async () => {

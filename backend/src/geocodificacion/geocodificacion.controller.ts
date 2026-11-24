@@ -29,13 +29,11 @@ import { GeocodificacionService } from './geocodificacion.service';
 @ApiBearerAuth()
 @ApiBadRequestResponse({ description: 'Parámetros inválidos.' })
 @ApiUnauthorizedResponse({ description: 'Sesión ausente o inválida.' })
-@ApiForbiddenResponse({ description: 'Se requiere el rol ADMIN.' })
 @ApiBadGatewayResponse({ description: 'Respuesta inválida de Georef.' })
 @ApiServiceUnavailableResponse({
   description: 'Georef no está disponible o se agotó la cuota.',
 })
 @ApiGatewayTimeoutResponse({ description: 'Georef no respondió a tiempo.' })
-@Roles([Role.ADMIN])
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller(['api/geocodificacion', 'geocodificacion'])
 export class GeocodificacionController {
@@ -53,6 +51,8 @@ export class GeocodificacionController {
   }
 
   @Get('inversa')
+  @Roles([Role.ADMIN])
+  @ApiForbiddenResponse({ description: 'Se requiere el rol ADMIN.' })
   @ApiOperation({
     summary: 'Sugerir una dirección para un pin en Trenque Lauquen',
     description:

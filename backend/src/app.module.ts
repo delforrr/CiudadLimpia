@@ -13,6 +13,7 @@ import { CamionesModule } from './camiones/camiones.module';
 import { TelemetriaModule } from './telemetria/telemetria.module';
 import { HoyModule } from './hoy/hoy.module';
 import { PushModule } from './push/push.module';
+import { ZonasModule } from './zona/zonas.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PushModule } from './push/push.module';
     TelemetriaModule,
     HoyModule,
     PushModule,
+    ZonasModule,
   ],
   controllers: [AppController],
 })

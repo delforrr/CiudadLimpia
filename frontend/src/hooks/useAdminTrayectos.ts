@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { trayectosService, type Localidad, type Trayecto } from '../services/trayectosService.ts';
 import { abrirBorrador, type BorradorTrayecto } from '../utils/trayectoEditor.ts';
-import { trayectosLocalesService } from '../services/trayectosLocalesService.ts';
 
 type Vista = { tipo: 'lista' } | { tipo: 'detalle'; trayecto: Trayecto } | { tipo: 'editor'; borrador: BorradorTrayecto };
 
@@ -55,7 +54,7 @@ export function useAdminTrayectos() {
       const trayecto = await trayectosService.consultar(id, solicitud.signal);
       if (solicitud.signal.aborted) return;
       setVista(editar
-        ? { tipo: 'editor', borrador: { ...abrirBorrador(trayecto), localidadId: localidadFija?.id ?? '' } }
+        ? { tipo: 'editor', borrador: abrirBorrador(trayecto) }
         : { tipo: 'detalle', trayecto });
     } catch (error) {
       if (!solicitud.signal.aborted) {
@@ -96,12 +95,7 @@ export function useAdminTrayectos() {
       setTrayectos((anteriores) => anteriores.filter((trayecto) => trayecto.id !== id));
       setVista({ tipo: 'lista' });
       setPendienteEliminar(null);
-      try {
-        trayectosLocalesService.quitarAsignaciones(id);
-        setAviso('Trayecto eliminado.');
-      } catch {
-        setAviso('Trayecto eliminado. No se pudieron actualizar las asignaciones guardadas en este navegador.');
-      }
+      setAviso('Trayecto eliminado.');
       return id;
     },
     cargar: () => {

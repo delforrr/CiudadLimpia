@@ -73,14 +73,22 @@ describe('Public API and documentation (HTTP)', () => {
       '/api/hoy/domicilios/{direccionId}/mapa',
       '/api/hoy/domicilios/{direccionId}/trayectos',
       '/api/localidades',
+      '/api/puntos-limpios',
+      '/api/puntos-limpios/administracion',
+      '/api/puntos-limpios/{id}',
       '/api/push/configuracion',
       '/api/push/suscripciones',
+      '/api/push/suscripciones/estado',
       '/api/push/suscripciones/{id}',
       '/api/telemetria/posiciones',
       '/api/telemetria/servicios/{servicioId}/avisos',
+      '/api/tipos-punto-limpio',
+      '/api/tipos-punto-limpio/{id}',
       '/api/trayectos',
       '/api/trayectos/sugerencia',
       '/api/trayectos/{id}',
+      '/api/zonas',
+      '/api/zonas/{id}',
       '/auth/login',
       '/auth/logout',
       '/auth/me',
@@ -94,10 +102,12 @@ describe('Public API and documentation (HTTP)', () => {
       '/geocodificacion/inversa',
       '/health',
       '/puntos-limpios',
+      '/puntos-limpios/administracion',
       '/puntos-limpios/{id}',
       '/tipos-punto-limpio',
       '/tipos-punto-limpio/{id}',
       '/users',
+      '/users/me/domicilio-actual',
       '/users/{id}',
     ]);
     expect(document.components?.securitySchemes?.session).toMatchObject({
@@ -262,9 +272,22 @@ describe('Public API and documentation (HTTP)', () => {
       '415',
     );
     const edicionTrayecto = document.paths['/api/trayectos/{id}'].patch;
-    expect(edicionTrayecto?.requestBody).toEqual(
-      document.paths['/api/trayectos'].post?.requestBody,
-    );
+    expect(edicionTrayecto?.requestBody).toMatchObject({
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/UpdateTrayectoDto' },
+        },
+      },
+    });
+    const altaTrayecto = document.components?.schemas?.CreateTrayectoDto;
+    const cambioTrayecto = document.components?.schemas?.UpdateTrayectoDto;
+    expect(
+      altaTrayecto && 'required' in altaTrayecto && altaTrayecto.required,
+    ).toContain('zonaId');
+    expect(
+      cambioTrayecto && 'required' in cambioTrayecto && cambioTrayecto.required,
+    ).not.toContain('zonaId');
     expect(Object.keys(edicionTrayecto?.responses ?? {}).sort()).toEqual([
       '200',
       '400',

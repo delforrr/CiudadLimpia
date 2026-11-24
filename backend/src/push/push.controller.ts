@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Post,
   ParseUUIDPipe,
   Put,
   Req,
@@ -26,6 +27,8 @@ import { AuthEndpointGuard } from '../auth/auth-endpoint.guard';
 import type { AuthRequest } from '../auth/auth.guard';
 import {
   ConfiguracionPushDto,
+  EndpointPushDto,
+  EstadoSuscripcionPushDto,
   GuardarSuscripcionPushDto,
   SuscripcionPushResponseDto,
 } from './push.dto';
@@ -62,6 +65,16 @@ export class PushController {
   @ApiResponse({ status: 415, description: 'Se requiere application/json.' })
   guardar(@Req() req: AuthRequest, @Body() dto: GuardarSuscripcionPushDto) {
     return this.push.guardarSuscripcion(req.user.id, dto);
+  }
+
+  @Post('suscripciones/estado')
+  @HttpCode(200)
+  @ApiConsumes('application/json')
+  @ApiOkResponse({ type: EstadoSuscripcionPushDto })
+  async estado(@Req() req: AuthRequest, @Body() dto: EndpointPushDto) {
+    return {
+      suscripcion: await this.push.consultarEndpoint(req.user.id, dto.endpoint),
+    };
   }
 
   @Get('suscripciones/:id')

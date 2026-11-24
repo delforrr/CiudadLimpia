@@ -1,17 +1,9 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { cargarCatalogoPuntosLimpios } from '../services/puntosLimpiosService'
+import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { puntosLimpiosService } from '../services/puntosLimpiosService'
 import { tipoPuntoLimpioSchema } from '../schemas/tipoPuntoLimpioSchema.ts'
-import type {
-  PuntoLimpioAdmin,
-  TipoPuntoLimpio,
-} from '../utils/puntosLimpiosFormat.ts'
-import {
-  loadPuntos,
-  loadTipos,
-  savePuntos,
-  saveTipos,
-} from '../utils/puntosLimpiosStorage.ts'
-import { APP_LOGOS_PUNTOS_LIMPIOS, puntoLimpioLogoColor } from '../utils/puntosLimpiosLogos.ts'
+import { useCatalogoPuntosLimpios } from './useCatalogoPuntosLimpios'
+import type { TipoPuntoLimpio } from '../utils/puntosLimpiosFormat.ts'
+import { puntoLimpioLogoId, APP_LOGOS_PUNTOS_LIMPIOS, puntoLimpioLogoColor } from '../utils/puntosLimpiosLogos.ts'
 
 export type TipoPuntoLimpioForm = {
   nombre: string
@@ -35,12 +27,7 @@ function normalize(value: string) {
 }
 
 export function useTiposPuntosLimpios() {
-  const [initial] = useState(() => {
-    const tipos = loadTipos()
-    return { tipos, puntos: loadPuntos(tipos) }
-  })
-  const [tipos, setTipos] = useState<TipoPuntoLimpio[]>(initial.tipos)
-  const [puntos, setPuntos] = useState<PuntoLimpioAdmin[]>(initial.puntos)
+  const { tipos, puntos, setCatalogo, loading, error } = useCatalogoPuntosLimpios(true)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<TipoPuntoLimpio | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -52,20 +39,6 @@ export function useTiposPuntosLimpios() {
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState('')
-
-  useEffect(() => {
-    let activo = true
-    cargarCatalogoPuntosLimpios()
-      .then((catalogo) => {
-        if (!activo || catalogo.puntos.length === 0) return
-        saveTipos(catalogo.tipos)
-        savePuntos(catalogo.puntos)
-        setTipos(catalogo.tipos)
-        setPuntos(catalogo.puntos)
-      })
-      .catch(() => {})
-    return () => { activo = false }
-  }, [])
 
   const usageCount = useCallback(
     (tipoId: string) =>
@@ -203,23 +176,12 @@ export function useTiposPuntosLimpios() {
 
       setSaving(true)
       try {
-        const payload: TipoPuntoLimpio = {
-          id: editing?.id ?? `tipo-${Date.now()}`,
-          nombre: data.nombre,
-          materiales: data.materiales,
-          logo: form.logo?.trim() || undefined,
-          colorFondo: data.colorFondo,
-        }
-
-        setTipos((previous) => {
-          const next = editing
-            ? previous.map((tipo) =>
-                tipo.id === editing.id ? payload : tipo,
-              )
-            : [...previous, payload]
-          saveTipos(next)
-          return next
-        })
+        const guardado = await puntosLimpiosService.guardarTipo({
+          ...data, logo: puntoLimpioLogoId(data.logo),
+        }, editing?.id)
+        setCatalogo((anterior) => ({
+          ...anterior, tipos: [guardado, ...anterior.tipos.filter(({ id }) => id !== guardado.id)],
+        }))
 
         setEditing(null)
         setIsCreating(false)
@@ -234,7 +196,7 @@ export function useTiposPuntosLimpios() {
         setSaving(false)
       }
     },
-    [editing, form, saving, tipos],
+    [editing, form, saving, tipos, setCatalogo],
   )
 
   const requestDelete = useCallback((tipo: TipoPuntoLimpio) => {
@@ -248,12 +210,8 @@ export function useTiposPuntosLimpios() {
     setDeleteError('')
   }, [deleting])
 
-  const confirmDelete = useCallback(() => {
+  const confirmDelete = useCallback(async () => {
     if (!pendingDelete || deleting) return
-    if (tipos.length <= 1) {
-      setDeleteError('Debe quedar al menos un tipo de punto limpio.')
-      return
-    }
     const count = usageCount(pendingDelete.id)
     if (count > 0) {
       setDeleteError(
@@ -265,18 +223,24 @@ export function useTiposPuntosLimpios() {
     }
 
     setDeleting(true)
-    setTipos((previous) => {
-      const next = previous.filter((tipo) => tipo.id !== pendingDelete.id)
-      saveTipos(next)
-      return next
-    })
-    setPendingDelete(null)
     setDeleteError('')
-    setNotice('Tipo de punto limpio eliminado correctamente.')
-    setDeleting(false)
-  }, [deleting, pendingDelete, tipos.length, usageCount])
+    try {
+      await puntosLimpiosService.eliminarTipo(pendingDelete.id)
+      setCatalogo((anterior) => ({
+        ...anterior, tipos: anterior.tipos.filter(({ id }) => id !== pendingDelete.id),
+      }))
+      setPendingDelete(null)
+      setNotice('Tipo de punto limpio eliminado correctamente.')
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar el registro.')
+    } finally {
+      setDeleting(false)
+    }
+  }, [deleting, pendingDelete, setCatalogo, usageCount])
 
   return {
+    error,
+    loading,
     tipos,
     filteredTipos,
     stats,

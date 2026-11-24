@@ -1,3 +1,4 @@
+import { teselasOpenStreetMap, atribucionOpenStreetMap } from '../utils/cartografia';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { IconButton } from '@mui/material';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
@@ -103,8 +104,8 @@ export function TrayectoMapa({ puntos, linea, lineas, sugerida, pin, indicePin, 
         maxBoundsViscosity: 1, zoomAnimation: false, scrollWheelZoom: false, bounceAtZoomLimits: false,
       });
       mapa = mapaCreado;
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      L.tileLayer(teselasOpenStreetMap, {
+        maxZoom: 19, attribution: atribucionOpenStreetMap,
       }).addTo(mapaCreado);
       mapaCreado.on('click', ({ latlng }) => {
         const { lat, lng } = mapaCreado.wrapLatLng(latlng);

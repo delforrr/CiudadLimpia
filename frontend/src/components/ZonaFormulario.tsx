@@ -5,7 +5,7 @@ export function ZonaFormulario({ admin }: { admin: ReturnType<typeof useAdminZon
   return (<Dialog className="admin-module-dialog" open={Boolean(admin.formulario)} onClose={admin.cerrarFormulario} fullWidth maxWidth="sm" aria-labelledby="zona-form-title">
       <DialogTitle id="zona-form-title">{admin.formulario?.id ? 'Editar zona' : 'Nueva zona'}</DialogTitle>
       <DialogContent dividers>
-        <form id="zona-form" className="zonas-formulario" noValidate onSubmit={(event) => { event.preventDefault(); admin.guardar(); }}>
+        <form id="zona-form" className="zonas-formulario" noValidate onSubmit={(event) => { event.preventDefault(); void admin.guardar(); }}>
           {admin.errorForm && <Alert severity="error">{admin.errorForm}</Alert>}
           {admin.error && <Alert severity="error">{admin.error}</Alert>}
           <TextField label="Nombre de la zona" required autoFocus fullWidth color="success" value={admin.formulario?.nombre ?? ''}
@@ -14,7 +14,7 @@ export function ZonaFormulario({ admin }: { admin: ReturnType<typeof useAdminZon
             slotProps={{ htmlInput: { maxLength: 300 } }} onChange={(event) => admin.cambiarCampo('descripcion', event.target.value)} />
         </form>
       </DialogContent>
-      <DialogActions><Button color="inherit" onClick={admin.cerrarFormulario}>Cancelar</Button>
-        <Button color="success" variant="contained" type="submit" form="zona-form">Guardar zona</Button></DialogActions>
+      <DialogActions><Button color="inherit" disabled={admin.guardando} onClick={admin.cerrarFormulario}>Cancelar</Button>
+        <Button color="success" variant="contained" type="submit" form="zona-form" loading={admin.guardando}>Guardar zona</Button></DialogActions>
     </Dialog>);
 }

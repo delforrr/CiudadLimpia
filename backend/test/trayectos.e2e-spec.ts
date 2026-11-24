@@ -22,8 +22,15 @@ describe('Trayectos (HTTP)', () => {
     $transaction: (
       operation: (tx: {
         localidad: { findUnique: () => typeof localidad };
+        zona: { findUnique: () => { id: string } };
       }) => unknown,
-    ) => operation({ localidad: { findUnique: () => localidad } }),
+    ) =>
+      operation({
+        localidad: { findUnique: () => localidad },
+        zona: {
+          findUnique: () => ({ id: '3b37670f-24b7-4a4b-afdf-1b13ca5af001' }),
+        },
+      }),
     localidad: { findMany: jest.fn().mockResolvedValue([localidad]) },
     trayecto: { delete: jest.fn() },
   };
@@ -94,6 +101,7 @@ describe('Trayectos (HTTP)', () => {
     const entrada = {
       nombre: 'Centro',
       localidadId: localidad.id,
+      zonaId: '3b37670f-24b7-4a4b-afdf-1b13ca5af001',
       puntos,
       geometria,
       tramos: [
@@ -109,6 +117,8 @@ describe('Trayectos (HTTP)', () => {
       { geometria: undefined },
       { nombre: '  ' },
       { localidadId: null },
+      { zonaId: null },
+      ...(metodo === 'post' ? [{ zonaId: undefined }] : []),
       { puntos: [puntos[0], { ...puntos[1], orden: 2 }] },
       { puntos: [puntos[0], { ...puntos[1], lat: 95 }] },
       { puntos: [puntos[0], { ...puntos[1], long: '1' }] },

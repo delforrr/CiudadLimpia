@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { claveCalle } from '../calle/calle.dto';
-import { Prisma } from '../generated/prisma/client';
-import type { PrismaService } from '../prisma/prisma.service';
+import type { Prisma } from '../generated/prisma/client';
 import {
   direccionSelect,
   toDireccionResponse,
@@ -107,31 +106,4 @@ export async function resolverDireccion(
     });
   }
   return registro;
-}
-
-export async function transaccionConDirecciones<T>(
-  prisma: PrismaService,
-  guardar: (tx: Prisma.TransactionClient) => Promise<T>,
-  opciones?: {
-    isolationLevel?: Prisma.TransactionIsolationLevel;
-    timeout?: number;
-  },
-): Promise<T> {
-  for (let intento = 0; ; intento++) {
-    try {
-      return await prisma.$transaction(guardar, opciones);
-    } catch (error) {
-      if (
-        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-        error.code !== 'P2034'
-      ) {
-        throw error;
-      }
-      if (intento >= 2) {
-        throw new ConflictException(
-          'Cambió una referencia o el recurso. Volvé a intentar.',
-        );
-      }
-    }
-  }
 }

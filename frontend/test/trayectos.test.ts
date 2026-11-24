@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { trayectosService, type Trayecto } from '../src/services/trayectosService.ts';
 import { abrirBorrador, completarAltura, prepararTrayecto, tienePosicionesDistintas } from '../src/utils/trayectoEditor.ts';
+import { reducirBorrador } from '../src/utils/borradorTrayecto.ts';
 import { dividirTramo, tramosDeLinea } from '../src/utils/tramosTrayecto.ts';
 
 const origen = { lat: -35.97, long: -62.73 };
 const destino = { lat: -35.98, long: -62.74 };
 const geometria = { type: 'LineString', coordinates: [[-62.73, -35.97], [-62.73, -35.98], [-62.74, -35.98]] } as const;
 const guardado: Trayecto = {
-  id: 'recorrido-1', nombre: 'Centro', localidadId: '06826050',
+  id: 'recorrido-1', nombre: 'Centro', localidadId: '06826050', zonaId: 'zona-1',
   geometria: { type: geometria.type, coordinates: geometria.coordinates.map(([long, lat]) => [long, lat]) },
   puntos: [
     { ...destino, orden: 1, direccionId: 'pin-2', direccion: { calle: null, altura: null, direccion: 'Pin' } },
@@ -38,7 +39,7 @@ test('permite completar manualmente una calle sin altura y conserva el pin', () 
   const completada = completarAltura(referencia, ' 860 ');
   assert.deepEqual(completada, { calle: 'Dorrego', altura: 860 });
   assert.equal(referencia.altura, null);
-  const envio = prepararTrayecto({ nombre: 'Centro', localidadId: '06826050', lineaElegida: null,
+  const envio = prepararTrayecto({ nombre: 'Centro', localidadId: '06826050', zonaId: 'zona-1', lineaElegida: null,
     puntos: [{ clave: '1', ...origen, referencia: completada }, { clave: '2', ...destino }] });
   assert.deepEqual(envio.puntos[0], { ...origen, orden: 0, direccion: { calle: 'Dorrego', altura: 860 } });
 });
@@ -95,4 +96,27 @@ test('consulta el motor con puntos en orden y sin datos del editor', async () =>
   });
   const puntos = [{ ...origen, clave: 'primero' }, { ...destino, clave: 'segundo' }];
   assert.deepEqual((await trayectosService.sugerir(puntos, solicitud.signal)).geometria, guardado.geometria);
+});
+
+test('cortar un tramo conserva calle y lado y desplaza los índices', () => {
+  const geometria = { type: 'LineString' as const, coordinates: [[-62.73, -35.97], [-62.74, -35.97]] as [number, number][] };
+  const calle = { id: 'calle-1', calle: 'Roca' };
+  const borrador = {
+    nombre: 'Centro', localidadId: '06826050', zonaId: 'zona-1',
+    puntos: [], lineaElegida: geometria,
+    tramos: [{ desde: 0, hasta: 1, calleId: calle.id, calle, lado: 'IZQUIERDA' as const }],
+  };
+  const estado = { borrador, revisarCobertura: false };
+  const resultado = reducirBorrador(estado, { tipo: 'corte', desde: 0, corte: { indice: 1, posicion: [-62.735, -35.97] } });
+  assert.deepEqual(resultado.borrador.tramos, [
+    { ...borrador.tramos[0], desde: 0, hasta: 1 },
+    { ...borrador.tramos[0], desde: 1, hasta: 2 },
+  ]);
+  assert.equal(resultado.borrador.lineaElegida?.coordinates.length, 3);
+  assert.equal(borrador.lineaElegida.coordinates.length, 2);
+  const movido = reducirBorrador(resultado, { tipo: 'puntos', puntos: [] });
+  assert.equal(movido.revisarCobertura, true);
+  assert.equal(movido.borrador.lineaElegida, null);
+  assert.deepEqual(movido.borrador.tramos, []);
+  assert.equal(movido.borrador.zonaId, 'zona-1');
 });

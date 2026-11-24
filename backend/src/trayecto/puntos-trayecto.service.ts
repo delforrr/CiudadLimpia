@@ -31,8 +31,4 @@ export class PuntosTrayectoService {
     }
     return referencias;
   }
-
-  async eliminarDeTrayecto(tx: Prisma.TransactionClient, trayectoId: string) {
-    await tx.puntoTrayecto.deleteMany({ where: { trayectoId } });
-  }
 }

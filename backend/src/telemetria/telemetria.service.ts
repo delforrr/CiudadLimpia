@@ -7,23 +7,15 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
-import {
-  tramosRecorridoArgs,
-  type Recorrido,
-} from '../trayecto/cobertura-trayecto';
+import type { Prisma } from '../generated/prisma/client';
+import { tramosRecorridoArgs } from '../trayecto/cobertura.select';
+import { leerRecorrido } from '../trayecto/recorrido-guardado';
 import { esLineaValida } from '../trayecto/line-string';
 import { leerProgreso, proyectarProgreso } from './progreso-trayecto';
 import type { PosicionTelemetriaDto } from './telemetria.dto';
 
-export interface ReceptorTelemetria {
-  registrarPosicion(
-    proveedorId: string,
-    dto: PosicionTelemetriaDto,
-  ): Promise<void>;
-}
-
 @Injectable()
-export class TelemetriaService implements ReceptorTelemetria {
+export class TelemetriaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -85,62 +77,21 @@ export class TelemetriaService implements ReceptorTelemetria {
       if (camion?.estado !== 'ACTIVO')
         throw new NotFoundException('Camión activo no encontrado');
 
-      let servicio = existente;
-      if (!servicio) {
-        await tx.$queryRaw`SELECT id FROM "Trayecto" WHERE id = ${trayectoId} FOR SHARE`;
-        const trayecto = await tx.trayecto.findUnique({
-          where: { id: trayectoId },
-          include: {
-            tramos: tramosRecorridoArgs,
-          },
-        });
-        if (!trayecto) throw new NotFoundException('Trayecto no encontrado');
-        if (!esLineaValida(trayecto.geometria))
-          throw new ConflictException('El trayecto carece de una línea válida');
-        const recorrido: Recorrido = {
-          geometria: trayecto.geometria,
-          tramos: trayecto.tramos.map(
-            ({ calleId, desde, hasta, lado, calle }) => ({
-              calleId: calle.calleVigenteId ?? calleId,
-              desde,
-              hasta,
-              lado,
-            }),
-          ),
-        };
-        const recorridoId = createHash('sha256')
-          .update(
-            JSON.stringify({
-              trayectoId,
-              nombre: trayecto.nombre,
-              ...recorrido,
-            }),
-          )
-          .digest('hex');
-        servicio = await tx.servicioRecoleccion.create({
-          data: {
-            ...clave,
-            camionId,
-            trayectoId,
-            nombre: trayecto.nombre,
-            recorridoId,
-            muestraEn,
-            recorrido: {
-              geometria: { ...recorrido.geometria },
-              tramos: recorrido.tramos.map(
-                ({ calleId, desde, hasta, lado }) => ({
-                  calleId,
-                  desde,
-                  hasta,
-                  lado,
-                }),
-              ),
-            },
-          },
-        });
-      }
-
-      const { geometria } = servicio.recorrido as unknown as Recorrido;
+      const servicio =
+        existente ??
+        (await this.iniciarServicio(
+          tx,
+          clave,
+          camionId,
+          trayectoId,
+          muestraEn,
+        ));
+      const recorrido = leerRecorrido(servicio.recorrido);
+      if (!recorrido)
+        throw new ConflictException(
+          'La prestación carece de un recorrido válido',
+        );
+      const { geometria } = recorrido;
       const progreso = proyectarProgreso(
         dto,
         geometria,
@@ -164,6 +115,49 @@ export class TelemetriaService implements ReceptorTelemetria {
       if (progreso?.avanza && this.config.get('PUSH_HABILITADO') === '1') {
         await this.push.encolarAvisos(tx, servicio.id, progreso);
       }
+    });
+  }
+  private async iniciarServicio(
+    tx: Prisma.TransactionClient,
+    clave: { proveedorId: string; servicioId: string },
+    camionId: string,
+    trayectoId: string,
+    muestraEn: Date,
+  ) {
+    await tx.$queryRaw`SELECT id FROM "Trayecto" WHERE id = ${trayectoId} FOR SHARE`;
+    const trayecto = await tx.trayecto.findUnique({
+      where: { id: trayectoId },
+      include: { tramos: tramosRecorridoArgs },
+    });
+    if (!trayecto) throw new NotFoundException('Trayecto no encontrado');
+    const geometria: unknown = trayecto.geometria;
+    if (!esLineaValida(geometria))
+      throw new ConflictException('El trayecto carece de una línea válida');
+
+    const recorrido = {
+      geometria: { ...geometria },
+      tramos: trayecto.tramos.map(({ calleId, desde, hasta, lado, calle }) => ({
+        calleId: calle.calleVigenteId ?? calleId,
+        desde,
+        hasta,
+        lado,
+      })),
+    };
+    const recorridoId = createHash('sha256')
+      .update(
+        JSON.stringify({ trayectoId, nombre: trayecto.nombre, ...recorrido }),
+      )
+      .digest('hex');
+    return tx.servicioRecoleccion.create({
+      data: {
+        ...clave,
+        camionId,
+        trayectoId,
+        nombre: trayecto.nombre,
+        recorridoId,
+        muestraEn,
+        recorrido,
+      },
     });
   }
 }

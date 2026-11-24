@@ -1,7 +1,8 @@
 import { createECDH, randomBytes, randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { generateVAPIDKeys } from 'web-push';
-import { TransportePush } from './envio-push.service';
+import { EnvioPushService, TransportePush } from './envio-push.service';
+import type { PrismaService } from '../prisma/prisma.service';
 
 it('construye una petición Web Push cifrada y rechaza redirecciones', async () => {
   const { publicKey, privateKey } = generateVAPIDKeys();
@@ -42,4 +43,42 @@ it('construye una petición Web Push cifrada y rechaza redirecciones', async () 
   } finally {
     fetchPrueba.mockRestore();
   }
+});
+
+it('espera al resto del lote cuando falla una entrega', async () => {
+  let terminarPendiente!: (valor: { count: number }) => void;
+  const pendiente = new Promise<{ count: number }>((resolve) => {
+    terminarPendiente = resolve;
+  });
+  const db = {
+    entregaPush: {
+      findMany: jest.fn().mockResolvedValue([
+        { id: 'fallida', intentos: 0 },
+        { id: 'en curso', intentos: 0 },
+      ]),
+      updateMany: jest
+        .fn()
+        .mockResolvedValueOnce({ count: 0 })
+        .mockRejectedValueOnce(new Error('Sin conexión'))
+        .mockReturnValueOnce(pendiente),
+    },
+  };
+  const config = new ConfigService();
+  const envios = new EnvioPushService(
+    db as unknown as PrismaService,
+    config,
+    new TransportePush(config),
+  );
+  let fallo = false;
+  const lote = envios
+    .despacharPendientes(new Date())
+    .catch((error: unknown) => {
+      fallo = true;
+      expect(error).toMatchObject({ message: 'Falló una entrega push' });
+    });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  expect(fallo).toBe(false);
+  terminarPendiente({ count: 0 });
+  await lote;
+  expect(fallo).toBe(true);
 });

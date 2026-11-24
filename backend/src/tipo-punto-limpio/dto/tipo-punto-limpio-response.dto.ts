@@ -15,6 +15,12 @@ export class TipoPuntoLimpioResponseDto {
   @ApiProperty({ example: 'Botellero' })
   nombre!: string;
 
+  @ApiProperty({ type: String, nullable: true })
+  logo!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  colorFondo!: string | null;
+
   @ApiProperty({ type: [ResiduoResumenDto] })
   residuos!: ResiduoResumenDto[];
 }

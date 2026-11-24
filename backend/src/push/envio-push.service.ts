@@ -8,11 +8,9 @@ import { ConfigService } from '@nestjs/config';
 import { generateRequestDetails } from 'web-push';
 import { PrismaService } from '../prisma/prisma.service';
 import { leerProgreso } from '../telemetria/progreso-trayecto';
-import {
-  calcularCobertura,
-  frenteCoberturaSelect,
-  type Recorrido,
-} from '../trayecto/cobertura-trayecto';
+import { calcularCobertura } from '../trayecto/cobertura-trayecto';
+import { frenteCoberturaSelect } from '../trayecto/cobertura.select';
+import { leerRecorrido } from '../trayecto/recorrido-guardado';
 import { debeAvisar, validarEndpointPush } from './push.service';
 
 @Injectable()
@@ -113,9 +111,14 @@ export class EnvioPushService implements OnModuleInit, OnModuleDestroy {
       take: 20,
       select: { id: true, intentos: true },
     });
-    await Promise.all(
+    const resultados = await Promise.allSettled(
       pendientes.map(({ id, intentos }) => this.despachar(id, intentos)),
     );
+    for (const resultado of resultados) {
+      if (resultado.status === 'rejected') {
+        throw new Error('Falló una entrega push', { cause: resultado.reason });
+      }
+    }
   }
 
   private async despachar(id: string, intentos: number) {
@@ -151,16 +154,16 @@ export class EnvioPushService implements OnModuleInit, OnModuleDestroy {
     if (!entrega) return;
     const { suscripcion, prestacion } = entrega;
     const progreso = leerProgreso(prestacion.progreso);
-    const cobertura = calcularCobertura(
-      suscripcion.domicilio.direccion,
-      prestacion.recorrido as unknown as Recorrido,
-    );
+    const recorrido = leerRecorrido(prestacion.recorrido);
+    const cobertura =
+      recorrido &&
+      calcularCobertura(suscripcion.domicilio.direccion, recorrido);
     const restante = entrega.venceEn.getTime() - Date.now();
     if (
       restante <= 0 ||
       suscripcion.version !== entrega.versionSuscripcion ||
       prestacion.camion.estado !== 'ACTIVO' ||
-      cobertura.estado !== 'CUBIERTO'
+      cobertura?.estado !== 'CUBIERTO'
     ) {
       await this.prisma.entregaPush.updateMany({
         where,

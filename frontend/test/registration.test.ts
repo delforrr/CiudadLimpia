@@ -3,7 +3,8 @@ import { after, before, test } from 'node:test'
 import { createElement, type ComponentType } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
-import { createServer, type ViteDevServer } from 'vite'
+import type { ViteDevServer } from 'vite'
+import { crearServidorPruebas } from './servidorPruebas.ts'
 import { registerSchema } from '../src/schemas/authSchema.ts'
 import type { User } from '../src/services/authService.ts'
 import type { DomicilioForm } from '../src/schemas/profileSchema.ts'
@@ -18,12 +19,7 @@ let DomiciliosCard: ComponentType<{
 let AuthContext: typeof import('../src/context/auth-context.ts').AuthContext
 
 before(async () => {
-  server = await createServer({
-    configFile: false,
-    server: { middlewareMode: true },
-    appType: 'custom',
-    ssr: { external: ['react', 'react/jsx-runtime', 'react-router-dom', '@mui/material', '@mui/icons-material'] },
-  })
+  server = await crearServidorPruebas(['react', 'react/jsx-runtime', 'react-router-dom', '@mui/material', '@mui/icons-material'])
   ;({ PerfilPage } = await server.ssrLoadModule('/src/pages/PerfilPage.tsx'))
   ;({ AdminPage } = await server.ssrLoadModule('/src/pages/AdminPage.tsx'))
   ;({ HoyCards } = await server.ssrLoadModule('/src/components/HoyCards.tsx'))

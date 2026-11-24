@@ -11,7 +11,7 @@ import type { DireccionResponseDto } from '../src/direccion/dto/direccion-respon
 import type { TrayectoResponseDto } from '../src/trayecto/trayecto.dto';
 import type { PublicUser } from '../src/accounts/account.schemas';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { PuntosTrayectoService } from '../src/punto-trayecto/puntos-trayecto.service';
+import { PuntosTrayectoService } from '../src/trayecto/puntos-trayecto.service';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describePostgres = databaseUrl ? describe : describe.skip;
@@ -55,6 +55,7 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
   const entrada = {
     nombre,
     localidadId,
+    zonaId: '3b37670f-24b7-4a4b-afdf-1b13ca5af001',
     geometria,
     puntos: [origen, destino],
     tramos: [{ desde: 0, hasta: 2, calleId: calleIdPrueba }],
@@ -118,6 +119,99 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
     }
   });
 
+  it('persiste los materiales y la visibilidad del catálogo', async () => {
+    const nombreTipo = `Envases ${clave}`;
+    const material = `Vidrio ${clave}`;
+    const tipos = '/api/tipos-punto-limpio';
+    const puntos = '/api/puntos-limpios';
+    const alta = await api()
+      .post(tipos)
+      .set('Authorization', admin)
+      .send({
+        nombre: nombreTipo,
+        materiales: [material],
+        logo: 'botellero',
+        colorFondo: '#148640',
+      })
+      .expect(201);
+    const { id } = alta.body as { id: string };
+    try {
+      expect(alta.body).toMatchObject({
+        logo: 'botellero',
+        colorFondo: '#148640',
+      });
+      const tipo = await prisma.tipoPuntoLimpio.findUniqueOrThrow({
+        where: { id },
+        include: { residuos: { include: { residuo: true } } },
+      });
+      expect(tipo.residuos.map(({ residuo }) => residuo.nombre)).toEqual([
+        material,
+      ]);
+      const respuesta = await api()
+        .post(puntos)
+        .set('Authorization', admin)
+        .send({
+          nombre,
+          tipoId: id,
+          direccion: { calle, altura: 1800 },
+          lat,
+          long,
+          estado: 'INACTIVO',
+        })
+        .expect(201);
+      const { id: puntoId } = respuesta.body as { id: string };
+      await api().get(`${puntos}/${puntoId}`).expect(404);
+      const adminLista = await api()
+        .get(puntos + '/administracion')
+        .set('Authorization', admin)
+        .expect(200);
+      expect(
+        (adminLista.body as { id: string }[]).some(({ id }) => id === puntoId),
+      ).toBe(true);
+      await api()
+        .patch(`${puntos}/${puntoId}`)
+        .set('Authorization', admin)
+        .send({ estado: 'ACTIVO' })
+        .expect(200);
+      await api().get(`${puntos}/${puntoId}`).expect(200);
+    } finally {
+      await prisma.puntoLimpio.deleteMany({ where: { tipoId: id } });
+      await prisma.tipoPuntoLimpio.delete({ where: { id } });
+      await prisma.residuo.deleteMany({ where: { nombre: material } });
+    }
+  });
+
+  it('permite administrar zonas y aplica unicidad al normalizar el nombre', async () => {
+    const ruta = '/api/zonas';
+    const datos = { nombre: `Área ${clave}`, localidadId };
+    await api().get(ruta).expect(401);
+    const alta = await api()
+      .post(ruta)
+      .set('Authorization', admin)
+      .send(datos)
+      .expect(201);
+    const { id } = alta.body as { id: string };
+    try {
+      await api()
+        .post(ruta)
+        .set('Authorization', admin)
+        .send({ ...datos, nombre: ` AREA  ${clave} ` })
+        .expect(409);
+      await api()
+        .patch(`${ruta}/${id}`)
+        .set('Authorization', admin)
+        .send({ descripcion: 'Sector de prueba' })
+        .expect(200);
+      await api()
+        .delete(`${ruta}/${id}`)
+        .set('Authorization', admin)
+        .set('Content-Type', 'application/json')
+        .expect(204);
+    } finally {
+      await prisma.zona.deleteMany({ where: { id } });
+    }
+  });
+
   it('guarda y reemplaza tramos confirmados junto con la línea', async () => {
     const { id: calleId } = await prisma.calle.create({
       data: { calle: calleCobertura, clave: calleCobertura.toLowerCase() },
@@ -149,10 +243,11 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
       { desde: 1, hasta: 2, calleId: calleIdPrueba, lado: 'DERECHA' },
     ];
     await editar(id)
-      .send({ ...datos, tramos: asignados })
+      .send({ ...datos, tramos: asignados, zonaId: undefined })
       .expect(200);
     await leer(id).expect(({ body }: { body: TrayectoResponseDto }) => {
       expect(body.tramos).toMatchObject(asignados);
+      expect(body.zonaId).toBe(entrada.zonaId);
     });
     await editar(id)
       .send({ ...datos, tramos: undefined })
@@ -163,6 +258,14 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
     await editar(id)
       .send({ ...datos, tramos: [{ ...tramo, calleId: randomUUID() }] })
       .expect(400);
+    await editar(id)
+      .send({ ...datos, tramos: [tramo], zonaId: randomUUID() })
+      .expect(400);
+    await api()
+      .delete(`/api/zonas/${entrada.zonaId}`)
+      .set('Authorization', admin)
+      .set('Content-Type', 'application/json')
+      .expect(409);
     await leer(id).expect(({ body }: { body: TrayectoResponseDto }) => {
       expect(body.geometria).toEqual(geometria);
       expect(body.tramos).toMatchObject(asignados);
@@ -272,14 +375,30 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
     await api()
       .get(`/puntos-limpios/${puntoId}`)
       .expect(200)
-      .expect({ id: puntoId, nombre, tipoId, direccionId, ...pin });
+      .expect({
+        id: puntoId,
+        nombre,
+        tipoId,
+        direccionId,
+        ...pin,
+        estado: 'ACTIVO',
+        direccion: direccion.direccion,
+      });
     const editarPunto = () =>
       api().patch(`/puntos-limpios/${puntoId}`).set('Authorization', admin);
     await editarPunto().send({ lat, long }).expect(409);
     await editarPunto()
       .send(pin)
       .expect(200)
-      .expect({ id: puntoId, nombre, tipoId, direccionId, ...pin });
+      .expect({
+        id: puntoId,
+        nombre,
+        tipoId,
+        direccionId,
+        ...pin,
+        estado: 'ACTIVO',
+        direccion: direccion.direccion,
+      });
     const nuevoFrente = trayecto.puntos[1].direccionId;
     await editarPunto().send({ direccionId: nuevoFrente }).expect(200).expect({
       id: puntoId,
@@ -288,6 +407,8 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
       direccionId: nuevoFrente,
       lat: latVecino,
       long: longVecino,
+      estado: 'ACTIVO',
+      direccion: trayecto.puntos[1].direccion.direccion,
     });
     await api()
       .get('/auth/me')
@@ -310,6 +431,18 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
         fuente: 'Catálogo de Ciudad Limpia',
       });
 
+    const elegir = () =>
+      api().patch('/users/me/domicilio-actual').set('Cookie', sesion);
+    await elegir().send({ direccionId: nuevoFrente }).expect(404);
+    await elegir().send({ direccionId }).expect(204);
+    const sesionActualizada = await api()
+      .get('/auth/me')
+      .set('Cookie', sesion)
+      .expect(200);
+    expect(sesionActualizada.body).toMatchObject({
+      domicilioActualId: direccionId,
+    });
+
     await api()
       .patch(`/users/${usuario.id}`)
       .set('Cookie', sesion)
@@ -325,6 +458,11 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
       .set('Cookie', sesion)
       .send({ cliente: { ...cliente, domicilios: [] } })
       .expect(200);
+    const sinDomicilio = await api()
+      .get('/auth/me')
+      .set('Cookie', sesion)
+      .expect(200);
+    expect(sinDomicilio.body).not.toHaveProperty('domicilioActualId');
     await api()
       .delete(`/users/${usuario.id}`)
       .set('Authorization', admin)

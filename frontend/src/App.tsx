@@ -1,13 +1,17 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import Header from './components/Header';
 import { BottomNav } from './components/BottomNav';
-import { HoyPage } from './pages/HoyPage';
-import { CalendarioPage } from './pages/CalendarioPage';
-import { PuntosLimpiosPage } from './pages/PuntosLimpiosPage';
-import { PerfilPage } from './pages/PerfilPage';
-import { AdminPage } from './pages/AdminPage';
 import ProfileGate from './components/ProfileGate';
 import './App.css';
+
+const Hoy = lazy(() => import('./components/HoyCards').then(({ HoyCards }) => ({ default: HoyCards })));
+const PuntosLimpios = lazy(() => import('./components/PuntosLimpios').then((modulo) => ({
+  default: modulo.PuntosLimpios,
+})));
+const Calendario = lazy(() => import('./pages/CalendarioPage'));
+const Perfil = lazy(() => import('./pages/PerfilPage'));
+const Admin = lazy(() => import('./pages/AdminPage'));
 
 function App() {
   const location = useLocation();
@@ -16,10 +20,11 @@ function App() {
   if (isAdminRoute) {
     return (
       <ProfileGate>
-        <Routes>
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/*" element={<AdminPage />} />
-        </Routes>
+        <Suspense fallback={<p role="status">Cargando administración…</p>}>
+          <Routes>
+            <Route path="/admin/*" element={<Admin />} />
+          </Routes>
+        </Suspense>
       </ProfileGate>
     );
   }
@@ -32,15 +37,17 @@ function App() {
       {/* Contenido principal según la ruta */}
       <main className="app-main">
         <ProfileGate>
-          <Routes>
-            <Route path="/" element={<Navigate to="/puntos-limpios" replace />} />
-            <Route path="/hoy" element={<HoyPage />} />
-            <Route path="/calendario" element={<CalendarioPage />} />
-            <Route path="/puntos-limpios" element={<PuntosLimpiosPage />} />
-            <Route path="/perfil" element={<PerfilPage />} />
-            <Route path="/registro" element={<PerfilPage initialRegister />} />
-            <Route path="*" element={<Navigate to="/hoy" replace />} />
-          </Routes>
+          <Suspense fallback={<p role="status">Cargando pantalla…</p>}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/puntos-limpios" replace />} />
+              <Route path="/hoy" element={<Hoy />} />
+              <Route path="/calendario" element={<Calendario />} />
+              <Route path="/puntos-limpios" element={<PuntosLimpios />} />
+              <Route path="/perfil" element={<Perfil />} />
+              <Route path="/registro" element={<Perfil initialRegister />} />
+              <Route path="*" element={<Navigate to="/hoy" replace />} />
+            </Routes>
+          </Suspense>
         </ProfileGate>
       </main>
 
