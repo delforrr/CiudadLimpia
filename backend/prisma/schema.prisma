@@ -5,9 +5,10 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "cjs"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -67,21 +68,14 @@ model ClienteDireccion {
   clienteId   String
   direccionId String
   etiqueta    String?   @db.VarChar(100)
+  esActual    Boolean   @default(false)
   cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   direccion   Direccion @relation(fields: [direccionId], references: [id], onDelete: Restrict)
   suscripciones SuscripcionPush[]
-  preferenciaActual PreferenciaDomicilio?
 
   @@id([clienteId, direccionId])
+  @@unique([clienteId], map: "ClienteDireccion_clienteId_actual_key", where: { esActual: true })
   @@index([direccionId])
-}
-
-model PreferenciaDomicilio {
-  clienteId   String @id
-  direccionId String
-  domicilio   ClienteDireccion @relation(fields: [clienteId, direccionId], references: [clienteId, direccionId], onDelete: Cascade)
-
-  @@unique([clienteId, direccionId])
 }
 
 model TipoPuntoLimpio {

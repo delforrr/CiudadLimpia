@@ -434,7 +434,30 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
     const elegir = () =>
       api().patch('/users/me/domicilio-actual').set('Cookie', sesion);
     await elegir().send({ direccionId: nuevoFrente }).expect(404);
+    await api()
+      .patch(`/users/${usuario.id}`)
+      .set('Cookie', sesion)
+      .send({
+        cliente: {
+          ...cliente,
+          domicilios: [{ direccionId }, { direccionId: nuevoFrente }],
+        },
+      })
+      .expect(200);
+
+    await Promise.all([
+      elegir().send({ direccionId }).expect(204),
+      elegir().send({ direccionId: nuevoFrente }).expect(204),
+    ]);
+    expect(
+      await prisma.clienteDireccion.count({
+        where: { clienteId: usuario.cliente!.id, esActual: true },
+      }),
+    ).toBe(1);
+
+    await elegir().send({ direccionId: nuevoFrente }).expect(204);
     await elegir().send({ direccionId }).expect(204);
+    await elegir().send({ direccionId: randomUUID() }).expect(404);
     const sesionActualizada = await api()
       .get('/auth/me')
       .set('Cookie', sesion)
@@ -452,7 +475,10 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
           domicilios: [{ direccionId, etiqueta: 'Otra' }],
         },
       })
-      .expect(200);
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toHaveProperty('domicilioActualId', direccionId);
+      });
     await api()
       .patch(`/users/${usuario.id}`)
       .set('Cookie', sesion)
@@ -471,7 +497,12 @@ describePostgres('Direcciones compartidas (HTTP y PostgreSQL)', () => {
     expect(
       await prisma.clienteDireccion.findMany({ where: { direccionId } }),
     ).toEqual([
-      { clienteId: vecina.cliente!.id, direccionId, etiqueta: 'Trabajo' },
+      {
+        clienteId: vecina.cliente!.id,
+        direccionId,
+        etiqueta: 'Trabajo',
+        esActual: false,
+      },
     ]);
   });
 

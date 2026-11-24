@@ -59,27 +59,34 @@ export class UserService {
   }
 
   async elegirDomicilio(usuarioId: string, direccionId: string) {
-    const domicilio = await this.prisma.clienteDireccion.findFirst({
-      where: { direccionId, cliente: { userId: usuarioId } },
-      select: { clienteId: true },
-    });
-    if (!domicilio) throw new NotFoundException('Domicilio no encontrado');
-    const { clienteId } = domicilio;
-    try {
-      await this.prisma.preferenciaDomicilio.upsert({
-        where: { clienteId },
-        create: { clienteId, direccionId },
-        update: { direccionId },
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2003'
-      ) {
-        throw new NotFoundException('Domicilio no encontrado');
-      }
-      throw error;
-    }
+    await transaccionConReintento(
+      this.prisma,
+      async (tx) => {
+        // Serializa las elecciones del cliente incluso cuando todavía no eligió.
+        const [cliente] = await tx.$queryRaw<{ id: string }[]>`
+          SELECT "id" FROM "Cliente"
+          WHERE "userId" = ${usuarioId}
+          FOR NO KEY UPDATE
+        `;
+        if (!cliente) throw new NotFoundException('Domicilio no encontrado');
+
+        const clienteId = cliente.id;
+        await tx.clienteDireccion.updateMany({
+          where: {
+            clienteId,
+            esActual: true,
+            direccionId: { not: direccionId },
+          },
+          data: { esActual: false },
+        });
+        const { count } = await tx.clienteDireccion.updateMany({
+          where: { clienteId, direccionId },
+          data: { esActual: true },
+        });
+        if (!count) throw new NotFoundException('Domicilio no encontrado');
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 
   async update(id: string, dto: UpdateUserInput) {

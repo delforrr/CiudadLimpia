@@ -17,7 +17,7 @@ export const publicUserSelect = {
         select: {
           direccion: { select: direccionSelect },
           etiqueta: true,
-          preferenciaActual: { select: { direccionId: true } },
+          esActual: true,
         },
         orderBy: { direccionId: 'asc' },
       },
@@ -31,9 +31,8 @@ export function toUserResponse({
   role,
   cliente,
 }: Prisma.UserGetPayload<{ select: typeof publicUserSelect }>) {
-  const domicilioActualId = cliente?.domicilios.find(
-    ({ preferenciaActual }) => preferenciaActual,
-  )?.direccion.id;
+  const domicilioActualId = cliente?.domicilios.find(({ esActual }) => esActual)
+    ?.direccion.id;
   return {
     id,
     email,
